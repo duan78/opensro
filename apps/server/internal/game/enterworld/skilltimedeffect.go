@@ -109,6 +109,9 @@ type SkillTimedEffect struct {
 	// DamageReturn is dmgr on a buff (+0x208, the Warlock's Soul Return):
 	// the recipient strikes back at whoever damages it.
 	DamageReturn SkillDamageReturn
+	// PulseArea is the Warlock's Soul Chaos: the instance strikes the
+	// enemies around its owner every period (skillpulsearea.go).
+	PulseArea SkillPulseArea
 }
 
 /*
@@ -301,6 +304,10 @@ func parseSkillTimedEffect(fields []string, row *SkillRow) {
 	}
 	if periodic := compileSkillPeriodicEffect(fields, *row); periodic.Pinned {
 		row.TimedEffect = SkillTimedEffect{Periodic: periodic}
+		return
+	}
+	if pulse, ok := compileSkillPulseArea(fields, *row); ok {
+		row.TimedEffect = SkillTimedEffect{PulseArea: pulse, Pinned: true}
 		return
 	}
 	if len(fields) != 118 || fields[0] != "1" || fields[8] != "2" || fields[68] != "3" ||

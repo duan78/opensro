@@ -146,7 +146,9 @@ type Runtime struct {
 	petSkillWindows     petSkillWindowIndex
 	paramJobOwners      petSkillWindowIndex
 	// pkOwners are the players whose PK record runs a clock (pkrecord.go).
-	pkOwners              petSkillWindowIndex
+	pkOwners petSkillWindowIndex
+	// pulseAreas are the owners of live pulse areas (skillpulsearea.go).
+	pulseAreas            pulseAreaClock
 	commercePolicyMu      sync.RWMutex
 	commerceTaxes         map[merchantTaxKey]merchantTax
 	commerceReferenceSeed []wire.Frame

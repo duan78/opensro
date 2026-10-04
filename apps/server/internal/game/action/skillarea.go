@@ -46,12 +46,15 @@ projectile's flight), poseAll every victim's (a trap's explosion).
 ==================
 */
 type areaPlanInput struct {
-	division             string
-	snapshot             *enterworld.Character
-	skill                enterworld.SkillRow
-	attacker             combat.Stats
-	victims              []monster.Instance
-	reduction            uint8
+	division  string
+	snapshot  *enterworld.Character
+	skill     enterworld.SkillRow
+	attacker  combat.Stats
+	victims   []monster.Instance
+	reduction uint8
+	// lifeStealBase is an lfst row's 40F750 base (skilllifesteal.go): its
+	// victims take the life-steal record at their running percent.
+	lifeStealBase        int64
 	impacts              int
 	chained              bool
 	posePrimary, poseAll bool
@@ -82,6 +85,13 @@ func (rt *Runtime) planAreaVictims(in areaPlanInput) (plans []areaVictimPlan, se
 		plan := areaVictimPlan{target: target}
 		total := uint64(0)
 		for range in.impacts {
+			if in.skill.LifeSteal.Present {
+				// 58F4B5: the percent rides into 40F750, after its HP cap.
+				formula := lifeStealResult(in.lifeStealBase, in.attacker, defender, target.CurrentHP, uint32(percent))
+				total += uint64(formula.Damage)
+				plan.formulas = append(plan.formulas, formula)
+				continue
+			}
 			formula, err := rt.resolvePlayerImpact(in.division, in.snapshot.Name, in.skill, in.attacker, defender, in.now, in.chained && index > 0)
 			if err != nil {
 				return nil, nil, false
@@ -242,10 +252,17 @@ func (rt *Runtime) acceptSkillAreaAt(division string, character, snapshot *enter
 	if len(victims) == 0 {
 		return OpResult{}, skillCastRefused
 	}
+	stealBase, stealOK := int64(0), true
+	if skill.LifeSteal.Present {
+		stealBase, stealOK = rt.lifeStealBase(division, snapshot, skill.LifeSteal, attacker)
+	}
+	if !stealOK {
+		return OpResult{}, skillCastRefused
+	}
 	plans, sequences, planned := rt.planAreaVictims(areaPlanInput{
 		division: division, snapshot: snapshot, skill: skill, attacker: attacker, victims: victims,
 		reduction: area.ReductionPercent, impacts: int(skill.Attack.ImpactCount), chained: chained,
-		posePrimary: skill.ProjectileSpeed != 0, now: nowMs,
+		lifeStealBase: stealBase, posePrimary: skill.ProjectileSpeed != 0, now: nowMs,
 	})
 	if !planned {
 		return OpResult{}, skillCastRefused
@@ -258,6 +275,7 @@ func (rt *Runtime) acceptSkillAreaAt(division string, character, snapshot *enter
 	roster := rt.monsterRewardRoster(division, character, nowMs)
 	var settlements monsterSettlement
 	var ammo ammunitionResult
+	var stolen wire.Frame
 	if !rt.deps.UpdateMany(roster.characters, "player-area-attack", func() bool {
 		var cost skillCharge
 		if charged && rootID == 0 {
@@ -292,6 +310,9 @@ func (rt *Runtime) acceptSkillAreaAt(division string, character, snapshot *enter
 			rt.registerPlayerSkillCooldown(division, character, skill, nowMs)
 		}
 		progression, drops, settlements = rt.settleAreaFatalities(division, character, roster, committed, plans, nowMs)
+		if skill.LifeSteal.Present {
+			stolen = rt.commitLifeSteal(division, character, committed...)
+		}
 		return true
 	}) {
 		if refusal != 0 {
@@ -358,6 +379,9 @@ func (rt *Runtime) acceptSkillAreaAt(division string, character, snapshot *enter
 	public = append(public, rt.groundReferences(drops)...)
 	for _, drop := range drops {
 		public = append(public, wire.DropBroadcastFrames(drop.SpawnRow(true))...)
+	}
+	if stolen.Opcode != 0 {
+		public = append(public, stolen)
 	}
 	actor := append([]wire.Frame{}, public...)
 	private := wire.ProgressionPrivateFrames(progression)

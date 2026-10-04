@@ -199,6 +199,9 @@ type SkillRow struct {
 	// FixedDamage marks a pdmg hit (skillfixeddamage.go): its single impact
 	// deals the authored amount, and dmgt converts the damage into MP.
 	FixedDamage SkillFixedDamage
+	// LifeSteal marks an lfst hit (skilllifesteal.go): its damage is the
+	// life taken, which the caster recovers.
+	LifeSteal SkillLifeSteal
 	// CombatTrap is a planted hostile trap program (skilltrap.go).
 	CombatTrap    SkillCombatTrap
 	OffensiveArea SkillOffensiveArea

@@ -171,7 +171,7 @@ func (rt *Runtime) resolvePlayerImpact(division, name string, skill enterworld.S
 	}
 	// A pdmg hit is its authored amount (skilltuning.go).
 	if skill.FixedDamage.Present {
-		return fixedDamageResult(skill.FixedDamage), nil
+		return fixedDamageResult(skill.FixedDamage, attacker, defender), nil
 	}
 	actor := criticalActor{division: division, character: name}
 	lanes := skill.Attack.Flags & 0xc

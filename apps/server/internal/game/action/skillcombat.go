@@ -205,7 +205,7 @@ func (rt *Runtime) acceptSkillStagePhaseAt(divisionID string, character, snapsho
 		}
 	}
 	actionLifecycleMs, actionLifecyclePinned := skill.ActionLifecycleMs()
-	if !known || ((!skill.CombatPinned || !skill.Attack.Present) && !skill.TimedEffect.Periodic.Pinned && !skill.Threat.Only && !skill.StatusCast && !skill.FixedDamage.Present) ||
+	if !known || ((!skill.CombatPinned || !skill.Attack.Present) && !skill.TimedEffect.Periodic.Pinned && !skill.Threat.Only && !skill.StatusCast && !skill.FixedDamage.Present && !skill.LifeSteal.Present) ||
 		!actionLifecyclePinned || actionLifecycleMs == 0 && !skill.PositionEffect.Charge ||
 		!skill.TargetRequired || (!basic && !advanced) {
 		return OpResult{}, skillCastRefused
@@ -338,7 +338,18 @@ func (rt *Runtime) acceptSkillStagePhaseAt(divisionID string, character, snapsho
 			return rt.acceptSkillAreaAt(divisionID, character, snapshot, skill, imbue.Area, true, advanced, target, attacker, loadout, consumeAmmo, nowMs, rootID, release)
 		}
 	}
+	stealBase, stealOK := int64(0), true
+	if skill.LifeSteal.Present {
+		stealBase, stealOK = rt.lifeStealBase(divisionID, snapshot, skill.LifeSteal, attacker)
+	}
+	if !stealOK {
+		return OpResult{}, skillCastRefused
+	}
 	for range skill.Attack.ImpactCount {
+		if skill.LifeSteal.Present {
+			formulas = append(formulas, lifeStealResult(stealBase, attacker, defender, target.CurrentHP, fullAreaPercent))
+			continue
+		}
 		formula, resolveErr := rt.resolvePlayerImpact(divisionID, snapshot.Name, skill, attacker, defender, nowMs, false)
 		if resolveErr != nil {
 			return OpResult{}, skillCastRefused
@@ -372,7 +383,7 @@ func (rt *Runtime) acceptSkillStagePhaseAt(divisionID string, character, snapsho
 	var ammo ammunitionResult
 	var killProgressionFrames []wire.Frame
 	var battleFrames []wire.Frame
-	var tuning wire.Frame
+	var tuning, stolen wire.Frame
 	var refusal uint16
 	{
 		// Character ammo and monster HP move under the same per-division lock
@@ -414,6 +425,10 @@ func (rt *Runtime) acceptSkillStagePhaseAt(divisionID string, character, snapsho
 				// After the cost: the drained MP refills the gauge the
 				// cast just spent (skilltuning.go).
 				tuning = rt.commitTuningMana(divisionID, character, skill.FixedDamage, committed)
+			}
+			if skill.LifeSteal.Present {
+				// 40F750: the caster recovers the life taken (skilllifesteal.go).
+				stolen = rt.commitLifeSteal(divisionID, character, committed)
 			}
 			if skill.PositionEffect.Charge {
 				rt.commitSkillTravel(simulation.WorldKey(divisionID, character.Name), character, travel)
@@ -544,6 +559,10 @@ func (rt *Runtime) acceptSkillStagePhaseAt(divisionID string, character, snapsho
 	if tuning.Opcode != 0 {
 		actorFrames = append(actorFrames, tuning)
 		privateFrames = append(privateFrames, tuning)
+	}
+	if stolen.Opcode != 0 {
+		actorFrames = append(actorFrames, stolen)
+		broadcastFrames = append(broadcastFrames, stolen)
 	}
 	actorFrames = append(actorFrames, killProgressionFrames...)
 	broadcastFrames = append(broadcastFrames, settlement.public...)

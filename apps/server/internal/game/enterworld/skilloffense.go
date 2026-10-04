@@ -368,6 +368,16 @@ func decodeSkillOffense(fields []string, row *SkillRow) string {
 		row.DirectOffensePinned = true
 		return ""
 	}
+	if steal, area, ok := compileSkillLifeSteal(fields, *row); ok {
+		// One life-steal record per victim (skilllifesteal.go), released by
+		// the ordinary offensive owner, single target or area.
+		row.LifeSteal = steal
+		row.OffensiveArea = area
+		row.Attack.ImpactCount = 1
+		row.OffensiveStagePinned = true
+		row.DirectOffensePinned = true
+		return ""
+	}
 	if area, ok := compileSkillAreaBurst(fields, *row); ok {
 		// Untargeted caster-centred attack (skillareaburst.go): the target
 		// gate below would refuse it, as it did before an owner existed.

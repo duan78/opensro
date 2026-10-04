@@ -90,6 +90,12 @@ const (
 	// Dance, but no native code reads it (whole-image scan); it changes
 	// nothing and stays a known key only so those rows admit.
 	ParameterDanceCutResist
+	// The Warlock's Blood Increase keys. BSHP (getv slot +0x534) is added to
+	// a life steal's base (Formulae_CalculateSkillHeal 40F750, Life Drain);
+	// SAAA (+0x538) to a fixed hit's amount (Formulae_CalculateFixedSkillDamage
+	// 40F5F0, Soul Chaos).
+	ParameterLifeStealPower
+	ParameterFixedDamagePower
 	SkillParameterCount
 )
 
@@ -203,6 +209,10 @@ func SkillParameterFromKey(key uint32) (SkillParameter, bool) {
 		return ParameterMusicCutResist, true
 	case 0x44534352:
 		return ParameterDanceCutResist, true
+	case 0x42534850:
+		return ParameterLifeStealPower, true
+	case 0x53414141:
+		return ParameterFixedDamagePower, true
 	}
 	return 0, false
 }
