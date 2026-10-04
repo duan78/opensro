@@ -229,6 +229,17 @@ type SkillPassiveParameters struct {
 	// the flat block-rate parameter of each lane the normalized mask selects;
 	// see combat.BlockRateWrites.
 	Br SkillPassiveBlockRate
+	// HitRate, Evasion, MaxHP and MaxMP are hr (+0x24C), er (+0x27C), hpi
+	// (+0x2AC) and mpi (+0x2B0), each {flat, percent}. A learned passive is
+	// a standing skill instance, so 594AC0 installs them on the keeper as
+	// it does a buff's: word 0 flat and word 1 percent on parameters 11, 9,
+	// 3 and 4 (0x59583F, 0x595883, 0x595481, 0x5954DF). The bow, lightning,
+	// spear and water mastery passives author one each.
+	HitRate, Evasion, MaxHP, MaxMP SkillFlatRate
+	// Dru is dru {word 0, word 1} (+0x3E4): 595A97 adds word 0 to
+	// parameters 0x80 and 0x81 and word 1 to 0x82 and 0x83 (the fire mastery
+	// passive).
+	Dru [2]uint32
 }
 
 /*
@@ -318,12 +329,35 @@ func encodedPassiveParameters(fields []string) SkillPassiveParameters {
 				return SkillPassiveParameters{}
 			}
 			out.Br = SkillPassiveBlockRate{Mask: normalizeLaneMask(op.Arguments[0]), Value: op.Arguments[1]}
+		case skillTagHitRate, 0x6572, 0x687069, 0x6d7069: // hr, er, hpi, mpi
+			if op.Count != 2 {
+				return SkillPassiveParameters{}
+			}
+			slot := &out.HitRate
+			switch op.Tag {
+			case 0x6572:
+				slot = &out.Evasion
+			case 0x687069:
+				slot = &out.MaxHP
+			case 0x6d7069:
+				slot = &out.MaxMP
+			}
+			if slot.Present {
+				return SkillPassiveParameters{}
+			}
+			*slot = SkillFlatRate{Present: true, Flat: op.Arguments[0], Percent: op.Arguments[1]}
+		case 0x647275: // dru
+			if op.Count != 2 || out.Dru != [2]uint32{} || op.Arguments == [6]uint32{} {
+				return SkillPassiveParameters{}
+			}
+			out.Dru = [2]uint32{op.Arguments[0], op.Arguments[1]}
 		case 0x72657169, 0x7265716e: // reqi/reqn: row.Reqi
 		default:
 			return SkillPassiveParameters{}
 		}
 	}
-	out.Pinned = count > 0 || out.Reat.Mask != 0 || out.Real.Mask != 0 || out.Br.Mask != 0
+	out.Pinned = count > 0 || out.Reat.Mask != 0 || out.Real.Mask != 0 || out.Br.Mask != 0 ||
+		out.HitRate.Present || out.Evasion.Present || out.MaxHP.Present || out.MaxMP.Present || out.Dru != [2]uint32{}
 	return out
 }
 
