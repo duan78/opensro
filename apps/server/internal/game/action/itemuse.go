@@ -595,7 +595,7 @@ func (rt *Runtime) HandleItemUse(
 				Payload: simulation.HPRefreshPayload(enterworld.ObjectIDForCharacter(character), 0, uint32(nextHP))})
 		}
 		if nextHP == 0 {
-			effects, progression := rt.settlePlayerDeathInDoor(divisionID, character, nowMs)
+			effects, progression := rt.settlePlayerDeathInDoor(divisionID, character, deathKiller{}, nowMs)
 			public = append(public, effects...)
 			if owner := rt.clearPlayerAbnormalInDoor(divisionID, character, nowMs); owner != nil {
 				owner.fatal = true

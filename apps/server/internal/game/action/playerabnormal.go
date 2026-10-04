@@ -511,7 +511,7 @@ func (o *playerAbnormalOwner) Hit(source uint32, credited bool, damage uint32, r
 	o.hits = append(o.hits, abnormalHit{source: source, credited: credited, damage: damage, reason: reason})
 	if remaining == 0 {
 		o.fatal = true
-		o.deathEffects, o.deathTarget = o.rt.settlePlayerDeathInDoor(o.division, o.c, o.now)
+		o.deathEffects, o.deathTarget = o.rt.settlePlayerDeathInDoor(o.division, o.c, o.sources[source].killer, o.now)
 	}
 }
 
@@ -621,7 +621,7 @@ at its live point, body effects retire, and the death penalty commits in
 the same door as the lethal HP.
 ==================
 */
-func (rt *Runtime) settlePlayerDeathInDoor(division string, c *enterworld.Character, now int64) (effects, progression []wire.Frame) {
+func (rt *Runtime) settlePlayerDeathInDoor(division string, c *enterworld.Character, killer deathKiller, now int64) (effects, progression []wire.Frame) {
 	rt.clearPotionRecovery(division, c.Name)
 	state := rt.Worlds.Update(simulation.WorldKey(division, c.Name),
 		func() simulation.WorldState { return simulation.SeedWorldState(c) },
@@ -639,12 +639,12 @@ func (rt *Runtime) settlePlayerDeathInDoor(division string, c *enterworld.Charac
 	effects = append(effects, released...)
 	// CGObjPC_ProcessNormalDeath leaves battle (529C93) before the life change.
 	effects = append(effects, rt.leaveBattleState(division, c, now)...)
-	if rt.ApplyDeathPenalty != nil {
-		// This updater is explicitly door-free. Keeping it inside the fatal
-		// HP closure makes corpse state and any level>10 EXP loss one durable
-		// transition; packet routing happens after the door closes.
-		progression, _ = rt.ApplyDeathPenalty(c)
-	}
+	// The death's cost (pkdeath.go) commits in the fatal HP closure, so the
+	// corpse and its EXP loss, drop and PK relief are one durable
+	// transition; packet routing happens after the door closes.
+	cost := rt.settleDeathCostInDoor(division, c, killer, now)
+	effects = append(effects, cost.public...)
+	progression = cost.actor
 	if rt.ReleaseQuestCapturesOnDeath != nil {
 		frames, _ := rt.ReleaseQuestCapturesOnDeath(c)
 		progression = append(progression, frames...)

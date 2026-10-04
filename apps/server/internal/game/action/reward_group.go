@@ -14,6 +14,7 @@ package action
 import (
 	"math"
 	"opensro.online/server/internal/domain"
+	"opensro.online/server/internal/game/pk"
 	"reflect"
 	"sort"
 
@@ -301,6 +302,17 @@ func (rt *Runtime) settleMonsterInsideDoor(division string, actor *enterworld.Ch
 			out.actorFrames = append(out.actorFrames, award.Frames...)
 		} else {
 			out.others = append(out.others, award)
+		}
+	}
+	// CGObjMob_CreditKillerOnDeath (4C42F0) -> 4EB6B0: the player whose
+	// blow killed the monster eases a murder penalty by the level gap.
+	if actor != nil && actor.PK != nil && actor.PK.Penalty > 0 {
+		before := actor.PVPState()
+		relief := pk.MonsterKillRelief(impact.Instance.Ref.Level, uint8(min(rewardLevel(actor), 0xff)))
+		out.actorFrames = append(out.actorFrames, pkRecordFrames(actor, pk.AddPenalty(actor, relief, rt.Now()))...)
+		rt.notePKRecord(division, actor)
+		if before != actor.PVPState() {
+			out.public = append(out.public, playerPVPStateFrame(actor))
 		}
 	}
 	groups := monsterRewardGroups(impact.Contributions, roster.actors)

@@ -127,7 +127,7 @@ func TestReturnScrollAndDeathRecordTheReverseReturnPoints(t *testing.T) {
 	if c.World.LastRecallPoint == nil || missionSpawnFromWorld(c.World.LastRecallPoint, simulation.Spawn{}) != at {
 		t.Fatalf("the return scroll recorded %+v, want %+v", c.World.LastRecallPoint, at)
 	}
-	rt.settlePlayerDeathInDoor(testDivision, c, clock.NowMs())
+	rt.settlePlayerDeathInDoor(testDivision, c, deathKiller{}, clock.NowMs())
 	if c.World.LastDeathPoint == nil || missionSpawnFromWorld(c.World.LastDeathPoint, simulation.Spawn{}).RegionID != at.RegionID {
 		t.Fatalf("death recorded %+v", c.World.LastDeathPoint)
 	}

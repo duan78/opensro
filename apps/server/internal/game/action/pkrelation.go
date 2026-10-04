@@ -1,0 +1,76 @@
+/*
+===========================================================================
+
+pkrelation.go - what kind of kill a player's kill of a player is
+
+The player branch of CGObjPC_ResolvePvpKillRelation (4E6590), in its
+order: free-battle capes in hostile groups (CGObjPC_IsHostileTeamOrParty
+4EB320, called with force 1) are a team kill (2, no penalty); a killer in
+a job suit whose job opposes the victim's (CGObjPC_IsHostileJobType
+4EB620) is a job kill (1); a killer whose guild alliance is at war with
+the victim's guild (CGObjPC_IsHostileGuildAlliance 4EB390) is a guild-war
+kill (5); anything else is murder (3). A COS killer stands for its owner.
+
+===========================================================================
+*/
+
+package action
+
+import (
+	"opensro.online/server/internal/domain"
+	"opensro.online/server/internal/game/enterworld"
+	"opensro.online/server/internal/game/pk"
+)
+
+/*
+================
+playerKillKind
+================
+*/
+func (rt *Runtime) playerKillKind(division string, victim, killer *enterworld.Character) pk.DeathKind {
+	_, killerCape := rt.playerRelationEquipment(killer)
+	_, victimCape := rt.playerRelationEquipment(victim)
+	if killerCape != 0 && victimCape != 0 &&
+		(killerCape != victimCape || killerCape == freeBattleAllOpponents || victimCape == freeBattleAllOpponents) {
+		return pk.DeathTeam
+	}
+	if killerJob := enterworld.DressedJob(killer); killerJob != 0 && hostileJobs(killerJob, enterworld.DressedJob(victim)) {
+		return pk.DeathJob
+	}
+	if rt.guildsAtWar(division, killer, victim) {
+		return pk.DeathGuildWar
+	}
+	return pk.DeathPlayer
+}
+
+/*
+================
+hostileJobs
+
+4EB620 (killer, victim): a hunter victim of a thief, a thief victim of a
+trader or hunter, a trader victim of a thief.
+================
+*/
+func hostileJobs(killer, victim uint8) bool {
+	switch victim {
+	case domain.JobHunter, domain.JobTrader:
+		return killer == domain.JobThief
+	case domain.JobThief:
+		return killer == domain.JobHunter || killer == domain.JobTrader
+	}
+	return false
+}
+
+/*
+================
+guildsAtWar
+
+4EB390: the killer's alliance holds the victim's guild as a war enemy.
+The v1.150 client carries the war table (GuildWarTable); the port has no
+guild-war owner yet, so no guild is at war and no kill is a guild-war
+kill until that system lands.
+================
+*/
+func (rt *Runtime) guildsAtWar(division string, killer, victim *enterworld.Character) bool {
+	return false
+}

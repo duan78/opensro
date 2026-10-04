@@ -73,7 +73,7 @@ func TestPotionQueueRetiresWithCharacterLifetime(t *testing.T) {
 			switch end {
 			case "death":
 				c.CurrentHP = testInt64(0)
-				rt.settlePlayerDeathInDoor(testDivision, c, clock.NowMs())
+				rt.settlePlayerDeathInDoor(testDivision, c, deathKiller{}, clock.NowMs())
 				c.CurrentHP = testInt64(1)
 			case "disconnect":
 				rt.ForgetCharacter(testDivision, c.Name)

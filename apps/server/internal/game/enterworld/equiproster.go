@@ -70,6 +70,15 @@ type ItemRef struct {
 	// Country is media column 14 (native ref[0x27]): 0 China, 1 Europe,
 	// 3 = every character (the sub_789c60 bit 0x200 wildcard). Default 3.
 	Country int64
+	// CashItem (column 7), Rarity (column 15) and CanDropOnDeath feed the
+	// death-penalty drop gate CGItem_CanDropOnDeathPenalty (4B7CF0).
+	// CanDropOnDeath is RefObj m_dwAvailableOPs bit 14, which the
+	// _RefObjCommon loader (6A3090) takes from bit 1 of CanDrop (column
+	// 20); a row with CanTrade 0 and CanDrop 1 is cleared first, which
+	// leaves bit 1 clear either way.
+	CashItem       bool
+	Rarity         int64
+	CanDropOnDeath bool
 	// ReqQuadTypes/ReqQuadValues are the four typed requirement pairs
 	// (media columns 32/34/36/38 types + 33/35/37/39 values; native
 	// +0xc8..+0xd4 types and +0xd8..+0xe4 values). Semantics per the

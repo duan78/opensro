@@ -563,6 +563,13 @@ func buildItemRef(fields []string, names map[string]string) *ItemRef {
 			ref.Country = v
 		}
 	}
+	if len(fields) > 20 {
+		cash, _ := textdataInt(fields[7])
+		ref.CashItem = cash != 0
+		ref.Rarity, _ = textdataInt(fields[15])
+		drop, _ := textdataInt(fields[20])
+		ref.CanDropOnDeath = drop&2 != 0
+	}
 	// The four typed requirement pairs: types at 32/34/36/38, values at
 	// 33/35/37/39 (interleaved; verified against the shipped rows - CH
 	// heavy [1,-1,-1,-1]/[35,0,0,0], EU light [513,515,518,-1]/zeros).

@@ -26,6 +26,7 @@ import (
 	"opensro.online/server/internal/game/item/statuseffect"
 	"opensro.online/server/internal/game/item/wire"
 	"opensro.online/server/internal/game/linkedpulse"
+	"opensro.online/server/internal/game/pk"
 	"opensro.online/server/internal/game/world/simulation"
 	"opensro.online/server/internal/game/world/skillobject"
 )
@@ -139,11 +140,13 @@ type Runtime struct {
 	petSessions      map[petOwnerKey]*petSession
 
 	// Admission precedes game-ready/pet binding; teardown follows this owner.
-	characterAdmissions   sync.Map // simulation.WorldKey -> populationAdmission
-	recoveryMu            sync.Mutex
-	recoverySessions      map[recoveryKey]*recoverySession
-	petSkillWindows       petSkillWindowIndex
-	paramJobOwners        petSkillWindowIndex
+	characterAdmissions sync.Map // simulation.WorldKey -> populationAdmission
+	recoveryMu          sync.Mutex
+	recoverySessions    map[recoveryKey]*recoverySession
+	petSkillWindows     petSkillWindowIndex
+	paramJobOwners      petSkillWindowIndex
+	// pkOwners are the players whose PK record runs a clock (pkrecord.go).
+	pkOwners              petSkillWindowIndex
 	commercePolicyMu      sync.RWMutex
 	commerceTaxes         map[merchantTaxKey]merchantTax
 	commerceReferenceSeed []wire.Frame
@@ -270,10 +273,10 @@ type Runtime struct {
 	// refuses the recall scroll.
 	RecallStatPoints func(character *enterworld.Character) ([]wire.Frame, bool)
 
-	// ApplyDeathPenalty is progression' door-free ordinary-death updater. Monster
-	// combat invokes it from inside the fatal-HP character transaction; levels
-	// <= 10 legitimately return no frames under the retail protection gate.
-	ApplyDeathPenalty func(character *enterworld.Character) ([]wire.Frame, bool)
+	// ApplyDeathPenalty is progression's door-free death updater: the EXP
+	// and SP a death costs (pkdeath.go resolves which). Combat invokes it
+	// from inside the fatal-HP character transaction.
+	ApplyDeathPenalty func(character *enterworld.Character, penalty pk.DeathPenalty) ([]wire.Frame, bool)
 
 	// PushCharacterFrames delivers the actor's complete ordered progression
 	// burst after the authority door closes. It also delivers the private half

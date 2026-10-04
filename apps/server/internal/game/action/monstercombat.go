@@ -370,7 +370,7 @@ func (rt *Runtime) monsterAttackStage(divisionID string, instance monster.Instan
 			}
 		}
 		if fatal {
-			deathEffectFrames, deathProgressionFrames = rt.settlePlayerDeathInDoor(divisionID, character, nowMs)
+			deathEffectFrames, deathProgressionFrames = rt.settlePlayerDeathInDoor(divisionID, character, deathKiller{monster: &instance}, nowMs)
 			abnormalOwner = rt.clearPlayerAbnormalInDoor(divisionID, character, nowMs)
 		} else {
 			battleFrames = rt.enterBattleState(divisionID, character, nowMs)
