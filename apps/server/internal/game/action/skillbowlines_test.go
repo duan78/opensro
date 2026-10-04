@@ -6,8 +6,8 @@ skillbowlines_test.go - every Pacheon (bow) skill line the server can cast
 Casts rank 1 of each SKILL_CH_BOW_* line from the shipped skilldata at a
 monster in reach and runs five seconds of ticks: each attack must land and
 spend its arrows, each buff must attach. Arrow Rain (hr), Strong Bow C and
-Arrow Combo D (ru on a bow) and Arrow Combo C and D (chained bow shots)
-were refused by the offense qualifier before.
+Arrow Combo D (ru on a bow), Arrow Combo C and D (chained bow shots) and
+the attacking hawks (summ) were refused before.
 
 ===========================================================================
 */
@@ -23,13 +23,9 @@ import (
 	"opensro.online/server/internal/game/item/wire"
 )
 
-// bowLinesWithoutCast are the bow lines no cast admits: the passive, and the
-// attacking hawks (summ, Skill_ProcessPeriodicDamage 582750), which have no
-// owner yet.
+// bowLinesWithoutCast are the bow lines no cast admits: the passive.
 var bowLinesWithoutCast = map[string]bool{
 	"SKILL_CH_BOW_PASSIVE_A": true,
-	"SKILL_CH_BOW_CALL_B":    true,
-	"SKILL_CH_BOW_CALL_D":    true,
 }
 
 /*

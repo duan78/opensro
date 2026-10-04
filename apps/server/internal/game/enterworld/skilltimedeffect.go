@@ -69,6 +69,9 @@ type SkillTimedEffect struct {
 	Persistent                bool
 	// IncomingReduction marks an admitted odar block (Earth Barrier).
 	IncomingReduction bool
+	// Hawk is summ (+0x308): the attacking hawk of Black and Light Hawk
+	// Summon (SkillSummonedHawk).
+	Hawk SkillSummonedHawk
 	// HitRate and Range mark an admitted hr block (White Hawk Summon) and
 	// ru block (Demon Soul Arrow): like odar, 594AC0 installs both from the
 	// row's BuffModifiers, so the program only has to agree with them.
@@ -209,11 +212,32 @@ type SkillEffectLink struct {
 	ManaHPPercent, ManaPercent, ManaCap uint32
 }
 
-// The hr and ru instruction tags (big-endian ASCII, as the program stores them).
+// The hr, ru and summ instruction tags (big-endian ASCII, as the program
+// stores them).
 const (
 	skillTagHitRate = 0x6872
 	skillTagRange   = 0x7275
+	skillTagSummon  = 0x73756d6d
 )
+
+/*
+================
+SkillSummonedHawk
+
+summ {duration, word1, interval, physical, magical} (+0x308, 5 words). While
+its buff runs, SkillCombat_EngageSkill (593540) keeps a periodic-damage
+record on the caster; every attack the caster makes aims it at that target,
+and Skill_ProcessPeriodicDamage (582750) strikes once per interval while the
+caster attacked within the last interval. The physical and magical words
+are the strike's flat bases (40F1B0 / 40F3D0). Word 1 (10 on every row) has
+no reader in 582750.
+================
+*/
+type SkillSummonedHawk struct {
+	Present           bool
+	IntervalMs        uint32
+	Physical, Magical uint32
+}
 
 /*
 ================
@@ -467,6 +491,14 @@ func parseSkillTimedEffect(fields []string, row *SkillRow) {
 			}
 		case tagCbuf: // 59B8D0: cbuf + dura enters the owner timed-job path
 			result.Persistent = true
+		case skillTagSummon:
+			// The hawk follows its caster alone (summ on a self buff).
+			if result.Hawk.Present || op.Count != 5 || targeted || result.Area.Present || op.Arguments[2] == 0 ||
+				op.Arguments[3] == 0 && op.Arguments[4] == 0 {
+				return
+			}
+			result.Hawk = SkillSummonedHawk{Present: true, IntervalMs: op.Arguments[2],
+				Physical: op.Arguments[3], Magical: op.Arguments[4]}
 		default:
 			return
 		}
@@ -509,7 +541,7 @@ func parseSkillTimedEffect(fields []string, row *SkillRow) {
 		return
 	}
 	result.Pinned = duration && (attributes || defense || movement || result.Block.Present || result.Strength.Present ||
-		result.Intellect.Present || result.IncomingReduction || result.HitRate || result.Range ||
+		result.Intellect.Present || result.IncomingReduction || result.HitRate || result.Range || result.Hawk.Present ||
 		result.Link.Present && (result.Link.Threat || result.Link.Mana) || result.Preemptive.Present)
 	result.Targeted = targeted
 	row.TimedEffect = result

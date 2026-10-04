@@ -290,6 +290,10 @@ func (rt *Runtime) acceptSkillStagePhaseAt(divisionID string, character, snapsho
 	if release == nil && !spacing.Contains(playerPose, targetAt) {
 		return OpResult{}, skillCastDeferred
 	}
+	// 4ADD44 / 4AEB6E: the attack starting here aims the caster's hawk.
+	if release == nil && rootID == 0 {
+		rt.noteHawkOwnerAttack(divisionID, snapshot, target.Gid, nowMs)
+	}
 	if skill.ActionCastingTimeMs != 0 && release == nil {
 		var refusal uint16
 		if !rt.deps.Update(character, "prepare-offensive-cooldown", func() bool {

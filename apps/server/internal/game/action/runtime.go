@@ -84,6 +84,11 @@ type Runtime struct {
 	walls  map[string]*standingWall
 	wallMu sync.Mutex
 
+	// hawks are the casters' attacking-hawk records (+0xC10), keyed by
+	// hawkKey (skillhawk.go).
+	hawks  map[string]*summonedHawk
+	hawkMu sync.Mutex
+
 	// playerAbnormals owns each character's abnormal-state block.
 	playerAbnormals playerAbnormalStore
 
