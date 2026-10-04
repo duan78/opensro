@@ -240,6 +240,14 @@ type SkillPassiveParameters struct {
 	// parameters 0x80 and 0x81 and word 1 to 0x82 and 0x83 (the fire mastery
 	// passive).
 	Dru [2]uint32
+	// CriticalEvasion is dcri (+0x42C): 594AC0 0x595DCA adds it to the
+	// defender's evade-critical keeper 0x39 (the Warrior's shield passive).
+	CriticalEvasion uint32
+	// IncomingReduction marks odar (+0x270) in a passive (the Rogue's
+	// bow-absorb passive); its bits and word ride the row's BuffModifiers.
+	IncomingReduction bool
+	// DamageReturn is dmgr (+0x204, the Warrior's two-hand return passive).
+	DamageReturn SkillDamageReturn
 }
 
 /*
@@ -351,13 +359,30 @@ func encodedPassiveParameters(fields []string) SkillPassiveParameters {
 				return SkillPassiveParameters{}
 			}
 			out.Dru = [2]uint32{op.Arguments[0], op.Arguments[1]}
+		case 0x64637269: // dcri
+			if op.Count != 1 || out.CriticalEvasion != 0 || op.Arguments[0] == 0 {
+				return SkillPassiveParameters{}
+			}
+			out.CriticalEvasion = op.Arguments[0]
+		case 0x6f646172: // odar
+			if op.Count != 2 || out.IncomingReduction || op.Arguments[1] == 0 {
+				return SkillPassiveParameters{}
+			}
+			out.IncomingReduction = true
+		case tagDamageReturn:
+			rule, ok := parseDamageReturn(op)
+			if out.DamageReturn.Present || !ok {
+				return SkillPassiveParameters{}
+			}
+			out.DamageReturn = rule
 		case 0x72657169, 0x7265716e: // reqi/reqn: row.Reqi
 		default:
 			return SkillPassiveParameters{}
 		}
 	}
 	out.Pinned = count > 0 || out.Reat.Mask != 0 || out.Real.Mask != 0 || out.Br.Mask != 0 ||
-		out.HitRate.Present || out.Evasion.Present || out.MaxHP.Present || out.MaxMP.Present || out.Dru != [2]uint32{}
+		out.HitRate.Present || out.Evasion.Present || out.MaxHP.Present || out.MaxMP.Present || out.Dru != [2]uint32{} ||
+		out.CriticalEvasion != 0 || out.IncomingReduction || out.DamageReturn.Present
 	return out
 }
 

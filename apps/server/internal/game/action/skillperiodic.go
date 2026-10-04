@@ -270,53 +270,13 @@ func (rt *Runtime) applyPeriodicPulse(effect linkedpulse.Effect, c, snapshot *en
 	if err != nil {
 		return OpResult{}
 	}
-	plans, ok := rt.planMonsterImpacts(effect.Division, snapshot, skill, target, []combat.Result{formula}, now)
+	hit, ok := rt.commitCreditedMonsterHit(effect.Division, c, snapshot, skill, target, formula, "linked-skill-kill", now)
 	if !ok {
 		return OpResult{}
 	}
-	roster := rt.monsterRewardRoster(effect.Division, c, now)
-	var impacts []simulation.MonsterDamageResult
-	var settlement monsterSettlement
-	commit := func() bool {
-		impacts = rt.Monsters.ApplyDamageSequence(effect.Division, target.Gid, target.CurrentHP, plans)
-		if len(impacts) == 0 {
-			return false
-		}
-		if impacts[0].Fatal {
-			pose := monster.Pose{}
-			if mover, exists := rt.Monsters.Mover(effect.Division, target.Gid); exists {
-				pose = mover.LivePoseAt(now, nil)
-			}
-			settlement = rt.settleMonsterInsideDoor(effect.Division, c, roster, impacts[0], pose, now)
-		}
-		return true
-	}
-	// A surviving hit mutates only the monster. Its abnormal application
-	// resolves the source through the character read door, so holding that
-	// door's write lock here would recursively deadlock. Only a fatal hit
-	// changes character rewards; dead victims skip abnormal application.
-	committed := false
-	if plans[0].Damage >= target.CurrentHP {
-		committed = rt.deps.UpdateMany(roster.characters, "linked-skill-kill", commit)
-	} else {
-		committed = commit()
-	}
-	if !committed {
-		return OpResult{}
-	}
-	rt.commitSkillHostility(effect.Division, effect.SourceGID, target.Gid, skill, impacts, now)
 	public := []wire.Frame{wire.SkillPulseFrame(effect.SourceGID, skill.ID, []wire.SkillAreaTarget{
-		{GID: target.Gid, Impacts: []wire.SkillCastTargetImpact{committedSkillImpact(formula, impacts[0])}},
+		{GID: target.Gid, Impacts: []wire.SkillCastTargetImpact{committedSkillImpact(formula, hit.impacts[0])}},
 	})}
-	public = append(public, rt.monsterImpactAbnormalFrames(effect.Division, target.Gid, impacts)...)
-	if impacts[0].Fatal {
-		public = append(public, monsterLifeDeadFrame(target.Gid))
-		public = append(public, rt.groundReferences(settlement.drops)...)
-		for _, drop := range settlement.drops {
-			public = append(public, wire.DropBroadcastFrames(drop.SpawnRow(true))...)
-		}
-		public = append(public, settlement.public...)
-		rt.queueMonsterDefeat(effect.Division, target.Gid, now+monsterDeathPresentationRetention.Milliseconds())
-	}
-	return OpResult{Broadcast: public, ActorPrivate: wire.ProgressionPrivateFrames(settlement.actorFrames), Recipients: settlement.others}
+	public = append(public, rt.monsterImpactAbnormalFrames(effect.Division, target.Gid, hit.impacts)...)
+	return rt.creditedHitResult(effect.Division, target, hit, public, now)
 }

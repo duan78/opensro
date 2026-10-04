@@ -210,7 +210,9 @@ func (rt *Runtime) resolvePlayerImpact(division, name string, skill enterworld.S
 		return combat.Result{}, err
 	}
 	result.Damage = uint32(min(uint64(wire.MaxSkillActionDamage), uint64(result.Damage)+uint64(uint16(extra.Damage))*uint64(skill.Attack.Value5)/100))
-	// 58F43C adds the imbue's magical word before scaling its damage share.
+	// 58F435 / 58F43C add the imbue's physical and magical words before
+	// scaling its damage share.
+	result.PhysicalDamage += uint32(uint16(extra.PhysicalDamage))
 	result.MagicalDamage += uint32(uint16(extra.MagicalDamage))
 	// The imbue's bu block is rolled with the hit's statuses in 590680.
 	result.Imbue = imbueAbnormal

@@ -183,7 +183,7 @@ func (rt *Runtime) monsterHitMonster(division string, instance, target monster.I
 		rt.queueMonsterDefeat(division, target.Gid, nowMs+monsterDeathPresentationRetention.Milliseconds())
 		public = append(public, rt.monsterKillBurst(target.Gid, settlement.drops)...)
 		public = append(public, settlement.public...)
-		rt.queueMonsterFightRecipients(division, settlement.others)
+		rt.queueMonsterLegRecipients(division, settlement.others)
 	}
 	result.Frames = simFrames(public)
 	result.Accepted = true
@@ -235,31 +235,4 @@ func untemptableConfusion(target monster.Instance, records []abnormal.Record) []
 		}
 	}
 	return kept
-}
-
-/*
-================
-queueMonsterFightRecipients
-================
-*/
-func (rt *Runtime) queueMonsterFightRecipients(division string, recipients []RecipientFrames) {
-	if len(recipients) == 0 {
-		return
-	}
-	rt.monsterFightRecipientsMu.Lock()
-	rt.monsterFightRecipients = append(rt.monsterFightRecipients, recipientDivisionFrames(division, recipients)...)
-	rt.monsterFightRecipientsMu.Unlock()
-}
-
-/*
-================
-drainMonsterFightRecipients
-================
-*/
-func (rt *Runtime) drainMonsterFightRecipients() []simulation.DivisionFrames {
-	rt.monsterFightRecipientsMu.Lock()
-	defer rt.monsterFightRecipientsMu.Unlock()
-	out := rt.monsterFightRecipients
-	rt.monsterFightRecipients = nil
-	return out
 }

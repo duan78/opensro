@@ -216,53 +216,15 @@ func (rt *Runtime) hawkStrike(h summonedHawk, c, snapshot *enterworld.Character,
 		return OpResult{}
 	}
 	formula := combat.Result{Damage: uint32(damage)}
-	plans, ok := rt.planMonsterImpacts(h.division, snapshot, row, target, []combat.Result{formula}, now)
+	hit, ok := rt.commitCreditedMonsterHit(h.division, c, snapshot, row, target, formula, "hawk-kill", now)
 	if !ok {
 		return OpResult{}
 	}
-	roster := rt.monsterRewardRoster(h.division, c, now)
-	var impacts []simulation.MonsterDamageResult
-	var settlement monsterSettlement
-	commit := func() bool {
-		impacts = rt.Monsters.ApplyDamageSequence(h.division, target.Gid, target.CurrentHP, plans)
-		if len(impacts) == 0 {
-			return false
-		}
-		if impacts[0].Fatal {
-			pose := monster.Pose{}
-			if mover, exists := rt.Monsters.Mover(h.division, target.Gid); exists {
-				pose = mover.LivePoseAt(now, nil)
-			}
-			settlement = rt.settleMonsterInsideDoor(h.division, c, roster, impacts[0], pose, now)
-		}
-		return true
-	}
-	// As applyPeriodicPulse: only a fatal strike changes character rewards.
-	committed := false
-	if plans[0].Damage >= target.CurrentHP {
-		committed = rt.deps.UpdateMany(roster.characters, "hawk-kill", commit)
-	} else {
-		committed = commit()
-	}
-	if !committed {
-		return OpResult{}
-	}
-	rt.commitSkillHostility(h.division, enterworld.ObjectIDForCharacter(c), target.Gid, row, impacts, now)
 	word := damage
-	if impacts[0].Fatal {
+	if hit.impacts[0].Fatal {
 		word |= wire.HawkFatalBit
 	}
-	public := []wire.Frame{wire.HawkStrikeFrame(h.token, target.Gid, word)}
-	if impacts[0].Fatal {
-		public = append(public, monsterLifeDeadFrame(target.Gid))
-		public = append(public, rt.groundReferences(settlement.drops)...)
-		for _, drop := range settlement.drops {
-			public = append(public, wire.DropBroadcastFrames(drop.SpawnRow(true))...)
-		}
-		public = append(public, settlement.public...)
-		rt.queueMonsterDefeat(h.division, target.Gid, now+monsterDeathPresentationRetention.Milliseconds())
-	}
-	return OpResult{Broadcast: public, ActorPrivate: wire.ProgressionPrivateFrames(settlement.actorFrames), Recipients: settlement.others}
+	return rt.creditedHitResult(h.division, target, hit, []wire.Frame{wire.HawkStrikeFrame(h.token, target.Gid, word)}, now)
 }
 
 /*

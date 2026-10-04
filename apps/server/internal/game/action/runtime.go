@@ -324,11 +324,12 @@ type Runtime struct {
 	pendingMonsterDefeatsMu sync.Mutex
 	pendingMonsterDefeats   []pendingMonsterDefeat
 
-	// monsterFightRecipients holds the private reward frames of kills made
-	// in a Temptation fight (temptation.go) until the action tick delivers
-	// them; the monster leg that commits the kill publishes only to viewers.
-	monsterFightRecipientsMu sync.Mutex
-	monsterFightRecipients   []simulation.DivisionFrames
+	// monsterLegRecipients holds the private reward frames of kills made
+	// inside a monster's attack (a Temptation fight, a returned hit) until
+	// the action tick delivers them; the monster leg that commits the kill
+	// publishes only to viewers and its target (creditedhit.go).
+	monsterLegRecipientsMu sync.Mutex
+	monsterLegRecipients   []simulation.DivisionFrames
 
 	// basicAttackIntents is the server-owned continuation behind native
 	// 0x72CD [01 01 01 gid]/[01 03 01 gid]. One intent per character replaces

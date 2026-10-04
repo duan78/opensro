@@ -482,6 +482,12 @@ func (rt *Runtime) monsterAttackStage(divisionID string, instance monster.Instan
 			Opcode: progression.Opcode, Payload: progression.Payload,
 		})
 	}
+	// 5A0C2D ran inside the hit outcome, before the hit landed, so a fatal
+	// hit still returns its share; the attacker takes it afterwards.
+	returned := rt.returnDamageToMonster(divisionID, character, instance, monsterPose, skillID, defender, formulas[:len(impacts)], nowMs)
+	result.Frames = append(result.Frames, simFrames(returned.Broadcast)...)
+	result.TargetFrames = append(result.TargetFrames, simFrames(returned.ActorPrivate)...)
+	rt.queueMonsterLegRecipients(divisionID, returned.Recipients)
 	return result
 }
 

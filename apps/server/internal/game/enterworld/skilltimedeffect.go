@@ -36,7 +36,9 @@ const (
 	tagTimedThreat             = 0x746e7432
 	tagTimedDamageRate         = 0x647275
 	tagTimedMaxHPPenalty       = 0x706d6870
+	tagTimedDefensePenalty     = 0x706d6470
 	tagTimedIncomingReduction  = 0x6f646172
+	tagDamageReturn            = 0x646d6772
 	tagTimedOverlap            = 0x6f766c32
 	tagTimedPreemptive         = 0x706f6c61
 	parameterWizardMP          = 0x57494d44
@@ -104,6 +106,41 @@ type SkillTimedEffect struct {
 	// Preemptive is pola (Noise): while the effect lasts, the monsters it
 	// names do not acquire its owner first.
 	Preemptive SkillPreemptiveGuard
+	// DamageReturn is dmgr on a buff (+0x208, the Warlock's Soul Return):
+	// the recipient strikes back at whoever damages it.
+	DamageReturn SkillDamageReturn
+}
+
+/*
+================
+SkillDamageReturn
+
+dmgr {chance, physical %, magical %, range} (+0x204 on a passive, +0x208
+on a buff). CSkillManager_ProcessDamageEffects (5A0C2D) runs on the
+defender of every hit SkillCombat_CalculateHitOutcome resolves: an
+attacker within range (range > distance) takes back, with chance percent,
+trunc(physical% of the hit's physical lane) + trunc(magical% of its
+magical lane). The defender's own damage is not reduced.
+================
+*/
+type SkillDamageReturn struct {
+	Present                          bool
+	Chance, Physical, Magical, Range uint32
+}
+
+/*
+================
+parseDamageReturn
+
+One dmgr block: four words, a chance, a range and at least one lane.
+================
+*/
+func parseDamageReturn(op SkillInstruction) (SkillDamageReturn, bool) {
+	if op.Count != 4 || op.Arguments[0] == 0 || op.Arguments[3] == 0 || op.Arguments[1] == 0 && op.Arguments[2] == 0 {
+		return SkillDamageReturn{}, false
+	}
+	return SkillDamageReturn{Present: true, Chance: op.Arguments[0], Physical: op.Arguments[1],
+		Magical: op.Arguments[2], Range: op.Arguments[3]}, true
 }
 
 /*
@@ -142,6 +179,12 @@ type SkillAttributeBoost struct {
 	// effect, so the program only has to be admitted. MaxHPPenalty is pmhp.
 	DamageRate, MaxHPPenalty bool
 	HPPenaltyPercent         uint32
+	// DefensePenalty is pmdp {duration, physical %, magical %, mode 2}:
+	// 594AC0 0x596252..0x5962BC lowers physical and magical defense
+	// (parameters 5 and 6) by those percents on channel 1 (the Rogue's
+	// Mad Bow and Dagger Up).
+	DefensePenalty                                bool
+	PhysicalDefensePenalty, MagicalDefensePenalty uint32
 }
 
 /*
@@ -336,7 +379,8 @@ func parseSkillTimedEffect(fields []string, row *SkillRow) {
 	for i := 0; i < program.Len(); i++ {
 		op := program.Instruction(i)
 		switch op.Tag {
-		case tagTimedMaxHP, tagTimedAttack, tagTimedDamagePenalty, tagTimedThreat, tagTimedDamageRate, tagTimedMaxHPPenalty:
+		case tagTimedMaxHP, tagTimedAttack, tagTimedDamagePenalty, tagTimedThreat, tagTimedDamageRate, tagTimedMaxHPPenalty,
+			tagTimedDefensePenalty:
 			if attributeTags[op.Tag] || targeted || result.Area.Present {
 				return
 			}
@@ -369,6 +413,13 @@ func parseSkillTimedEffect(fields []string, row *SkillRow) {
 					return
 				}
 				a.MaxHPPenalty, a.HPPenaltyPercent = true, op.Arguments[2]
+			case tagTimedDefensePenalty:
+				// 0x59625C installs only mode 2, as pmdg and pmhp.
+				if op.Count != 4 || op.Arguments[0] != row.EffectDurationMs || op.Arguments[3] != 2 ||
+					op.Arguments[1] > 100 || op.Arguments[2] > 100 || op.Arguments[1] == 0 && op.Arguments[2] == 0 {
+					return
+				}
+				a.DefensePenalty, a.PhysicalDefensePenalty, a.MagicalDefensePenalty = true, op.Arguments[1], op.Arguments[2]
 			case tagTimedThreat:
 				// 5903EC consumes tnt2 only when producing a target hit.
 				// A self buff has no hostile target result; 594AC0 does not
@@ -458,6 +509,15 @@ func parseSkillTimedEffect(fields []string, row *SkillRow) {
 				return
 			}
 			result.Range = true
+		case tagDamageReturn:
+			// A party Soul Return (efr) installs the rule on every member it
+			// selects, as 594AC0 does any recipient block; a targeted row
+			// authors none.
+			rule, ok := parseDamageReturn(op)
+			if result.DamageReturn.Present || !ok || targeted || result.Link.Present {
+				return
+			}
+			result.DamageReturn = rule
 		case tagTimedPreemptive:
 			// A self-only guard: the protection is the owner's, so it
 			// never rides a target, an area or a link.
@@ -535,14 +595,15 @@ func parseSkillTimedEffect(fields []string, row *SkillRow) {
 	}
 	result.Defense = defense
 	attributes := result.Attributes.MaxHP || result.Attributes.Attack || result.Attributes.DamagePenalty ||
-		result.Attributes.DamageRate || result.Attributes.MaxHPPenalty
+		result.Attributes.DamageRate || result.Attributes.MaxHPPenalty || result.Attributes.DefensePenalty
 	if len(attributeTags) != 0 && (!attributes || result.Persistent || result.Link.Present || movement || defense ||
 		result.Block.Present || result.Strength.Present || result.Intellect.Present || row.EffectDurationMs == 0) {
 		return
 	}
 	result.Pinned = duration && (attributes || defense || movement || result.Block.Present || result.Strength.Present ||
 		result.Intellect.Present || result.IncomingReduction || result.HitRate || result.Range || result.Hawk.Present ||
-		result.Link.Present && (result.Link.Threat || result.Link.Mana) || result.Preemptive.Present)
+		result.Link.Present && (result.Link.Threat || result.Link.Mana) || result.Preemptive.Present ||
+		result.DamageReturn.Present)
 	result.Targeted = targeted
 	row.TimedEffect = result
 	if result.Pinned && movement {

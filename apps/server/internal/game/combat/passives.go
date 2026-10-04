@@ -128,6 +128,12 @@ func learnedPassives(c *domain.Character, skills enterworld.SkillDataSource, ite
 						paramkeeper.Write{Parameter: fr.param, Channel: paramkeeper.Flat, Source: source, Value: float32(fr.rate.Flat)})
 				}
 			}
+			if p.CriticalEvasion != 0 {
+				writes = append(writes, CriticalEvasionWrite(p.CriticalEvasion, source))
+			}
+			if m := selected.BuffModifiers; p.IncomingReduction && m.Odar {
+				writes = append(writes, IncomingReductionWrites(m.OdarBits, m.OdarWord, source)...)
+			}
 			// 595A97: dru word 0 on 0x80/0x81, word 1 on 0x82/0x83.
 			if p.Dru != [2]uint32{} {
 				for i, params := range [2][2]uint16{{0x80, 0x81}, {0x82, 0x83}} {
