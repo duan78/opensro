@@ -117,6 +117,9 @@ export interface ChatLine {
 	readonly gid?: number;
 	readonly text: string;
 	readonly outgoing: boolean;
+	// A line from the server's replayed transcript (OpChatHistory): already
+	// said before this session, so never speech over a head.
+	readonly history?: boolean;
 }
 /*
 ================
