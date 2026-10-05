@@ -63,6 +63,9 @@ func (rt *Runtime) TickHook() simulation.TickHook {
 		// by the fatal hit, while the zero-HP source remains resolvable through
 		// the authored death-animation completion.
 		rt.drainMonsterDefeats(nowMs)
+		if rt.Monsters != nil {
+			rt.Monsters.ExpireMonsterLifetimes(nowMs)
+		}
 		rt.retireMonsterCriticals()
 		if rt.Monsters != nil {
 			rt.Monsters.AdvancePopulation(nowMs)

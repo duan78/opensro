@@ -126,6 +126,7 @@ func (s *MonsterState) createSummonLocked(state *divisionMonsterState, parent mo
 			}
 			child.SummonerFollowRange = 200 + actionRanges[parent.Ref.RefObjID]
 			state.instances.set(child.Gid, child)
+			armLifetimeLocked(state, child, nowMs)
 			childMover := monster.NewSpawnMover(child, nowMs)
 			childMover.Activity = monster.NewActivityCadence(uint32(nowMs), s.randomWord())
 			childMover.Pose.Heading = HeadingWordFromRadians(heading)

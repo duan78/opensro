@@ -162,6 +162,10 @@ func (rt *Runtime) monsterAttackStage(divisionID string, instance monster.Instan
 		if release == nil && result.Refusal == simulation.MonsterAttackCommandRejected && skill.Summon.Present {
 			rt.Monsters.RejectSummonCommand(divisionID, instance.Gid, nowMs)
 		}
+		if result.Accepted {
+			// 4C1C30: a job monster's own attack rearms its idle timer.
+			rt.Monsters.RefreshJobMonster(divisionID, instance.Gid, nowMs)
+		}
 		if release == nil && result.Accepted {
 			// 5A1A40 reads the live action-speed keeper, including Frostbite
 			// and Slow. The verified helper owns its float32 store boundaries.
