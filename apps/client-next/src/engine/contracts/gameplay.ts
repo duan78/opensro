@@ -218,6 +218,9 @@ export type GameplayCommand =
 	| { readonly kind: "pickup"; readonly gid: number; }
 	// The pickup shortcut: the worker chooses the item (pickup-nearest.ts).
 	| { readonly kind: "pickup-nearest"; }
+	// A click on another player: the worker decides whether it attacks
+	// (player-attack.ts). Sent before the click's select.
+	| { readonly kind: "player-interact"; readonly gid: number; readonly alt: boolean; }
 	| {
 		readonly kind: "release-target";
 	}

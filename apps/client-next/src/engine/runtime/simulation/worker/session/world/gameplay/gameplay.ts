@@ -1720,7 +1720,8 @@ state here before a command can claim a native wire conversation.
 				}
 				return selectEntity( entity, now );
 			}
-			if ( command.kind === "attack" && entity.kind !== "monster" ) {
+			// A player arrives here only through player-attack.ts's admission.
+			if ( command.kind === "attack" && entity.kind !== "monster" && entity.kind !== "player" ) {
 				throw new Error( "Target is not attackable" );
 			}
 			// A targeted command settles the server's walk where it finds it: stop the

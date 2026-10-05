@@ -1495,6 +1495,13 @@
 			]
 		},
 		{
+			"consumer": "src/engine/foundation/gameplay/player-attack.ts",
+			"provider": "src/engine/runtime/simulation/worker/session/world/core.ts",
+			"functions": [
+				"capeTeam"
+			]
+		},
+		{
 			"consumer": "src/engine/foundation/gameplay/portal.ts",
 			"provider": "src/engine/runtime/ui/ui.ts",
 			"functions": [

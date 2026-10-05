@@ -20,10 +20,15 @@ import { fortressActive } from "@/engine/foundation/gameplay/fortress";
 import type { EntityState } from "@/engine/contracts/world";
 import { travelMode, resetTravelRegion, gateRequest, isReturnScroll } from "@/engine/foundation/gameplay/travel";
 import { commerceReferences } from "@/engine/foundation/gameplay/commerce";
+import { playerInteraction } from "@/engine/foundation/gameplay/player-attack";
+import { resolveNativeNotice } from "@/engine/foundation/gameplay/native-notice";
 import { createEntities } from "./entities/entities";
 import { createGameplay } from "./gameplay/gameplay";
 import type { WireFrame } from "@/engine/contracts/network";
 import type { GameplayCommand } from "@/engine/contracts/gameplay";
+
+// PLAYER_ATTACK_LEVEL_NOTICE is 693F1A's ShowSystemNotification(4, 0x16).
+const PLAYER_ATTACK_LEVEL_NOTICE = 0x16;
 /*
 ================
 createWorldCore
@@ -56,6 +61,30 @@ nameContext
 The name-colour inputs for the local player, or undefined before it spawns.
 ================
 	*/
+	/*
+================
+playerAttack
+
+693E50 for a click on another player, against the selection before the
+click: the attack to issue, or nothing (a refusal notice is published).
+A mounted player issues no attack on a player.
+================
+	*/
+	function playerAttack( gid: number, alt: boolean ): GameplayCommand | undefined {
+		const target = entities.read( gid ), context = nameContext(), local = entities.read( gameplay.localIdentity() );
+		if ( !target || !context || !local || local.mountedOn ) return undefined;
+		const decision = playerInteraction( target, context, {
+			selected: gameplay.skillTarget() === gid,
+			alt,
+			guildWar: (context.social.wars?.length ?? 0) > 0
+		} );
+		if ( decision.kind === "low-level" ) {
+			const notice = resolveNativeNotice( 4, PLAYER_ATTACK_LEVEL_NOTICE, { pkProhibited: false } );
+			if ( notice.kind === "notice" ) gameplay.notice( notice.notice );
+			return undefined;
+		}
+		return decision.kind === "attack" ? { kind: "attack", gid } : undefined;
+	}
 	function nameContext( spawning?: EntityState ): NameColorContext | undefined {
 		const local = spawning?.kind === "local-player" ? spawning : entities.read( gameplay.localIdentity() );
 		if ( !local ) return;
@@ -278,6 +307,11 @@ UI and quickslot commands. A skill aims at the newest selection intent
 				const gid = gameplay.pickupNearest( entities.groundItems() );
 				if ( !gid ) return;
 				command = { kind: "pickup", gid };
+			}
+			if ( command.kind === "player-interact" ) {
+				const attack = playerAttack( command.gid, command.alt );
+				if ( !attack ) return;
+				command = attack;
 			}
 			const itemType = command.kind === "item-use" ? gameplay.itemUseType( command.slot ) : undefined;
 			// The UI's snapshot target trails a fresh click by one grant round trip.
