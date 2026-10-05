@@ -16,9 +16,15 @@ admissions, then the recorded point (char-data +0xCC.. / +0xDC.., 0x1885 /
 The answer rides the item-use channel: 0xB5BD success carries the scroll's
 slot and remaining count (the client's travel mode reads it as a return
 scroll, travel.ts), and the missing-point errors are its category-1 notices
-(390 UIIT_MSG_STRGERR_CANT_FIND_LAST_DIEDPOS). INFERENCE: the grant offers
-the rows only while the player holds a scroll; a gate shows nothing it
-cannot do.
+(390 UIIT_MSG_STRGERR_CANT_FIND_LAST_DIEDPOS).
+
+INFERENCE (no v1.150 server binary; v1.188 has no gate grant): a gate offers
+the rows while the player holds a scroll, and to every character below
+level 20 without one: a v1.150 player's account of the beginner gate that
+sent a newcomer back to where they died. The client tests the bit alone
+(CIFNPCTalk_AppendReverseReturnRows 5D4410). The beginner return consumes
+nothing: it moves the character through the gate like a paid destination
+at no fee (commitGateTravel), under the scroll's own admissions.
 
 ===========================================================================
 */
@@ -44,6 +50,9 @@ const (
 	talkFlagReverseReturn uint32 = 0x20000000
 	// talkFlagTeleport marks a teleport gate NPC (ConfigurePortals).
 	talkFlagTeleport uint32 = 0x80
+	// beginnerReturnLevel is the first level that needs a scroll for the
+	// gate's reverse return rows (INFERENCE, see the file header).
+	beginnerReturnLevel int64 = 20
 
 	// The low bytes of 4A00C0's 0x1885 and 0x1886.
 	errCodeNoRecallPoint uint8 = 0x85
@@ -79,17 +88,29 @@ func (rt *Runtime) reverseReturnScrollRow(c *enterworld.Character) (int, *enterw
 
 /*
 ================
+beginnerReturn
+
+Whether the character still returns through a gate without a scroll.
+================
+*/
+func beginnerReturn(c *enterworld.Character) bool {
+	return c.Level != nil && *c.Level < beginnerReturnLevel
+}
+
+/*
+================
 reverseReturnCapability
 
 The select grant's extra bit for a teleport gate when the player holds a
-reverse return scroll. The caller holds the division lock.
+reverse return scroll or is still a beginner. The caller holds the
+division lock.
 ================
 */
 func (rt *Runtime) reverseReturnCapability(npc simulation.NpcDef, c *enterworld.Character) uint32 {
 	if npc.TalkFlags&talkFlagTeleport == 0 {
 		return 0
 	}
-	if _, _, held := rt.reverseReturnScrollRow(c); !held {
+	if _, _, held := rt.reverseReturnScrollRow(c); !held && !beginnerReturn(c) {
 		return 0
 	}
 	return talkFlagReverseReturn
@@ -137,6 +158,9 @@ func (rt *Runtime) handleReverseReturn(division string, c *enterworld.Character,
 	if _, _, refusal := rt.portalSourceNpc(division, c, gid); refusal != 0 {
 		return portalFailure(refusal)
 	}
+	if _, _, held := rt.reverseReturnScrollRow(c); !held && beginnerReturn(c) {
+		return rt.beginnerReverseReturn(division, c, choice)
+	}
 	result := itemUseFailure(wire.ErrCodeInvalidRequest)
 	var used *enterworld.ItemRef
 	now := rt.Now().UnixMilli()
@@ -170,4 +194,30 @@ func (rt *Runtime) handleReverseReturn(division string, c *enterworld.Character,
 		rt.publishItemUseVisual(c, used, &result)
 	}
 	return result
+}
+
+/*
+================
+beginnerReverseReturn
+
+A character below level 20 without a scroll: the gate moves them to the
+chosen point at no cost, refused like the scroll (returnScrollAdmission,
+the missing-point notices). The caller holds the division lock.
+================
+*/
+func (rt *Runtime) beginnerReverseReturn(division string, c *enterworld.Character, choice uint8) OpResult {
+	if !enterworld.CharacterAlive(c) {
+		return itemUseFailure(wire.ErrCodeItemUseDead)
+	}
+	destination, refusal := reverseReturnPoint(c, choice)
+	if refusal != 0 {
+		return itemUseFailure(refusal)
+	}
+	return rt.commitGateTravel(division, c, destination, "beginner-reverse-return", func() (int64, OpResult, bool) {
+		result := itemUseFailure(wire.ErrCodeInvalidRequest)
+		if c.DeletePending || !rt.returnScrollAdmission(division, c, &result) {
+			return 0, result, false
+		}
+		return 0, OpResult{}, true
+	})
 }

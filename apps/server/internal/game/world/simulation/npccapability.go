@@ -129,12 +129,11 @@ func npcJobGuildFlag(codename string) uint32 {
 //     codename exists), and the client bit is unambiguous in the folded
 //     menu builder.
 //
-// NPC_EU_WAREHOUSE and NPC_EU_GUILD are seeded ahead of the roster (only
-// NPC_EU_SMITH spawns today) so growing the roster is a one-line diff
-// with the flags decision already reviewed.
+// NPC_EU_GUILD is seeded ahead of the roster so growing the roster is a
+// one-line diff with the flags decision already reviewed. Storage keepers
+// are not listed here: npcWarehouseFlags applies the switch's substring arm.
 var reconstructedNpcServiceFlagsByCodename = map[string]uint32{
 	"NPC_EU_SMITH":         NpcTalkFlagShop | NpcTalkFlagTalk | NpcTalkFlagAction0B, // 0x23
-	"NPC_EU_WAREHOUSE":     NpcTalkFlagShop | NpcTalkFlagStorage,                    // 0x05
 	"NPC_EU_GUILD":         NpcTalkFlagShop | NpcTalkFlagGuild,                      // 0x4001
 	"NPC_CH_GACHA_MACHINE": NpcTalkFlagGachaMachine,
 	"NPC_EU_ADVICE3":       NpcTalkFlagTalk, // Recall eligibility comes from teleportdata, not the codename.
@@ -152,6 +151,18 @@ func NpcTalkCapabilityFlags(codename string) (uint32, bool) {
 	return flags, ok
 }
 
+// npcWarehouseFlags is CGObjNPC_SpawnAndConfigureServices's first arm
+// (4C6501..4C657F): a codename containing "WAREHOUSE" or "warehouse"
+// registers options 3 (storage, client action 3 under bit 0x4) and 1 (shop,
+// action 1 under bit 0x1). The arm's NPC_SD_M_AREA_WAREHOUSE and
+// NPC_SD_T_AREA_WAREHOUSE2 tests are substrings of the same match.
+func npcWarehouseFlags(codename string) uint32 {
+	if strings.Contains(codename, "WAREHOUSE") || strings.Contains(codename, "warehouse") {
+		return NpcTalkFlagStorage | NpcTalkFlagShop
+	}
+	return 0
+}
+
 // ResolveNpcTalkFlags composes the capability word at the data boundary.
 // npcchat-backed talk is deliberately independent from sub_4c6350's static
 // service switch: the retail Lua/session plane can add ordinary conversation
@@ -159,6 +170,7 @@ func NpcTalkCapabilityFlags(codename string) (uint32, bool) {
 func ResolveNpcTalkFlags(npc NpcDef) uint32 {
 	flags, _ := NpcTalkCapabilityFlags(npc.Codename)
 	flags |= npcJobGuildFlag(npc.Codename)
+	flags |= npcWarehouseFlags(npc.Codename)
 	if len(npc.NpcTalkStoreGroups) != 0 {
 		flags |= NpcTalkFlagShop
 	}

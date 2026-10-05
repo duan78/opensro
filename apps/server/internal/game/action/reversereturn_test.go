@@ -53,12 +53,14 @@ func reverseReturn(rt *Runtime, c *enterworld.Character, choice uint8) OpResult 
 
 /*
 ================
-TestReverseReturnRowsNeedAGateAndAScroll
+TestReverseReturnRowsNeedAGateAndAScrollOrABeginner
 ================
 */
-func TestReverseReturnRowsNeedAGateAndAScroll(t *testing.T) {
+func TestReverseReturnRowsNeedAGateAndAScrollOrABeginner(t *testing.T) {
 	rt, c, _ := reverseReturnFixture(t)
 	gate := rt.NpcRoster[0]
+	veteran := beginnerReturnLevel
+	c.Level = &veteran
 	if rt.reverseReturnCapability(gate, c) != talkFlagReverseReturn {
 		t.Fatal("a gate did not offer the reverse return to a scroll holder")
 	}
@@ -67,7 +69,70 @@ func TestReverseReturnRowsNeedAGateAndAScroll(t *testing.T) {
 	}
 	c.MissionInventory = c.MissionInventory[:len(c.MissionInventory)-1]
 	if rt.reverseReturnCapability(gate, c) != 0 {
-		t.Fatal("the reverse return was offered without a scroll")
+		t.Fatal("the reverse return was offered to a level 20 character without a scroll")
+	}
+	beginner := beginnerReturnLevel - 1
+	c.Level = &beginner
+	if rt.reverseReturnCapability(gate, c) != talkFlagReverseReturn {
+		t.Fatal("a gate did not offer the reverse return to a beginner")
+	}
+}
+
+/*
+================
+beginnerWithoutScroll
+
+The fixture's character below level 20 with its scrolls taken away.
+================
+*/
+func beginnerWithoutScroll(t *testing.T) (*Runtime, *enterworld.Character) {
+	t.Helper()
+	rt, c, _ := reverseReturnFixture(t)
+	c.MissionInventory = c.MissionInventory[:len(c.MissionInventory)-1]
+	level := beginnerReturnLevel - 1
+	c.Level = &level
+	return rt, c
+}
+
+/*
+================
+TestBeginnerReverseReturnTravelsFreeToWhereItDied
+================
+*/
+func TestBeginnerReverseReturnTravelsFreeToWhereItDied(t *testing.T) {
+	rt, c := beginnerWithoutScroll(t)
+	died := simulation.Spawn{RegionID: 25000, X: 812, Y: 30, Z: 1204, Angle: 0}
+	c.World.LastDeathPoint = worldSpawnFromMission(died)
+	gold := int64(0)
+	if c.Gold != nil {
+		gold = *c.Gold
+	}
+	out := reverseReturn(rt, c, reverseReturnLastDeath)
+	if len(out.Frames) == 0 || out.Frames[0].Opcode != enterworld.OpcodeResetClient {
+		t.Fatalf("the beginner return did not re-enter the world: %+v", out.Frames)
+	}
+	if got := missionSpawnFromWorld(c.World.Spawn, simulation.Spawn{}); got.RegionID != died.RegionID || got.X != died.X || got.Z != died.Z {
+		t.Fatalf("arrived at %+v, not where the player died", got)
+	}
+	if c.Gold == nil && gold != 0 || c.Gold != nil && *c.Gold != gold || c.NativeTeleportMode != 0 {
+		t.Fatal("the beginner return charged gold or started a scroll cast")
+	}
+}
+
+/*
+================
+TestBeginnerReverseReturnWithoutADeathRefuses
+================
+*/
+func TestBeginnerReverseReturnWithoutADeathRefuses(t *testing.T) {
+	rt, c := beginnerWithoutScroll(t)
+	before := missionSpawnFromWorld(c.World.Spawn, simulation.Spawn{})
+	out := reverseReturn(rt, c, reverseReturnLastDeath)
+	if len(out.Frames) != 1 || !bytes.Equal(out.Frames[0].Payload, wire.EncodeItemUseError(errCodeNoDeathPoint)) {
+		t.Fatalf("missing death point answered %+v", out.Frames)
+	}
+	if missionSpawnFromWorld(c.World.Spawn, simulation.Spawn{}) != before {
+		t.Fatal("a refused beginner return moved the character")
 	}
 }
 

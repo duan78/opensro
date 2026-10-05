@@ -20,18 +20,15 @@ func TestNpcTalkCapabilityTableCoversTheRoster(t *testing.T) {
 	}
 }
 
-// TestNpcTalkCapabilitySeedRowsPinTheReconCalibration pins the three
-// calibrated words:
-// smith 0x23 (shop|talk|action-0xb), warehouse 0x05 (shop|storage,
-// deliberately WITHOUT the unproven talk bit), guild 0x4001 (shop|guild,
-// same talk-bit decision).
+// TestNpcTalkCapabilitySeedRowsPinTheReconCalibration pins the two
+// calibrated words: smith 0x23 (shop|talk|action-0xb) and guild 0x4001
+// (shop|guild, deliberately WITHOUT the unproven talk bit).
 func TestNpcTalkCapabilitySeedRowsPinTheReconCalibration(t *testing.T) {
 	cases := []struct {
 		codename string
 		want     uint32
 	}{
 		{"NPC_EU_SMITH", 0x23},
-		{"NPC_EU_WAREHOUSE", 0x05},
 		{"NPC_EU_GUILD", 0x4001},
 	}
 	for _, c := range cases {
@@ -83,5 +80,21 @@ func TestResolveNpcTalkFlagsDoesNotAdvertiseOwnerlessServiceRows(t *testing.T) {
 	}
 	if flags&NpcTalkFlagAction0B != 0 {
 		t.Fatalf("resolved smith flags advertise ownerless action 0x0b: 0x%X", flags)
+	}
+}
+
+// TestEveryStorageKeeperOffersStorage pins 4C6501's substring arm: every
+// shipped storage keeper, in every town, resolves shop|storage (0x05).
+func TestEveryStorageKeeperOffersStorage(t *testing.T) {
+	for _, codename := range []string{
+		"NPC_EU_WAREHOUSE", "NPC_CA_WAREHOUSE", "NPC_CH_WAREHOUSE_M", "NPC_CH_WAREHOUSE_W",
+		"NPC_WC_WAREHOUSE_M", "NPC_WC_WAREHOUSE_W", "NPC_KT_WAREHOUSE",
+	} {
+		if got := ResolveNpcTalkFlags(NpcDef{Codename: codename}); got != NpcTalkFlagShop|NpcTalkFlagStorage {
+			t.Errorf("%s resolves 0x%X, want 0x05", codename, got)
+		}
+	}
+	if got := ResolveNpcTalkFlags(NpcDef{Codename: "NPC_WC_SMITH"}); got&NpcTalkFlagStorage != 0 {
+		t.Errorf("a smith offers storage: 0x%X", got)
 	}
 }
