@@ -56,6 +56,7 @@ type Runtime struct {
 	RewardActorPresent  func(division, name string) bool
 	returnGeneration    atomic.Uint64
 	returnCasts         sync.Map // simulation.WorldKey -> pendingReturn; division lock owns changes
+	playerDisplacements sync.Map // simulation.WorldKey -> playerDisplacement; a struck player's hold
 	jobDresses          sync.Map // simulation.WorldKey -> jobDress (jobdress.go)
 	criticals           criticalHistory
 	deps                Dependencies
@@ -279,6 +280,11 @@ type Runtime struct {
 	// and SP a death costs (pkdeath.go resolves which). Combat invokes it
 	// from inside the fatal-HP character transaction.
 	ApplyDeathPenalty func(character *enterworld.Character, penalty pk.DeathPenalty) ([]wire.Frame, bool)
+
+	// UpdateJobExperience is progression's door-free job EXP updater
+	// (CGObjPC_AddJobExp 4E2830): a job kill's share (pkreward.go). Nil pays
+	// no job EXP.
+	UpdateJobExperience func(character *enterworld.Character, delta int64) ([]wire.Frame, bool)
 
 	// PushCharacterFrames delivers the actor's complete ordered progression
 	// burst after the authority door closes. It also delivers the private half

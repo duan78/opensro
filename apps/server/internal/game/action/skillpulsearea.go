@@ -23,7 +23,6 @@ import (
 
 	"opensro.online/server/internal/game/enterworld"
 	"opensro.online/server/internal/game/item/wire"
-	"opensro.online/server/internal/game/world/monster"
 	"opensro.online/server/internal/game/world/simulation"
 )
 
@@ -140,7 +139,9 @@ func (rt *Runtime) pulseArea(division string, c *enterworld.Character, row enter
 		return nil
 	}
 	pulse := row.TimedEffect.PulseArea
-	victims := rt.pulseAreaVictims(division, snapshot, pulse.Area, now)
+	strike := row
+	strike.FixedDamage, strike.Attack.ImpactCount = pulse.Fixed, 1
+	victims := rt.casterAreaVictims(division, snapshot, strike, pulse.Area, now)
 	if len(victims) == 0 {
 		return nil
 	}
@@ -148,9 +149,7 @@ func (rt *Runtime) pulseArea(division string, c *enterworld.Character, row enter
 	if err != nil {
 		return nil
 	}
-	strike := row
-	strike.FixedDamage, strike.Attack.ImpactCount = pulse.Fixed, 1
-	plans, _, planned := rt.planAreaVictims(areaPlanInput{division: division, snapshot: snapshot, skill: strike,
+	plan, planned := rt.planAreaVictims(areaPlanInput{division: division, caster: c, snapshot: snapshot, skill: strike,
 		attacker: attacker, victims: victims, reduction: pulse.Area.ReductionPercent, impacts: 1, now: now})
 	if !planned {
 		return nil
@@ -160,14 +159,25 @@ func (rt *Runtime) pulseArea(division string, c *enterworld.Character, row enter
 	var after []wire.Frame
 	var private []wire.Frame
 	var recipients []RecipientFrames
-	for _, plan := range plans {
-		hit, ok := rt.commitCreditedMonsterHit(division, c, snapshot, strike, plan.target, plan.formulas[0], "pulse-area-kill", now)
-		if !ok {
-			continue
+	for _, victim := range plan.victims {
+		var result OpResult
+		if victim.player >= 0 {
+			hit, credited, ok := rt.commitCreditedPlayerHit(division, c, plan.players[victim.player], now)
+			if !ok {
+				continue
+			}
+			targets = append(targets, wire.SkillAreaTarget{GID: victim.target.gid, Impacts: hit.struck.impacts})
+			result = credited
+		} else {
+			target := *victim.target.monster
+			hit, ok := rt.commitCreditedMonsterHit(division, c, snapshot, strike, target, victim.formulas[0], "pulse-area-kill", now)
+			if !ok {
+				continue
+			}
+			targets = append(targets, wire.SkillAreaTarget{GID: target.Gid,
+				Impacts: []wire.SkillCastTargetImpact{committedSkillImpact(victim.formulas[0], hit.impacts[0])}})
+			result = rt.creditedHitResult(division, target, hit, nil, now)
 		}
-		targets = append(targets, wire.SkillAreaTarget{GID: plan.target.Gid,
-			Impacts: []wire.SkillCastTargetImpact{committedSkillImpact(plan.formulas[0], hit.impacts[0])}})
-		result := rt.creditedHitResult(division, plan.target, hit, nil, now)
 		after = append(after, result.Broadcast...)
 		private = append(private, result.ActorPrivate...)
 		recipients = append(recipients, result.Recipients...)
@@ -181,39 +191,4 @@ func (rt *Runtime) pulseArea(division string, c *enterworld.Character, row enter
 		out = append(out, hawkDivisionFrames(division, 0, c.ID, private))
 	}
 	return append(out, recipientDivisionFrames(division, recipients)...)
-}
-
-/*
-================
-pulseAreaVictims
-
-TargetSelection_DispatchByShape for efr kind 2 shape 1: the owner's
-population's living combat candidates within the radius plus the owner's
-body radius of its live position, at most the area's most-targets.
-================
-*/
-func (rt *Runtime) pulseAreaVictims(division string, c *enterworld.Character, area enterworld.SkillOffensiveArea, now int64) []monster.Instance {
-	if rt.Monsters == nil || area.MaxTargets == 0 {
-		return nil
-	}
-	lease, present := rt.EntryPopulationLease(division, c.Name)
-	if !present {
-		return nil
-	}
-	radius, ok := rt.deps.CharacterBodyRadius(c)
-	if !ok {
-		return nil
-	}
-	from := rt.liveSpawn(simulation.WorldKey(division, c.Name), c, now)
-	var out []monster.Instance
-	for _, candidate := range rt.Monsters.CombatCandidatesInPopulation(division, lease, from, float64(area.Radius)+radius, now, false) {
-		if candidate.CurrentHP == 0 {
-			continue
-		}
-		out = append(out, candidate)
-		if len(out) == int(area.MaxTargets) {
-			break
-		}
-	}
-	return out
 }

@@ -21,8 +21,9 @@ import (
 	"opensro.online/server/internal/game/abnormal"
 	"opensro.online/server/internal/game/combat"
 	"opensro.online/server/internal/game/enterworld"
-	"opensro.online/server/internal/game/item/wire"
 	"opensro.online/server/internal/game/internal/vitals"
+	"opensro.online/server/internal/game/item/wire"
+	"opensro.online/server/internal/game/world/simulation"
 )
 
 /*
@@ -37,13 +38,20 @@ type playerStrike struct {
 	victim   *enterworld.Character
 	killer   deathKiller
 	skill    enterworld.SkillRow
+	// impacts is the record count; zero takes the row's att count (a
+	// credited hit - a pulse, a returned hit - carries one).
+	impacts  int
 	formulas []combat.Result
 	splits   []wallSplit
 	wall     standingWall
 	walled   bool
 	records  []abnormal.Record
 	owner    *playerAbnormalOwner
-	now      int64
+	// displacement is the knockdown or knockback the impact at displaceAt
+	// rolled (playerdisplacement.go); nil for none.
+	displacement *playerDisplacement
+	displaceAt   int
+	now          int64
 }
 
 /*
@@ -54,13 +62,17 @@ What the commit did.
 ================
 */
 type playerStruck struct {
-	impacts, absorb  []wire.SkillCastTargetImpact
+	impacts, absorb []wire.SkillCastTargetImpact
+	// before is the victim's HP ahead of each impact (a drain's cap).
+	before           []uint32
 	fatal, struck    bool
 	deathEffects     []wire.Frame
 	deathProgression []wire.Frame
-	battle           []wire.Frame
-	wear             wearFrames
-	owner            *playerAbnormalOwner
+	// withdrawn closes the casts a displacement interrupted.
+	withdrawn []wire.Frame
+	battle    []wire.Frame
+	wear      wearFrames
+	owner     *playerAbnormalOwner
 }
 
 /*
@@ -68,22 +80,28 @@ type playerStruck struct {
 planPlayerStrike
 
 58EC6C and 590680 per impact against a player defender: the hit behind
-the victim's standing wall, then the attacker's status roll (roll), which
-a blocked or ck-killed impact skips (5905FB). False when an impact cannot
-be resolved, or lands nothing on an unwalled victim.
+the victim's standing wall (resolve), then the attacker's status roll
+(roll), which a blocked or ck-killed impact skips (5905FB). False when an
+impact cannot be resolved, or lands nothing on an unwalled victim; a
+status cast's record is a landed zero-damage hit.
 ================
 */
-func (rt *Runtime) planPlayerStrike(s *playerStrike, actor criticalActor, attacker, defender combat.Stats,
-	roll func(wall *enterworld.SkillWall) ([]abnormal.Record, error)) bool {
+func (rt *Runtime) planPlayerStrike(s *playerStrike,
+	resolve func(wall *enterworld.SkillWall) (combat.WallOutcome, error),
+	roll func(wall *enterworld.SkillWall, formula combat.Result) ([]abnormal.Record, error)) bool {
 	s.wall, s.walled = rt.standingWallOf(s.division, s.victim.Name)
 	var wallRule *enterworld.SkillWall
 	if s.walled {
 		wallRule = &s.wall.wall
 	}
-	for range s.skill.Attack.ImpactCount {
-		split, err := rt.resolveCombatBehindWall(actor, s.skill, attacker, defender, wallRule)
+	count := s.impacts
+	if count == 0 {
+		count = int(s.skill.Attack.ImpactCount)
+	}
+	for range count {
+		split, err := resolve(wallRule)
 		formula := split.Defender
-		if err != nil || formula.Damage == 0 && !s.walled && !formula.Blocked && !formula.Slain {
+		if err != nil || formula.Damage == 0 && !s.walled && !formula.Blocked && !formula.Slain && !s.skill.StatusCast {
 			return false
 		}
 		s.splits = append(s.splits, wallSplit{absorbed: split.Absorbed, flags: formula.ResultFlags, covered: split.Covered})
@@ -91,7 +109,7 @@ func (rt *Runtime) planPlayerStrike(s *playerStrike, actor criticalActor, attack
 		if formula.Blocked || formula.Slain {
 			continue
 		}
-		records, err := roll(wallRule)
+		records, err := roll(wallRule, formula)
 		if err != nil {
 			return false
 		}
@@ -121,6 +139,7 @@ func (rt *Runtime) strikePlayerInDoor(s playerStrike) playerStruck {
 	_, _, remaining, _ := rt.playerKeeperVitals(s.division, c)
 	for _, formula := range s.formulas {
 		hit.Magical = hit.Magical || formula.MagicalDamage != 0
+		out.before = append(out.before, uint32(remaining))
 		debit := int64(vitals.HitDebit(uint32(remaining), formula.Damage))
 		if formula.Slain {
 			debit = remaining // 58F778: the ck kill marks the target dead
@@ -161,6 +180,16 @@ func (rt *Runtime) strikePlayerInDoor(s playerStrike) playerStruck {
 			out.wear.public = append(out.wear.public, taken.public...)
 		}
 	}
+	if !out.fatal && s.displacement != nil && s.displaceAt < len(out.impacts) && out.struck {
+		if point, withdrawn, ok := rt.commitPlayerDisplacementInDoor(s.division, c, s.displacement); ok {
+			if s.displacement.down {
+				out.impacts[s.displaceAt].Knockdown = point
+			} else {
+				out.impacts[s.displaceAt].Knockback = point
+			}
+			out.withdrawn = withdrawn
+		}
+	}
 	if out.fatal {
 		out.deathEffects, out.deathProgression = rt.settlePlayerDeathInDoor(s.division, c, s.killer, s.now)
 		out.owner = rt.clearPlayerAbnormalInDoor(s.division, c, s.now)
@@ -189,6 +218,7 @@ func (rt *Runtime) playerStruckFrames(division string, victim *enterworld.Charac
 	private = append(private, statuses.actor...)
 	public = append(public, struck.wear.public...)
 	private = append(private, struck.wear.actor...)
+	public = append(public, struck.withdrawn...)
 	if struck.fatal {
 		if rt.PushCharacterFrames != nil && rt.PushDivisionPeerFrames != nil {
 			// Native death retires effects before publishing the life change.
@@ -214,4 +244,33 @@ func (rt *Runtime) playerStruckFrames(division string, victim *enterworld.Charac
 	public = append(public, struck.battle...)
 	private = append(private, struck.deathProgression...)
 	return public, private
+}
+
+/*
+================
+planStrikeDisplacement
+
+The strike's displacement roll on its first impact the victim survives
+(no displacement lands on a corpse, and a blocked or ck-killed impact
+rolls none, 5905FB).
+================
+*/
+func (rt *Runtime) planStrikeDisplacement(s *playerStrike, actor criticalActor, from, at simulation.Spawn) error {
+	_, _, hp, _ := rt.playerKeeperVitals(s.division, s.victim)
+	for i, formula := range s.formulas {
+		hp -= min(hp, int64(formula.Damage))
+		if formula.Blocked || formula.Slain || hp <= 0 {
+			if hp <= 0 {
+				return nil
+			}
+			continue
+		}
+		d, err := rt.planPlayerDisplacement(displacementRoll{division: s.division, actor: actor, from: from,
+			skill: s.skill, victim: s.victim, at: at, now: s.now})
+		if err != nil || d != nil {
+			s.displacement, s.displaceAt = d, i
+			return err
+		}
+	}
+	return nil
 }

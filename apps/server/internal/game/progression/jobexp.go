@@ -64,6 +64,21 @@ func AddJobExp(c *enterworld.Character, levels enterworld.JobLevelDataSource, de
 
 /*
 ================
+JobExperienceUpdater
+
+The door-free job EXP updater combat calls inside its own character
+transaction (a job kill's share).
+================
+*/
+func (rt *Runtime) JobExperienceUpdater() func(*enterworld.Character, int64) ([]wire.Frame, bool) {
+	return func(c *enterworld.Character, delta int64) ([]wire.Frame, bool) {
+		levels, _ := rt.deps.LevelData().(enterworld.JobLevelDataSource)
+		return AddJobExp(c, levels, delta)
+	}
+}
+
+/*
+================
 jobExpFrames
 ================
 */

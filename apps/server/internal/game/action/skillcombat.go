@@ -94,7 +94,9 @@ func (rt *Runtime) skillCastPostureBlocked(
 		simulation.WorldKey(divisionID, character.Name),
 		func() simulation.WorldState { return simulation.SeedWorldState(character) },
 	)
-	return world.Sitting || nowMs < world.PostureTransitionUntilMs || rt.playerCastBlocked(divisionID, character.Name)
+	// A knocked-down player's commands wait out its hold (motion 8).
+	return world.Sitting || nowMs < world.PostureTransitionUntilMs || rt.playerCastBlocked(divisionID, character.Name) ||
+		rt.PlayerKnockedDown(divisionID, character.Name, nowMs)
 }
 
 /*
@@ -234,7 +236,14 @@ func (rt *Runtime) acceptSkillStagePhaseAt(divisionID string, character, snapsho
 	}
 
 	target, ok := rt.characterMonster(divisionID, snapshot, cast.TargetGid)
-	if !ok || target.CurrentHP == 0 {
+	if !ok {
+		// Not a monster of this world: a player, or nothing (pvpstrike.go).
+		return rt.acceptPlayerTargetStage(offensiveStage{division: divisionID, character: character, snapshot: snapshot,
+			cast: cast, skill: skill, basic: basic, advanced: advanced, rootID: rootID, release: release,
+			attacker: attacker, loadout: loadout, consumeAmmo: consumeAmmo, actionReach: actionReach,
+			lifecycleMs: actionLifecycleMs, now: nowMs})
+	}
+	if target.CurrentHP == 0 {
 		return OpResult{}, skillCastRefused
 	}
 	if d := skill.TimedEffect.Periodic; d.Pinned {
@@ -295,32 +304,13 @@ func (rt *Runtime) acceptSkillStagePhaseAt(divisionID string, character, snapsho
 		rt.noteHawkOwnerAttack(divisionID, snapshot, target.Gid, nowMs)
 	}
 	if skill.ActionCastingTimeMs != 0 && release == nil {
-		var refusal uint16
-		if !rt.deps.Update(character, "prepare-offensive-cooldown", func() bool {
-			if !enterworld.CharacterAlive(character) {
-				return false
-			}
-			if advanced && rootID == 0 {
-				_, refusal = rt.offensiveCost(divisionID, character, skill, nowMs)
-				if refusal != 0 {
-					return false
-				}
-			}
-			rt.startSkillCast(divisionID, character, skill, nowMs)
-			rt.registerPlayerSkillCooldown(divisionID, character, skill, nowMs)
-			return true
-		}) {
-			if refusal != 0 {
-				return offensiveRefusal(refusal), skillCastRefused
-			}
-			return OpResult{DiagnosticRefusal: "offensive-prepare-commit-refused"}, skillCastRefused
-		}
-		return rt.prepareProjectileCast(divisionID, snapshot, cast, skill, nowMs, rootID), skillCastAccepted
+		return rt.prepareOffensiveCast(divisionID, character, snapshot, cast, skill, advanced, rootID, nowMs)
 	}
 
+	primary := combatTarget{gid: target.Gid, monster: &target, at: targetAt}
 	if skill.TimedEffect.Periodic.Pinned {
 		return rt.installPeriodicCast(periodicCast{division: divisionID, character: character,
-			snapshot: snapshot, skill: skill, cast: cast, target: target, attacker: attacker, now: nowMs, release: release})
+			snapshot: snapshot, skill: skill, cast: cast, target: primary, attacker: attacker, now: nowMs, release: release})
 	}
 	formulas := make([]combat.Result, 0, skill.Attack.ImpactCount)
 	if skill.Threat.Only {
@@ -328,14 +318,14 @@ func (rt *Runtime) acceptSkillStagePhaseAt(divisionID string, character, snapsho
 			skill: skill, primary: target, now: nowMs})
 	}
 	if skill.OffensiveArea.Radius != 0 {
-		return rt.acceptSkillAreaAt(divisionID, character, snapshot, skill, skill.OffensiveArea, false, true, target, attacker, loadout, consumeAmmo, nowMs, rootID, release)
+		return rt.acceptSkillAreaAt(divisionID, character, snapshot, skill, skill.OffensiveArea, false, true, primary, attacker, loadout, consumeAmmo, nowMs, rootID, release)
 	}
 	// 586E04..586E1B: with no area of its own, an imbue-eligible attack
 	// (att value 5) that passes 589D20 selects its victims with the active
 	// imbue's efr (the Lightning Force); the chain's victims are flagged.
 	if skill.Attack.Value5 != 0 && skill.ReplacementPinned && skill.Replacement.MatchesExecutionSelector {
 		if imbue, _ := rt.activeWeaponImbue(divisionID, snapshot.Name, nowMs); imbue.Pinned && imbue.Area.Radius != 0 {
-			return rt.acceptSkillAreaAt(divisionID, character, snapshot, skill, imbue.Area, true, advanced, target, attacker, loadout, consumeAmmo, nowMs, rootID, release)
+			return rt.acceptSkillAreaAt(divisionID, character, snapshot, skill, imbue.Area, true, advanced, primary, attacker, loadout, consumeAmmo, nowMs, rootID, release)
 		}
 	}
 	stealBase, stealOK := int64(0), true
@@ -579,6 +569,38 @@ func (rt *Runtime) acceptSkillStagePhaseAt(divisionID string, character, snapsho
 		ActorPrivate: privateFrames,
 		Recipients:   settlement.others,
 	}, skillCastAccepted
+}
+
+/*
+================
+prepareOffensiveCast
+
+A cast with a preparation time charges and cools at the press, then waits
+for its release (advanceProjectileCasts), whatever its target's kind.
+================
+*/
+func (rt *Runtime) prepareOffensiveCast(divisionID string, character, snapshot *enterworld.Character, cast wire.SkillAction, skill enterworld.SkillRow, advanced bool, rootID uint32, nowMs int64) (OpResult, skillCastDecision) {
+	var refusal uint16
+	if !rt.deps.Update(character, "prepare-offensive-cooldown", func() bool {
+		if !enterworld.CharacterAlive(character) {
+			return false
+		}
+		if advanced && rootID == 0 {
+			_, refusal = rt.offensiveCost(divisionID, character, skill, nowMs)
+			if refusal != 0 {
+				return false
+			}
+		}
+		rt.startSkillCast(divisionID, character, skill, nowMs)
+		rt.registerPlayerSkillCooldown(divisionID, character, skill, nowMs)
+		return true
+	}) {
+		if refusal != 0 {
+			return offensiveRefusal(refusal), skillCastRefused
+		}
+		return OpResult{DiagnosticRefusal: "offensive-prepare-commit-refused"}, skillCastRefused
+	}
+	return rt.prepareProjectileCast(divisionID, snapshot, cast, skill, nowMs, rootID), skillCastAccepted
 }
 
 /*

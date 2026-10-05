@@ -17,6 +17,7 @@ import (
 type Dependencies interface {
 	domain.CharacterSource
 	CharacterBodyRadius(character *domain.Character) (float64, bool)
+	CharacterKnockdown(character *domain.Character) (flags, recoveryMs uint32, ok bool)
 	Mutate(character *domain.Character, label string, fn func())
 	Update(character *domain.Character, label string, update func() bool) bool
 	UpdateMany(characters []*domain.Character, label string, update func() bool) bool

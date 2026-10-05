@@ -291,6 +291,11 @@ func (rt *Runtime) HandlePortal(division string, c *enterworld.Character, payloa
 		return portalFailure(refusal)
 	}
 	source := rt.portals.destinations[sourceID]
+	// 4F30E1: a murderer (PvP state 2) may not pass a building gate (the
+	// source object's vtable +0x44), 0x1C16; a ferry still carries one.
+	if source.building && murderer(c) {
+		return portalFailure(errCodeMurdererGate)
+	}
 
 	link, ok := rt.portals.links[[2]uint32{sourceID, target}]
 	if !ok {

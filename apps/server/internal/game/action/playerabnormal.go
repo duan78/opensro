@@ -815,16 +815,62 @@ func abnormalVitalsPayload(gid uint32, block *abnormal.Block) []byte {
 ==================
 rollMonsterOnPlayer
 
-rollMonsterOnPlayer ports 590680 for a monster's hit on a player: the
-victim's keeper supplies element resists (1B..20), flat reductions (91..96,
-which reat passives raise) and the disease bonus (A9); its learned real
-passives supply the status-resistance buckets (59DE50).
+rollMonsterOnPlayer ports 590680 for a monster's hit on a player.
 ==================
 */
 func (rt *Runtime) rollMonsterOnPlayer(division string, instance monster.Instance, params *abnormal.SkillParams, target *enterworld.Character, defender combat.Stats, wall *enterworld.SkillWall) ([]abnormal.Record, error) {
 	if params == nil || !params.Present() {
 		return nil, nil
 	}
+	in := playerVictimRollInput(params, target, defender, wall)
+	in.CasterLevel = instance.Ref.Level
+	in.SourceGID = instance.Gid
+	random := &abnormalRandom{rt: rt, actor: criticalActor{division: division, monster: instance.Gid}}
+	records := abnormal.Roll(in, random)
+	return records, random.err
+}
+
+/*
+==================
+rollPlayerOnPlayer
+
+590680 for a player's hit on a player: the victim's side as for a
+monster's hit, the caster's level and learned setv dictionary
+(CSkillManager_GetSkillModifier) as for a player's hit on a monster.
+==================
+*/
+func (rt *Runtime) rollPlayerOnPlayer(division string, caster *enterworld.Character, casterStats combat.Stats, params *abnormal.SkillParams, target *enterworld.Character, defender combat.Stats, wall *enterworld.SkillWall) ([]abnormal.Record, error) {
+	if params == nil || !params.Present() {
+		return nil, nil
+	}
+	values := casterStats.SkillParameters
+	in := playerVictimRollInput(params, target, defender, wall)
+	in.CasterLevel = casterStats.Level
+	in.CasterModifier = func(key uint32) (uint32, bool) {
+		slot, known := enterworld.SkillParameterFromKey(key)
+		if !known {
+			return 0, false
+		}
+		return values[slot], values[slot] != 0
+	}
+	in.SourceGID = enterworld.ObjectIDForCharacter(caster)
+	in.SourceName = caster.Name
+	random := &abnormalRandom{rt: rt, actor: criticalActor{division: division, character: caster.Name}}
+	records := abnormal.Roll(in, random)
+	return records, random.err
+}
+
+/*
+==================
+playerVictimRollInput
+
+The victim's side of 590680 for a player target: its keeper supplies
+element resists (1B..20), flat reductions (91..96, which reat passives
+raise) and the disease bonus (A9); its learned real passives supply the
+status-resistance buckets (59DE50); a standing wall masks its records.
+==================
+*/
+func playerVictimRollInput(params *abnormal.SkillParams, target *enterworld.Character, defender combat.Stats, wall *enterworld.SkillWall) abnormal.RollInput {
 	param := func(id uint16) float32 {
 		v, _ := defender.Param(id)
 		return v
@@ -833,24 +879,19 @@ func (rt *Runtime) rollMonsterOnPlayer(division string, instance monster.Instanc
 		Params:      params,
 		TargetLevel: defender.Level,
 		TargetBonus: param(abnormalDiseaseBonusParam),
-		CasterLevel: instance.Ref.Level,
-		SourceGID:   instance.Gid,
 		TargetGID:   enterworld.ObjectIDForCharacter(target),
 		Resistance:  defender.StatusResistance,
 	}
 	if wall != nil {
 		in.WallMask = &wall.Mask
 	}
-
 	for i := range in.TargetResist {
 		// 5909FB reads shock from 1D; 590B39 reads burn from 1E. Keeper
 		// parameters follow roll order, not the block's Burn/ES slot order.
 		in.TargetResist[i] = param(abnormalElementResistBase + uint16(i))
 		in.TargetFlat[i] = param(abnormalFlatResistanceBase + uint16(i))
 	}
-	random := &abnormalRandom{rt: rt, actor: criticalActor{division: division, monster: instance.Gid}}
-	records := abnormal.Roll(in, random)
-	return records, random.err
+	return in
 }
 
 /*

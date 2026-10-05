@@ -267,10 +267,18 @@ func (rt *Runtime) monsterAttackStage(divisionID string, instance monster.Instan
 		return rt.prepareMonsterCast(divisionID, instance, monsterCastRecipient{snapshot, enterworld.ObjectIDForCharacter(snapshot)}, skill, nowMs)
 	}
 	strike := playerStrike{division: divisionID, victim: character, killer: deathKiller{monster: &instance}, skill: skill, now: nowMs}
-	if !rt.planPlayerStrike(&strike, criticalActor{division: divisionID, monster: instance.Gid}, attacker, defender,
-		func(wall *enterworld.SkillWall) ([]abnormal.Record, error) {
+	actor := criticalActor{division: divisionID, monster: instance.Gid}
+	if !rt.planPlayerStrike(&strike,
+		func(wall *enterworld.SkillWall) (combat.WallOutcome, error) {
+			return rt.resolveCombatBehindWall(actor, skill, attacker, defender, wall)
+		},
+		func(wall *enterworld.SkillWall, _ combat.Result) ([]abnormal.Record, error) {
 			return rt.rollMonsterOnPlayer(divisionID, instance, &skill.Abnormal, snapshot, defender, wall)
 		}) {
+		return result
+	}
+	if err := rt.planStrikeDisplacement(&strike, actor, simulation.Spawn{RegionID: monsterPose.RegionID,
+		X: monsterPose.X, Y: monsterPose.Y, Z: monsterPose.Z}, playerPose); err != nil {
 		return result
 	}
 	var struck playerStruck

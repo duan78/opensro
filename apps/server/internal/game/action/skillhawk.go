@@ -30,7 +30,6 @@ import (
 	"opensro.online/server/internal/game/combat"
 	"opensro.online/server/internal/game/enterworld"
 	"opensro.online/server/internal/game/item/wire"
-	"opensro.online/server/internal/game/world/monster"
 	"opensro.online/server/internal/game/world/simulation"
 )
 
@@ -159,8 +158,8 @@ func (rt *Runtime) advanceHawk(h summonedHawk, now int64) []simulation.DivisionF
 	if snapshot == nil || !enterworld.CharacterAlive(snapshot) || h.target == 0 {
 		return nil
 	}
-	target, exists := rt.characterMonster(h.division, snapshot, h.target)
-	if !exists || target.CurrentHP == 0 {
+	target, exists := rt.resolveCombatTarget(h.division, snapshot, h.target, now)
+	if !exists {
 		rt.updateHawk(key, h.token, func(live *summonedHawk) { live.target = 0 })
 		return nil
 	}
@@ -201,12 +200,19 @@ func hawkDivisionFrames(division string, source uint32, only int64, frames []wir
 hawkStrike
 
 The strike of 582750: 40F1B0 + 40F3D0 on the target, committed through the
-monster HP door with the caster credited (vtable +0x4FC), then the fatal
-bit when the target died. A strike never misses.
+target's HP door with the caster credited (vtable +0x4FC), then the fatal
+bit when the target died. A strike never misses. A player target takes it
+as the caster's credited hit (pvpstrike.go).
 ================
 */
-func (rt *Runtime) hawkStrike(h summonedHawk, c, snapshot *enterworld.Character, row enterworld.SkillRow, target monster.Instance, now int64) OpResult {
-	defender, err := combat.MonsterInstanceStats(target)
+func (rt *Runtime) hawkStrike(h summonedHawk, c, snapshot *enterworld.Character, row enterworld.SkillRow, victim combatTarget, now int64) OpResult {
+	var defender combat.Stats
+	var err error
+	if victim.monster != nil {
+		defender, err = combat.MonsterInstanceStats(*victim.monster)
+	} else {
+		defender, _, err = rt.playerCombatStats(h.division, victim.snapshot)
+	}
 	if err != nil {
 		return OpResult{}
 	}
@@ -216,6 +222,24 @@ func (rt *Runtime) hawkStrike(h summonedHawk, c, snapshot *enterworld.Character,
 		return OpResult{}
 	}
 	formula := combat.Result{Damage: uint32(damage)}
+	if victim.player != nil {
+		attacker, _, err := rt.playerCombatStats(h.division, snapshot)
+		if err != nil {
+			return OpResult{}
+		}
+		hit, result, landed := rt.creditPlayerHit(playerHitInput{division: h.division, caster: c, snapshot: snapshot,
+			attacker: attacker, skill: row, target: victim, impacts: 1, fixed: &formula, now: now})
+		if !landed {
+			return OpResult{}
+		}
+		word := damage
+		if hit.struck.fatal {
+			word |= wire.HawkFatalBit
+		}
+		result.Broadcast = append([]wire.Frame{wire.HawkStrikeFrame(h.token, victim.gid, word)}, result.Broadcast...)
+		return result
+	}
+	target := *victim.monster
 	hit, ok := rt.commitCreditedMonsterHit(h.division, c, snapshot, row, target, formula, "hawk-kill", now)
 	if !ok {
 		return OpResult{}

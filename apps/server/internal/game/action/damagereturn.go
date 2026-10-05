@@ -14,8 +14,8 @@ one area-effect context (+0x70) that 593D62 queues on the attacker
 the hit, as one credited hit of the defender.
 
 The defender half (rule, roll, range, amount) is attacker-neutral; the
-monster commit is the only attacker branch, since a monster hit is the
-only hit on a player the port resolves.
+attacker half commits on a monster (returnDamageToMonster) or a player
+(returnDamageToPlayer, pvpstrike.go's credited hit).
 
 ===========================================================================
 */
@@ -141,4 +141,57 @@ func (rt *Runtime) returnDamageToMonster(division string, c *enterworld.Characte
 		{GID: live.Gid, Impacts: []wire.SkillCastTargetImpact{committedSkillImpact(formula, hit.impacts[0])}},
 	})}
 	return rt.creditedHitResult(division, live, hit, public, now)
+}
+
+/*
+================
+returnDamageToPlayer
+
+The player branch: c's dmgr returns its share to the attacking player as
+c's credited hit, published as the monster branch's is. INFERENCE: the
+queued context (+0x70) is not a hit outcome, so the attacker's own wall
+does not split it.
+================
+*/
+func (rt *Runtime) returnDamageToPlayer(division string, c, attacker *enterworld.Character, attackSkill uint32, defender combat.Stats, hits []combat.Result, now int64) OpResult {
+	snapshot := rt.characterSnapshot(division, c)
+	if snapshot == nil || attacker == nil {
+		return OpResult{}
+	}
+	rule, row, ok := rt.damageReturnRule(division, snapshot, defender, now)
+	if !ok {
+		return OpResult{}
+	}
+	target, ok := rt.resolveCombatTarget(division, snapshot, enterworld.ObjectIDForCharacter(attacker), now)
+	if !ok || target.player == nil {
+		return OpResult{}
+	}
+	at := rt.liveSpawn(simulation.WorldKey(division, snapshot.Name), snapshot, now)
+	from := monster.Pose{RegionID: at.RegionID, X: at.X, Y: at.Y, Z: at.Z}
+	to := monster.Pose{RegionID: target.at.RegionID, X: target.at.X, Y: target.at.Y, Z: target.at.Z}
+	damage, err := rt.rollDamageReturn(division, snapshot, rule, float64(monster.NativeActorDistance(from, to)), hits)
+	if err != nil || damage == 0 {
+		return OpResult{}
+	}
+	stats, _, err := rt.playerCombatStats(division, snapshot)
+	if err != nil {
+		return OpResult{}
+	}
+	formula := combat.Result{Damage: min(damage, wire.MaxSkillActionDamage), ResultFlags: 1}
+	hit, result, landed := rt.creditPlayerHit(playerHitInput{division: division, caster: c, snapshot: snapshot,
+		attacker: stats, skill: row, target: target, impacts: 1, fixed: &formula, now: now})
+	if !landed {
+		return OpResult{}
+	}
+	pulse := wire.SkillPulseFrame(enterworld.ObjectIDForCharacter(snapshot), attackSkill, []wire.SkillAreaTarget{
+		{GID: target.gid, Impacts: hit.struck.impacts},
+	})
+	result.Broadcast = append([]wire.Frame{pulse}, result.Broadcast...)
+	// The returned hit is c's: its private frames (a kill's rewards) are
+	// c's, never the attacker's whose command this result answers.
+	if len(result.ActorPrivate) > 0 {
+		result.Recipients = append(result.Recipients, RecipientFrames{CharacterID: c.ID, Frames: result.ActorPrivate})
+		result.ActorPrivate = nil
+	}
+	return result
 }

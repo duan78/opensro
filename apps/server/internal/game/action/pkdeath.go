@@ -108,8 +108,15 @@ func (rt *Runtime) settleDeathCostInDoor(division string, c *enterworld.Characte
 	kept := float32(paramJobPercent(c, paramDeathExpKept, now))
 	switch {
 	case kind == pk.DeathJob:
+		// 4E6820 reads the killer object's level, a monster's or a player's.
+		killerLevel := uint8(0)
+		if killer.monster != nil {
+			killerLevel = killer.monster.Ref.Level
+		} else if killer.player != nil {
+			killerLevel = levelByte(killer.player)
+		}
 		if rt.ApplyDeathPenalty != nil {
-			frames, _ := rt.ApplyDeathPenalty(c, pk.DeathPenalty{Job: true, KillerLevel: killer.monster.Ref.Level, ReductionPercent: kept})
+			frames, _ := rt.ApplyDeathPenalty(c, pk.DeathPenalty{Job: true, KillerLevel: killerLevel, ReductionPercent: kept})
 			cost.actor = append(cost.actor, frames...)
 		}
 		return cost

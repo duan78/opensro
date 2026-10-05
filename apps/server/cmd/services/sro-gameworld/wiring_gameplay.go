@@ -178,6 +178,7 @@ func newGameplayPlane(
 	movementRuntime.MovementBlocked = items.PlayerMovementBlocked
 	movementRuntime.RetireMoveEffects = items.RetireMoveEffects
 	movementRuntime.AttackLocked = items.PlayerAttackLocked
+	movementRuntime.MotionLocked = items.PlayerMotionLocked
 	movementRuntime.AdvanceResidentRegion = items.AdvanceResidentRegion
 	movementRuntime.CompanionPresentations = items.CompanionPresentations
 	movementRuntime.SpawnSkills = items.EntrySkills
@@ -449,6 +450,7 @@ func (game *gameplayPlane) register(hub *transport.Hub, loadQuests questDefiniti
 	game.items.RefundExperience = stats.ExperienceRefundUpdater()
 	game.items.RecallStatPoints = stats.StatRecallUpdater()
 	game.items.ApplyDeathPenalty = stats.DeathPenaltyUpdater()
+	game.items.UpdateJobExperience = stats.JobExperienceUpdater()
 	// Delivery resolves sessions from their bindings alone and never reads the
 	// character store: the action runtime publishes from inside character
 	// doors (the store's write lock), where any store read would deadlock.
