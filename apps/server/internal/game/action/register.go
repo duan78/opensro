@@ -53,6 +53,7 @@ func (rt *Runtime) Register(hub *transport.Hub) {
 	hub.Handle(opJobJoinRequest, rt.hubHandler(hub, rt.HandleJobJoin))
 	hub.Handle(opJobWithdrawRequest, rt.hubHandler(hub, rt.HandleJobWithdraw))
 	hub.Handle(opJobAliasRequest, rt.hubHandler(hub, rt.HandleJobAlias))
+	hub.Handle(opGuildLevelUpRequest, rt.hubHandler(hub, rt.HandleGuildLevelUp))
 	hub.Handle(0x72dd, rt.hubHandler(hub, rt.HandleReturnCancel))
 	hub.Handle(wire.OpCosBehaviorRequest, rt.hubHandler(hub, rt.HandleCosBehavior))
 	hub.Handle(0x77e7, rt.hubHandler(hub, rt.HandleRetailBuyback))

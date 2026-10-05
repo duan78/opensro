@@ -13,6 +13,12 @@ const (
 	// 5C64ED/5C6547 and 5C64FB/5C653B; v1.150 68A8A0/68A8AA.
 	GuildErrInvalidMasterCommentTitle byte = 0x22
 	GuildErrInvalidMasterComment      byte = 0x23
+	// Category 0x10 rows of 68A0xx (table index + 6): the guild level-up
+	// answers (0xB3F0) and the per-level member cap.
+	GuildErrMemberFull         byte = 0x13
+	GuildErrLevelUpFull        byte = 0x21
+	GuildErrLevelUpGoldDeficit byte = 0x31
+	GuildErrLevelUpGPDeficit   byte = 0x32
 )
 
 // The category is supplied by the client opcode handler, not on the wire.

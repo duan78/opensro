@@ -36,6 +36,9 @@ const (
 	GuildRefusalInvalidAmount          = domain.GuildRefusalInvalidAmount
 	GuildRefusalInsufficientPoints     = domain.GuildRefusalInsufficientPoints
 	GuildRefusalNumericOverflow        = domain.GuildRefusalNumericOverflow
+	GuildRefusalMaxLevel               = domain.GuildRefusalMaxLevel
+	GuildRefusalGPDeficit              = domain.GuildRefusalGPDeficit
+	GuildRefusalGoldDeficit            = domain.GuildRefusalGoldDeficit
 )
 
 type TrainingCampRecord = domain.TrainingCampRecord

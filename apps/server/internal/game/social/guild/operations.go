@@ -139,6 +139,12 @@ func guildRefusalReason(refusal enterworld.GuildRefusal) string {
 		return "insufficient skill points"
 	case enterworld.GuildRefusalNumericOverflow:
 		return "numeric overflow"
+	case enterworld.GuildRefusalMaxLevel:
+		return "the guild is at its last level"
+	case enterworld.GuildRefusalGPDeficit:
+		return "not enough guild points"
+	case enterworld.GuildRefusalGoldDeficit:
+		return "not enough gold"
 	default:
 		return "guild command refused"
 	}

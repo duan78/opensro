@@ -84,6 +84,10 @@ func (s staticGuildStore) DonateGuildPoints(string, int64, uint32) (enterworld.G
 	return enterworld.GuildDonationResult{}, enterworld.GuildRefusalUpdateRejected
 }
 
+func (s staticGuildStore) LevelUpGuildAs(string, int64) (enterworld.GuildSnapshot, enterworld.GuildRefusal) {
+	return enterworld.GuildSnapshot{}, enterworld.GuildRefusalUpdateRejected
+}
+
 // oracle32C4 hand-rolls the pinned 0x32C4 layout (fold sub_826610;
 // little-endian, strings are {u16 len}{ANSI bytes}) with encoding/binary.
 type oracle32C4 struct{ buf bytes.Buffer }

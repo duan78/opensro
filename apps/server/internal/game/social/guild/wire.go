@@ -691,6 +691,19 @@ func EncodeGuildGp3B29(newGuildGp uint32) []byte {
 	return writer.Payload()
 }
 
+// EncodeGuildLevel3B29 composes the 0x3B29 subOp-5 guild-record delta
+// carrying the &0x04 level and &0x08 GP legs, in the applicator's read
+// order (5E4710): {u8 5}{u8 0x0C}{u8 level}{u32 gp}. The &0x04 arm prints
+// UIIT_MSG_GUILD_LEVEL_UP_RESULT and refreshes the member cap gauge.
+func EncodeGuildLevel3B29(level uint8, gp uint32) []byte {
+	writer := wire.NewWriter(7)
+	writer.U8(5)
+	writer.U8(0x04 | 0x08)
+	writer.U8(level)
+	writer.U32(gp)
+	return writer.Payload()
+}
+
 // EncodeMemberDonatedGp3B29 composes the 0x3B29 subOp-6 member delta
 // carrying ONLY the &0x08 donated-GP leg:
 // {u8 6}{u32 jid}{u8 0x08}{u32 newDonatedGp}. The applicator's &0x08 arm

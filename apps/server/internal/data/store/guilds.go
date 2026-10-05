@@ -309,7 +309,7 @@ func (door storeGuildDoor) AddGuildMemberAs(
 	if member.Grade == 0 {
 		return refused, domain.GuildRefusalInvalidMember
 	}
-	if len(members) >= domain.GuildMemberMaxCount {
+	if len(members) >= min(domain.GuildMemberMaxCount, domain.GuildMemberCapacity(guild.Level)) {
 		return refused, domain.GuildRefusalRosterFull
 	}
 	for _, existing := range members {
@@ -475,6 +475,44 @@ func (door storeGuildDoor) DonateGuildPoints(
 		},
 		Donor: committedMembers[memberIndex],
 	}, domain.GuildRefusalNone
+}
+
+// LevelUpGuildAs is the ATOMIC level-up door (the guild manager's 0x73F0,
+// v1.188 guild job 0x1E): the acting leader's guild pays the next level's
+// GP, the leader pays its gold, and the level rises by one, under ONE lock
+// hold and ONE commit. INFERENCE: v1.188 prices the level inside the
+// shard's job, unseen; the GP shortfall is tested first because the window
+// lists the GP price above the gold.
+func (door storeGuildDoor) LevelUpGuildAs(divisionID string, actorID int64) (domain.GuildSnapshot, domain.GuildRefusal) {
+	var refused domain.GuildSnapshot
+	s := door.s
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	guildID, guild, members, _, leader, refusal := door.authorizedGuildActorLocked(
+		divisionID, actorID, domain.GuildAuthorization{LeaderOnly: true})
+	if refusal.Refused() {
+		return refused, refusal
+	}
+	cost, ok := domain.GuildLevelUpCostAt(guild.Level)
+	if !ok {
+		return refused, domain.GuildRefusalMaxLevel
+	}
+	if guild.GP < cost.GP {
+		return refused, domain.GuildRefusalGPDeficit
+	}
+	if leader.Gold == nil || *leader.Gold < cost.Gold {
+		return refused, domain.GuildRefusalGoldDeficit
+	}
+	gold := *leader.Gold - cost.Gold
+	leader.Gold = &gold
+	guild.GP -= cost.GP
+	guild.Level++
+	s.guilds[divisionID][guildID] = guild
+	s.changes.guilds[guildKey{division: divisionID, guildID: guildID}] = true
+	s.changes.characters[leader] = true
+	s.commitLocked(fmt.Sprintf("guild-level-up %s/%d", divisionID, guildID))
+	return domain.GuildSnapshot{Guild: guild, Members: members}, domain.GuildRefusalNone
 }
 
 func (door storeGuildDoor) guildOfCharacterLocked(
