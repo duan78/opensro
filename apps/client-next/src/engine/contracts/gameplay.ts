@@ -159,6 +159,10 @@ export type GameplayCommand =
 	| { readonly kind: "cos-drop"; readonly gid: number; readonly slot: number; }
 	| { readonly kind: "guide-event"; readonly event: number; }
 	| { readonly kind: "storage-open"; readonly gid: number; }
+	// The guild manager's warehouse row (storage-room.ts openGuild) and the
+	// declined war compensation quote (guild-manager-hud.ts).
+	| { readonly kind: "storage-open-guild"; readonly gid: number; }
+	| { readonly kind: "compensation-dismiss"; }
 	// The job guild confirmations (job-guild.ts): join, withdraw and the alias.
 	| { readonly kind: "job-join"; readonly gid: number; readonly job: number; }
 	| { readonly kind: "job-withdraw"; readonly gid: number; }

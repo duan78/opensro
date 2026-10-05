@@ -117,6 +117,9 @@ import { createCosHud } from "./hud/cos-hud";
 import { createRepairHud } from "./hud/repair-hud";
 import { createSkinChangeHud } from "./hud/skin-change-hud";
 import { createJobHud } from "./hud/job-hud";
+import { createGuildManagerHud } from "./hud/guild-manager-hud";
+import { guildLevelUpPrice, guildManagerRows, MASTER_RELEASE_VOTE } from "@/engine/foundation/gameplay/guild-manager";
+import { noticeText } from "@/engine/foundation/ui/notice-text";
 import {
 	JOB_ALIAS_CHECK,
 	JOB_ALIAS_CREATE,
@@ -588,6 +591,7 @@ export function createUi(
 	const repairHud = createRepairHud();
 	const skinHud = createSkinChangeHud();
 	const jobHud = createJobHud();
+	const guildManagerHud = createGuildManagerHud();
 	const slotEffects = createSlotEffectClock();
 	const spGauge = createSkillGauge();
 	const skillTraining = createSkillTrainingCache();
@@ -1623,6 +1627,29 @@ export function createUi(
 				composing = false;
 				dirty = true;
 			}
+			return;
+		}
+		if ( id.startsWith( "npc-guild:" ) ) {
+			// 5DA1B0 cases 0x12..0x1D: the guild manager's rows (guild-manager.ts).
+			const conversation = view.gameplay?.npcConversation, social = view.gameplay?.social;
+			if ( !conversation || conversation.phase !== "menu" ) return;
+			const npc = conversation.gid, row = id.slice( 10 );
+			if ( row === "create" || row === "master-leave" ) {
+				guildManagerHud.openField( row, npc );
+				focusAtEnd( "guild-manager-text", "" );
+			} else if ( row === "level-up" ) guildManagerHud.ask( "level-up", npc, social?.guild?.level ?? 0 );
+			else if ( row === "dissolve" || row === "secede" || row === "release" ) guildManagerHud.ask( row, npc );
+			else if ( row === "compensation" ) sendGameplay( { kind: "guild-compensation", gid: npc } );
+			else if ( row === "vote" ) {
+				const vote = social?.guild?.votes?.find( v => v.kind === MASTER_RELEASE_VOTE );
+				if ( vote ) guildManagerHud.showVote( vote.remainingMs );
+			} else if ( row === "warehouse" ) {
+				if ( !canLeavePanel() ) return;
+				sendGameplay( { kind: "storage-open-guild", gid: npc } );
+				storagePanel.reset();
+				setPanel( "Storage" );
+			}
+			dirty = true;
 			return;
 		}
 		if ( id.startsWith( "npc-job-" ) ) {
@@ -3087,6 +3114,63 @@ export function createUi(
 					return;
 				}
 				if ( event.kind !== "hover" ) return;
+			}
+			if ( guildManagerHud.question() || guildManagerHud.field() || guildManagerHud.vote() ) {
+				if (
+					event.kind === "key" && event.code === "Escape" ||
+					event.kind === "activate" && event.id === "guild-manager-no"
+				) {
+					// A declined claim box drops the quote (5D4050's No).
+					if ( guildManagerHud.takeQuestion()?.kind === "compensation" ) {
+						sendGameplay( { kind: "compensation-dismiss" } );
+					}
+					guildManagerHud.reset();
+					dirty = true;
+					return;
+				}
+				if ( guildManagerHud.field() && event.kind === "edit" && event.id === "guild-manager-text" ) {
+					guildManagerHud.type( event.value );
+					dirty = true;
+					return;
+				}
+				if (
+					event.kind === "key" && event.code === "Enter" && !composing ||
+					event.kind === "activate" && event.id === "guild-manager-yes"
+				) {
+					dirty = true;
+					if ( guildManagerHud.vote() ) {
+						guildManagerHud.reset();
+						return;
+					}
+					if ( view?.session?.phase !== "world" ) return;
+					const asked = guildManagerHud.takeQuestion();
+					if ( asked ) {
+						if ( asked.kind === "level-up" ) sendGameplay( { kind: "guild-level-up", gid: asked.npc } );
+						else if ( asked.kind === "dissolve" ) {
+							sendGameplay( { kind: "guild-dissolve", gid: asked.npc } );
+						} else if ( asked.kind === "secede" ) sendGameplay( { kind: "guild-leave", gid: asked.npc } );
+						else if ( asked.kind === "release" ) sendGameplay( { kind: "guild-release", gid: asked.npc } );
+						else {
+							sendGameplay( { kind: "guild-compensation-claim", gid: asked.npc } );
+							sendGameplay( { kind: "compensation-dismiss" } );
+						}
+						return;
+					}
+					const entry = guildManagerHud.field();
+					if ( entry?.text && entry.kind === "create" ) {
+						guildManagerHud.takeField();
+						sendGameplay( { kind: "guild-create", gid: entry.npc, name: entry.text } );
+					} else if ( entry?.text ) {
+						// 5D3EB0: the master names a member; only a member may take over.
+						const member = view.gameplay?.social?.guild?.members.find( m => m.name === entry.text );
+						if ( member && member.grade !== 0 ) {
+							guildManagerHud.takeField();
+							sendGameplay( { kind: "guild-master-leave", gid: entry.npc, id: member.id } );
+						}
+					}
+					return;
+				}
+				if ( event.kind === "activate" ) return;
 			}
 			if ( jobHud.confirm() !== null ) {
 				if (
@@ -10172,10 +10256,19 @@ export function createUi(
 						canRecall: !!(capabilities & 0x40),
 						canReverseReturn: !!(capabilities & 0x20000000),
 						canStorage: !!(capabilities & 4),
-						jobRows: jobMenuRows( jobGuildsOffered( capabilities ), game.job ?? noJob() ).map( row => ({
-							id: row.id,
-							label: copy( row.symbol )
-						}) )
+						// 5D9100 lists the guild set ahead of the job menu.
+						jobRows: [
+							...guildManagerRows( capabilities, game.social?.guild, game.social?.localName ?? "" ).map(
+								row => ({
+									id: "npc-guild:" + row.row,
+									label: copy( row.symbol )
+								})
+							),
+							...jobMenuRows( jobGuildsOffered( capabilities ), game.job ?? noJob() ).map( row => ({
+								id: row.id,
+								label: copy( row.symbol )
+							}) )
+						]
 					} );
 					npcPanel.geometry( output );
 					quads.push( ...output.quads );
@@ -12621,6 +12714,110 @@ export function createUi(
 					button( "job-alias-check", hudCopy( "UIIT_CTL_CHECK" ), ax!, ay!, aw! );
 					button( "job-alias-ok", hudCopy( "UIIT_CTL_OK" ), rx!, ry!, rw! );
 					button( "job-alias-cancel", hudCopy( "UIIT_CTL_CANCEL" ), rx! + rw! + 8, ry!, rw! );
+				}
+			}
+			if ( !game?.npcConversation || game.npcConversation.phase !== "menu" ) guildManagerHud.reset();
+			else if ( game.social?.compensation !== undefined && !guildManagerHud.question() ) {
+				guildManagerHud.ask( "compensation", game.npcConversation.gid, game.social.compensation );
+			}
+			const guildAsk = guildManagerHud.question(),
+				guildField = guildManagerHud.field(),
+				guildVote = guildManagerHud.vote();
+			if ( worldVisible && (guildAsk || guildField || guildVote) ) {
+				// The guild manager's boxes (guild-manager-hud.ts) in the job box's frame.
+				const layout = guildProposalLayout( w, h );
+				const say = ( key: string, ...args: string[] ) =>
+					noticeText( hudCopy, { key, value: 0, arguments: args } );
+				const price = guildAsk?.kind === "level-up" ? guildLevelUpPrice( guildAsk.value ) : undefined;
+				const title = guildField?.kind === "create" ?
+					"UIIT_CTL_GUILD_CREATE" :
+					guildField ?
+					"UIIT_STT_MLEAVE_WINDOWS" :
+					guildVote ?
+					"UIIT_STT_MRELEASE_VOTESTATE" :
+					"UIIT_STT_CONFIRM_BOX";
+				const lines: Record<string, readonly [string, string]> = {
+					"level-up": [
+						say( "UIIT_MSG_GUILD_LEVEL_UP_CONDITION", String( (guildAsk?.value ?? 0) + 1 ) ),
+						price ?
+							hudCopy( "UIIT_STT_NEED_GP" ) + " : " + price.gp + "   " +
+							hudCopy( "UIIT_STT_CIRCULATION_NEEDMONEY" ) + " : " + price.gold :
+							hudCopy( "UIIT_MSG_ERROR_GUILD_LEVEL_UP_FULL" )
+					],
+					"dissolve": [
+						hudCopy( "UIIT_MSG_GUILD_BREAK_CONFIRM" ),
+						hudCopy( "UIIT_MSG_GUILD_BREAK_ANOTHER_EXPLAIN" )
+					],
+					"secede": [ hudCopy( "UIIT_MSG_GUILD_SECESSION_CONFIRM" ), "" ],
+					"release": [ hudCopy( "UIIT_MSG_MRELEASE_CONFIRM" ), "" ],
+					"compensation": [
+						say( "UIIT_CTL_GUILDWAR_COMPENSATION_01", String( guildAsk?.value ?? 0 ) ),
+						hudCopy( "UIIT_CTL_GUILDWAR_COMPENSATION_02" )
+					],
+					"master-leave": [ hudCopy( "UIIT_MSG_MLEAVE_INPUTID" ), "" ],
+					"create": [ "", "" ],
+					"vote": [
+						Math.ceil( (guildVote?.remainingMs ?? 0) / 60000 ) + " " + hudCopy( "PARAM_MINUTE" ),
+						""
+					]
+				};
+				const [first, second] = lines[guildAsk?.kind ?? guildField?.kind ?? "vote"]!;
+				controls = [];
+				blocks = [ full ];
+				paths.push( ...partyProposalAssets() );
+				quads.push(
+					...normalTile( layout.background, MESSAGE_TILE, resources.size( MESSAGE_TILE ), full ),
+					...frameRing(
+						layout.frame,
+						MESSAGE_FRAME,
+						PARTS.map( p => resources.size( MESSAGE_FRAME + p + ".png" ) ),
+						full
+					),
+					...text.quads( hudCopy( title ), layout.title, full, white, { hAlign: 1, vAlign: 0 } ),
+					...text.quads( first, layout.name, full, white, { hAlign: 1, vAlign: 0 } )
+				);
+				if ( guildField ) {
+					const field: UiRect = [ layout.question[0], layout.question[1], layout.question[2], 16 ];
+					controls.push( {
+						id: "guild-manager-text",
+						label: hudCopy( title ),
+						kind: "text",
+						value: guildField.text,
+						rect: field,
+						maxLength: 12
+					} );
+					rect( field, [ 0, 0, 0, .6 ], "", [ 0, 0, 1, 1 ], full );
+					quads.push(
+						...text.quads( guildField.text, field, field, white, {
+							hAlign: 1,
+							vAlign: 1,
+							overflow: "clip"
+						} )
+					);
+					if ( focus === "guild-manager-text" && caretVisible ) {
+						const width = text.run( guildField.text ).width;
+						rect(
+							[ field[0] + (field[2] + width) / 2, field[1] + 1, 2, 14 ],
+							white,
+							"",
+							[ 0, 0, 1, 1 ],
+							field
+						);
+					}
+				} else {
+					quads.push( ...text.quads( second, layout.question, full, white, { hAlign: 1 } ) );
+				}
+				button(
+					"guild-manager-yes",
+					hudCopy( guildAsk ? "UIIT_CTL_YES" : "UIIT_CTL_OK" ),
+					...layout.accept.slice( 0, 3 ) as [number, number, number]
+				);
+				if ( !guildVote ) {
+					button(
+						"guild-manager-no",
+						hudCopy( guildAsk ? "UIIT_CTL_NO" : "UIIT_CTL_CANCEL" ),
+						...layout.refuse.slice( 0, 3 ) as [number, number, number]
+					);
 				}
 			}
 			if ( panel !== "Shop" ) repairHud.reset();

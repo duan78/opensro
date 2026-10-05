@@ -275,3 +275,19 @@ func (rt *Runtime) HandleGuildCompensationClaim(division string, c *enterworld.C
 	result.Frames = append(result.Frames, goldFrame(c))
 	return result
 }
+
+/*
+================
+GuildManagerInRange
+
+The guild package's create admission (guild.GuildManagers).
+================
+*/
+func (rt *Runtime) GuildManagerInRange(division string, c *enterworld.Character, gid uint32) bool {
+	if c == nil {
+		return false
+	}
+	unlock := rt.lockDivision(division)
+	defer unlock()
+	return rt.guildManagerNpc(division, c, gid)
+}

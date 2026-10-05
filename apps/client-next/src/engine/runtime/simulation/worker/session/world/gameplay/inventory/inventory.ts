@@ -30,7 +30,8 @@ import {
 	STORAGE_MOVE_DEPOSIT,
 	STORAGE_MOVE_WITHDRAW,
 	type StorageMove,
-	type StorageRoom
+	type StorageRoom,
+	storageWireType
 } from "@/engine/foundation/gameplay/storage-room";
 import { createAlchemy } from "./alchemy/alchemy";
 import { REPAIR_ONE_SLOT, REPAIR_RESPONSE_OPCODE, repairRequest } from "@/engine/foundation/gameplay/repair";
@@ -675,7 +676,7 @@ so an impossible request never leaves the client.
 				move,
 				caps
 			);
-			const frame = storageMoveRequest( room.npc, move );
+			const frame = storageMoveRequest( room.npc, move, room.guild );
 			send( frame );
 			pending = {
 				opcode: 0xb06d,
@@ -700,7 +701,9 @@ frame is not that echo (a rejection takes the generic receive path).
 ================
 		*/
 		storageSettle( room: StorageRoom, p: Uint8Array, caps: ReadonlyMap<number, number> ): StorageRoom | null {
-			if ( !pending?.storage || p[0] !== 1 || p[1] !== pending.movementType ) return null;
+			if ( !pending?.storage || p[0] !== 1 || p[1] !== storageWireType( pending.movementType!, room.guild ) ) {
+				return null;
+			}
 			const v = new DataView( p.buffer, p.byteOffset, p.byteLength );
 			const echo = pending.movementType === STORAGE_MOVE_ROOM ?
 				p.length === 6 && p[2] === pending.source && p[3] === pending.destination &&

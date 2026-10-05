@@ -1077,6 +1077,21 @@ state here before a command can claim a native wire conversation.
 				dirty = true;
 				return null;
 			}
+			if ( command.kind === "storage-open-guild" ) {
+				const target = targeting.state();
+				// The warehouse row exists only on a selected guild manager (0x4000).
+				if ( !localGid || target.target !== command.gid || !((target.targetCapabilities ?? 0) & 0x4000) ) {
+					throw Error( "Select a guild manager" );
+				}
+				storage.openGuild( command.gid );
+				dirty = true;
+				return null;
+			}
+			if ( command.kind === "compensation-dismiss" ) {
+				social = { ...social, compensation: undefined };
+				dirty = true;
+				return null;
+			}
 			if ( command.kind === "storage-close" ) {
 				storage.close();
 				dirty = true;

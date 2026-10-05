@@ -508,7 +508,7 @@ func (game *gameplayPlane) register(hub *transport.Hub, loadQuests questDefiniti
 	gmcommand.Register(hub, game.deps, game.presence, game.items)
 	game.matches.Register(hub)
 	game.parties.Register(hub)
-	guild.Register(hub, game.deps, game.presence)
+	guild.Register(hub, game.deps, game.presence, game.items)
 	game.guildInvites.Register(hub)
 	game.mentorInvites.Register(hub)
 	return nil
