@@ -203,6 +203,10 @@ func (g stubGuilds) CloseDueGuildVotes(string, int64, uint8, uint32) []domain.Gu
 	return nil
 }
 
+func (g stubGuilds) TransactGuildStorageAs(string, int64, func(*domain.Character, *domain.AccountStorage) error) (domain.AccountStorage, enterworld.GuildRefusal, error) {
+	return domain.AccountStorage{}, enterworld.GuildRefusalUpdateRejected, nil
+}
+
 func (g stubGuilds) LevelUpGuildAs(string, int64) (enterworld.GuildSnapshot, enterworld.GuildRefusal) {
 	return enterworld.GuildSnapshot{}, enterworld.GuildRefusalUpdateRejected
 }

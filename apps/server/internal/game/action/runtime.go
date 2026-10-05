@@ -61,9 +61,12 @@ type Runtime struct {
 	jobDresses          sync.Map // simulation.WorldKey -> jobDress (jobdress.go)
 	// caravans are the registered trade caravans (caravan.go); caravanMu
 	// serializes the registry and caravanTickMs is its last advance.
-	caravanMu         sync.Mutex
-	caravans          *caravan.Registry
-	caravanTickMs     int64
+	caravanMu     sync.Mutex
+	caravans      *caravan.Registry
+	caravanTickMs int64
+	// guildStorageUsers is each guild warehouse's single user
+	// (npcguildstorage.go): guildStorageKey -> character name.
+	guildStorageUsers sync.Map
 	criticals         criticalHistory
 	deps              Dependencies
 	Ground            *grounditem.Registry

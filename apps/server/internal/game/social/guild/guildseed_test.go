@@ -101,6 +101,10 @@ func (s staticGuildStore) CloseDueGuildVotes(string, int64, uint8, uint32) []dom
 	return nil
 }
 
+func (s staticGuildStore) TransactGuildStorageAs(string, int64, func(*domain.Character, *domain.AccountStorage) error) (domain.AccountStorage, enterworld.GuildRefusal, error) {
+	return domain.AccountStorage{}, enterworld.GuildRefusalUpdateRejected, nil
+}
+
 func (s staticGuildStore) LevelUpGuildAs(string, int64) (enterworld.GuildSnapshot, enterworld.GuildRefusal) {
 	return enterworld.GuildSnapshot{}, enterworld.GuildRefusalUpdateRejected
 }

@@ -164,3 +164,54 @@ func (door storeGuildDoor) CloseDueGuildVotes(divisionID string, nowMs int64, fo
 	}
 	return outcomes
 }
+
+/*
+================
+TransactGuildStorageAs
+
+The guild warehouse transfer (v1.188 guild storage jobs): the acting
+member and their guild's warehouse change together in one commit. The
+capacity is the guild level's (GuildStorageCapacity); rows the level no
+longer covers stay stored but out of reach.
+================
+*/
+func (door storeGuildDoor) TransactGuildStorageAs(divisionID string, actorID int64, mutate func(next *domain.Character, storage *domain.AccountStorage) error) (domain.AccountStorage, domain.GuildRefusal, error) {
+	s := door.s
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	guildID, guild, _, _, actor, refusal := door.authorizedGuildActorLocked(divisionID, actorID, domain.GuildAuthorization{})
+	if refusal.Refused() {
+		return domain.AccountStorage{}, refusal, nil
+	}
+	current := domain.AccountStorage{}
+	if guild.Storage != nil {
+		current = *guild.Storage
+	}
+	current.Capacity = domain.GuildStorageCapacity(guild.Level)
+	storage := current
+	storage.Rows = append([]domain.InventoryRow(nil), current.Rows...)
+	for i := range storage.Rows {
+		storage.Rows[i].Summon = domain.CloneCOS(current.Rows[i].Summon)
+		storage.Rows[i].MagicOptions = append([]uint64(nil), current.Rows[i].MagicOptions...)
+	}
+	if mutate == nil {
+		return current, domain.GuildRefusalNone, nil
+	}
+	next := actor.Snapshot()
+	if err := mutate(next, &storage); err != nil {
+		return current, domain.GuildRefusalNone, err
+	}
+	if err := validateAccountStorage(storage); err != nil {
+		return current, domain.GuildRefusalNone, err
+	}
+	actor.MissionInventory = next.MissionInventory
+	actor.Gold = next.Gold
+	stored := storage
+	guild.Storage = &stored
+	s.guilds[divisionID][guildID] = guild
+	s.changes.guilds[guildKey{division: divisionID, guildID: guildID}] = true
+	s.changes.characters[actor] = true
+	s.commitLocked(fmt.Sprintf("guild-storage %s/%d", divisionID, guildID))
+	return storage, domain.GuildRefusalNone, nil
+}

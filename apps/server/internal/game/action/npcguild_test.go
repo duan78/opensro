@@ -196,3 +196,54 @@ func TestMemberCallsAReleaseVoteOnALongGoneMaster(t *testing.T) {
 		t.Fatalf("a stale vote answered %x", out.Frames[0].Payload)
 	}
 }
+
+/*
+================
+TestGuildWarehouseOpensAtLevelTwoForOneMember
+
+5C7440: level 1 refuses with 0x4A; at level 2 the master holds the room,
+lists 30 slots and deposits gold into it.
+================
+*/
+func TestGuildWarehouseOpensAtLevelTwoForOneMember(t *testing.T) {
+	d := guildManagerFixture(t)
+	c := d.character
+	request := wire.NewWriter(4).U32(guildManagerGid).Payload()
+	if out := d.rt.HandleGuildStorageOpen(testDivision, c, request); !bytes.Equal(out.Frames[0].Payload, []byte{2, guildStorageErrLevel}) {
+		t.Fatalf("a level 1 guild opened its warehouse: %x", out.Frames[0].Payload)
+	}
+	guilds := d.authority.Guilds()
+	if _, refusal := guilds.UpdateGuildAs(testDivision, c.ID, "fixture-level", enterworld.GuildAuthorization{},
+		func(g enterworld.GuildRecord, m []enterworld.GuildMemberRecord) (enterworld.GuildRecord, []enterworld.GuildMemberRecord, bool) {
+			g.Level = 2
+			return g, m, true
+		}); refusal.Refused() {
+		t.Fatalf("fixture level %v", refusal)
+	}
+	d.rt.characterAdmissions.Store(simulation.WorldKey(testDivision, c.Name), populationAdmission{division: testDivision, name: c.Name})
+	if out := d.rt.HandleGuildStorageOpen(testDivision, c, request); !bytes.Equal(out.Frames[0].Payload, []byte{1}) {
+		t.Fatalf("open answered %x", out.Frames[0].Payload)
+	}
+	list := d.rt.HandleGuildStorageList(testDivision, c, request)
+	assertOpcodes(t, list.Frames, opCommerceItemReferences, wire.OpGuildStorageGold, wire.OpGuildStorageList, opGuildStorageListed)
+	if list.Frames[2].Payload[0] != 30 {
+		t.Fatalf("a level 2 room holds %d slots", list.Frames[2].Payload[0])
+	}
+	gold := int64(5000)
+	if !d.authority.UpdateCharacters([]*enterworld.Character{c}, "fixture-gold", func() bool { c.Gold = &gold; return true }) {
+		t.Fatal("fixture gold refused")
+	}
+	d.rt.Selected.Set(testDivision, c.Name, guildManagerGid)
+	out := d.rt.applyGuildStorageMove(testDivision, c, wire.ItemMoveRequest{MovementType: wire.MoveTypeGuildStorageGoldDeposit, GoldAmount: 1200})
+	if out.Frames[0].Payload[0] != 1 || goldOf(c) != 3800 {
+		t.Fatalf("deposit %+v gold %d", out.Frames, goldOf(c))
+	}
+	guildID, _ := guilds.GuildOfCharacter(testDivision, c.ID)
+	if record, _, _ := guilds.Guild(testDivision, guildID); record.Storage == nil || record.Storage.Gold != 1200 {
+		t.Fatalf("guild room %+v", record.Storage)
+	}
+	d.rt.HandleGuildStorageClose(testDivision, c, request)
+	if out := d.rt.applyGuildStorageMove(testDivision, c, wire.ItemMoveRequest{MovementType: wire.MoveTypeGuildStorageGoldWithdraw, GoldAmount: 1}); out.Frames[0].Payload[0] == 1 {
+		t.Fatal("a closed room paid out")
+	}
+}

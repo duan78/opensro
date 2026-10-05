@@ -23,6 +23,9 @@ type GuildRecord struct {
 	WarCompensation int64 `json:"warCompensation,omitempty"`
 	// Vote is the open master release vote (guildvote.go), or nil.
 	Vote *GuildVote `json:"vote,omitempty"`
+	// Storage is the guild warehouse's gold and rows; its capacity follows
+	// the level (GuildStorageCapacity), never the record.
+	Storage *AccountStorage `json:"storage,omitempty"`
 }
 
 // GuildMemberRecord is one guild membership row plus the read-model fields
@@ -208,4 +211,8 @@ type GuildStore interface {
 	// CloseDueGuildVotes closes every vote past its end, electing where the
 	// tally allows; the replaced master takes formerGrade and formerPerm.
 	CloseDueGuildVotes(divisionID string, nowMs int64, formerGrade uint8, formerPerm uint32) []GuildVoteOutcome
+	// TransactGuildStorageAs runs mutate on detached copies of the acting
+	// member and their guild's warehouse; only the member's inventory and
+	// gold and the warehouse commit, together, or nothing does.
+	TransactGuildStorageAs(divisionID string, actorID int64, mutate func(next *Character, storage *AccountStorage) error) (AccountStorage, GuildRefusal, error)
 }

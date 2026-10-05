@@ -33,6 +33,13 @@ var guildLevelUpCosts = [GuildMaxLevel]GuildLevelUpCost{
 	4: {GP: 378000, Gold: 21000000},
 }
 
+// guildStorageCapacity is v1.188 0xC6B5F0 (5C4BA0) by level: the warehouse
+// opens at level 2 with one page of 30.
+var guildStorageCapacity = [GuildMaxLevel + 1]int64{2: 30, 3: 60, 4: 90, 5: 120}
+
+// GuildStorageMinLevel is 5C7440's level test (0x4A below it).
+const GuildStorageMinLevel uint8 = 2
+
 // guildMemberCapacity is 0xBE4490 by level.
 var guildMemberCapacity = [GuildMaxLevel + 1]int{1: 15, 2: 20, 3: 25, 4: 35, 5: 50}
 
@@ -59,4 +66,15 @@ The member cap of a level; a level outside 1..5 reads as the nearest.
 */
 func GuildMemberCapacity(level uint8) int {
 	return guildMemberCapacity[min(max(level, 1), GuildMaxLevel)]
+}
+
+/*
+================
+GuildStorageCapacity
+
+The warehouse slots of a level; none below level 2.
+================
+*/
+func GuildStorageCapacity(level uint8) int64 {
+	return guildStorageCapacity[min(level, GuildMaxLevel)]
 }

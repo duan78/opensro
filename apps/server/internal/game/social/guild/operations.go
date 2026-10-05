@@ -31,6 +31,9 @@ const (
 	PermMaskNoticeEdit uint32 = 0x10
 	PermMaskKick       uint32 = 0x2
 	PermMaskInvite     uint32 = 0x1
+	// PermMaskStorage is the warehouse bit 5C7440 asks of a non-master
+	// (CGuild_MemberHasPermission(member, 8)).
+	PermMaskStorage uint32 = 0x8
 	// LeaderGrade is the member grade the client's sub_826610 fold
 	// publishes as the leader name (grade 0 = leader).
 	LeaderGrade uint8 = 0

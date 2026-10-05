@@ -344,6 +344,7 @@ func (rt *Runtime) forgetCharacterLocked(divisionID, characterName string) {
 	if c := rt.findCharacter(divisionID, characterName); c != nil {
 		departedGID = enterworld.ObjectIDForCharacter(c)
 		rt.noteLastSeen(c)
+		rt.releaseGuildStorage(divisionID, c.Name)
 	}
 	if rt.Monsters != nil {
 		rt.Monsters.ForgetAbnormalSource(divisionID, departedGID, characterName)
