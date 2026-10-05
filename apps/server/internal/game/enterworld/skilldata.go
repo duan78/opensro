@@ -348,10 +348,15 @@ func (r SkillRow) ActionLifecycleMs() (uint64, bool) {
 	return uint64(r.ActionCastingTimeMs) + uint64(r.ActionDurationMs), true
 }
 
-// continueBasicAttackColumn is ref +0x90: 4AECA4 tests its byte against
-// zero, so every nonzero value (1, and the 2 the bow buffs author) resumes
-// the basic attack after the skill.
+// continueBasicAttackColumn is ref +0x90 (_RefSkill Action_AutoAttackType).
+// CGCharAutoCommandActor_Handler_SkillCast resumes the basic attack only
+// when the byte is exactly 1 (cmp byte [ref+0x90], 1 at 4AED19); the 2 that
+// 371 retail rows author (the bow buffs among them) and 0 end the attack.
+// 4AECA4's nonzero test only returns the borrowed chain latency.
 const continueBasicAttackColumn = 19
+
+// resumesBasicAttack is the one value 4AED19 accepts.
+const resumesBasicAttack = 1
 
 // skillActivityQueued is the activity (column 8) of an ordinary cast;
 // InitiateSkillCast compares ref +0x65 with 2 at 59B5F6.
@@ -604,7 +609,7 @@ func (t *TextdataSkills) parse(shards []string) {
 				continue
 			}
 			row := SkillRow{
-				ContinueBasicAttack:    textdataU32(fields[continueBasicAttackColumn]) != 0,
+				ContinueBasicAttack:    textdataU32(fields[continueBasicAttackColumn]) == resumesBasicAttack,
 				CancellationDeferred:   nativeSkillDefersCancellation(fields, spawnParamArity),
 				NameAttackContent:      nativeNameAttackContent(fields),
 				PassiveCritical:        encodedPassiveCritical(fields),

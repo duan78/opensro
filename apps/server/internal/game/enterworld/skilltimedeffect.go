@@ -344,8 +344,8 @@ func parseSkillTimedEffect(fields []string, row *SkillRow) {
 		}
 	}
 	// Column 19 (continueBasicAttackColumn) is not among them: it only says
-	// whether the basic attack resumes after the cast, which the bow buffs
-	// (White Hawk Summon, Demon Soul Arrow) author as 2.
+	// whether the basic attack resumes after the cast. The bow buffs (White
+	// Hawk Summon, Demon Soul Arrow) author 2, which 4AED19 does not resume.
 	if _, ok := textdataByte(fields[continueBasicAttackColumn]); !ok {
 		return
 	}
