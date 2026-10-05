@@ -163,6 +163,38 @@ export function createCharacterEffects(
 	const impactIndexes = new Map<number, ReadonlyMap<string, number>>();
 	const seen = new Set<string>(), active = new Map<number, EffectVisual>(), unsupported = new Set<string>();
 	const pendingTriggers = new Map<string, EffectTrigger>();
+	/*
+	================
+	adoptCast
+
+	The server's cast takes over its press's prediction: the windup visuals,
+	callbacks and weapon hiding the prediction started continue under the
+	server's token instead of retiring with the prediction.
+	================
+	*/
+	function adoptCast( from: number, cast: import("@/engine/contracts/gameplay").CastState ) {
+		const prefix = `${from}:`;
+		for ( const [gid, visual] of active ) {
+			if ( visual.token === from ) active.set( gid, { ...visual, token: cast.token } );
+		}
+		for ( const key of [ ...seen ] ) {
+			if ( key.startsWith( prefix ) ) {
+				seen.delete( key );
+				seen.add( `${cast.token}:${key.slice( prefix.length )}` );
+			}
+		}
+		for ( const [key, trigger] of [ ...pendingTriggers ] ) {
+			if ( key.startsWith( prefix ) ) {
+				pendingTriggers.delete( key );
+				pendingTriggers.set( `${cast.token}:${key.slice( prefix.length )}`, { ...trigger, cast } );
+			}
+		}
+		const weaponOwner = weaponOwners.get( from );
+		if ( weaponOwner !== undefined ) {
+			weaponOwners.delete( from );
+			weaponOwners.set( cast.token, weaponOwner );
+		}
+	}
 	const visualStarts = new Map<number, number>();
 	const system = new Map<
 		number,
@@ -830,6 +862,11 @@ export function createCharacterEffects(
 			);
 			failure = null;
 			try {
+				for ( const cast of gameplay?.casts ?? [] ) {
+					if ( cast.predictedToken !== undefined && cast.predictedToken !== cast.token ) {
+						adoptCast( cast.predictedToken, cast );
+					}
+				}
 				const castStates = new Map( gameplay?.casts.map( cast => [ cast.token, cast ] ) ?? [] );
 				const current = new Set( castStates.keys() );
 				const byGid = new Map( entities.map( entity => [ entity.gid, entity ] ) );
@@ -1160,7 +1197,7 @@ export function createCharacterEffects(
 										x: (pose.regionId & 255) * 1920 + pose.x,
 										y: pose.y,
 										z: (pose.regionId >>> 8) * 1920 + pose.z,
-										expires: trigger.at + 0.25
+										expires: (trigger.adopted ? now : trigger.at) + 0.25
 									} );
 								}
 								if ( !stage.resource ) {

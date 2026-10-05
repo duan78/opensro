@@ -281,4 +281,7 @@ export interface EffectTrigger {
 	readonly phase: string;
 	readonly event: number;
 	readonly at: number;
+	// adopted marks an event a prediction held until the server's answer:
+	// it is delivered late on purpose, so its sound is not stale.
+	readonly adopted?: boolean;
 }
