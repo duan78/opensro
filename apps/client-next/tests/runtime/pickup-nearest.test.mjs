@@ -16,6 +16,7 @@ const local = { gid: 7, regionId: 0x6a8c, x: 100, z: 100 };
 const drop = ( gid, x, item = {} ) => ({
 	gid,
 	kind: "ground-item",
+	name: "",
 	refObjId: 1,
 	regionId: 0x6a8c,
 	x,
