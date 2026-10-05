@@ -1,7 +1,8 @@
 /*
 ===========================================================================
 
-player-attack.ts - what a click on another player does
+player-attack.ts - what a click on another player does, and when a pet
+is sent at one
 
 CGInterface_HandlePlayerInteraction (693E50, reached from
 CGInterface_OnWorldClick) attacks a player only when it is already the
@@ -115,4 +116,19 @@ export function playerInteraction(
 	const caped = c.localItem !== undefined && jobItemType( c.localItem.typeFlags ) === PVP_CAPE_ITEM;
 	if ( !caped && (c.local.level ?? 0) < PLAYER_ATTACK_MIN_LEVEL && !input.guildWar ) return { kind: "low-level" };
 	return { kind: "attack" };
+}
+
+/*
+================
+petPlayerAttack
+
+CICCos_ExecuteActionCommand (6A2350) case 2 for a player target: an attack
+pet is sent at a player who is no party member, whom CICUser_CanAttack
+admits, and only by an owner of level 20 or above (else notice 4:0x16).
+================
+*/
+export function petPlayerAttack( target: EntityState, c: NameColorContext, alt: boolean ): PlayerInteraction {
+	if ( target.kind !== "player" || partyName( c.social, target.name ) ) return { kind: "none" };
+	if ( !canAttackPlayer( target, c, alt ) ) return { kind: "none" };
+	return (c.local.level ?? 0) < PLAYER_ATTACK_MIN_LEVEL ? { kind: "low-level" } : { kind: "attack" };
 }

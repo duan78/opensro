@@ -819,13 +819,25 @@ rollMonsterOnPlayer ports 590680 for a monster's hit on a player.
 ==================
 */
 func (rt *Runtime) rollMonsterOnPlayer(division string, instance monster.Instance, params *abnormal.SkillParams, target *enterworld.Character, defender combat.Stats, wall *enterworld.SkillWall) ([]abnormal.Record, error) {
+	return rt.rollCreatureOnPlayer(division, instance.Gid, instance.Ref.Level, params, target, defender, wall)
+}
+
+/*
+==================
+rollCreatureOnPlayer
+
+590680 for a non-player attacker (a monster, an attack pet) on a player:
+the attacker contributes its level and object ID, the victim its side.
+==================
+*/
+func (rt *Runtime) rollCreatureOnPlayer(division string, source uint32, level uint8, params *abnormal.SkillParams, target *enterworld.Character, defender combat.Stats, wall *enterworld.SkillWall) ([]abnormal.Record, error) {
 	if params == nil || !params.Present() {
 		return nil, nil
 	}
 	in := playerVictimRollInput(params, target, defender, wall)
-	in.CasterLevel = instance.Ref.Level
-	in.SourceGID = instance.Gid
-	random := &abnormalRandom{rt: rt, actor: criticalActor{division: division, monster: instance.Gid}}
+	in.CasterLevel = level
+	in.SourceGID = source
+	random := &abnormalRandom{rt: rt, actor: criticalActor{division: division, monster: source}}
 	records := abnormal.Roll(in, random)
 	return records, random.err
 }

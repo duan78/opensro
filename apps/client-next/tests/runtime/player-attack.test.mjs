@@ -10,7 +10,9 @@ admits, it is no party member and the attacker meets the level rule
 import "../helpers/native-source-loader.mjs";
 import { test } from "node:test";
 import assert from "node:assert/strict";
-const { canAttackPlayer, playerInteraction } = await import( "../../src/engine/foundation/gameplay/player-attack.ts" );
+const { canAttackPlayer, petPlayerAttack, playerInteraction } = await import(
+	"../../src/engine/foundation/gameplay/player-attack.ts"
+);
 
 /** @param {object} [fields] */
 const player = ( fields = {} ) => ({
@@ -84,4 +86,14 @@ test("an event match decides by team alone", () => {
 	const local = { ...c.local, arenaTeam: 1 };
 	assert.equal( canAttackPlayer( player( { arenaTeam: 1, pvpState: 2 } ), { ...c, local }, true ), false );
 	assert.equal( canAttackPlayer( player( { arenaTeam: 2 } ), { ...c, local }, false ), true );
+});
+
+test("an attack pet is sent at an attackable player by an owner of level 20", () => {
+	assert.deepEqual( petPlayerAttack( player( { pvpState: 2 } ), context(), false ), { kind: "attack" } );
+	assert.deepEqual( petPlayerAttack( player(), context(), false ), { kind: "none" } );
+	const low = context();
+	assert.deepEqual(
+		petPlayerAttack( player( { pvpState: 2 } ), { ...low, local: { ...low.local, level: 19 } }, false ),
+		{ kind: "low-level" }
+	);
 });
