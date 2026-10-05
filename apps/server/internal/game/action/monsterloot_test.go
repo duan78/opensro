@@ -330,7 +330,7 @@ func TestDropAdmissionNegativeThresholdAndGradeSeven(t *testing.T) {
 	if rt.admitMonsterDrop(31, target) {
 		t.Fatal("a negative threshold admitted roll 0")
 	}
-	target.Ref.MonsterType = 7
+	target.Nest.HasRarityOverride, target.Nest.RarityOverride = true, 7
 	rt.DropRoll = dropRollSequence(100)
 	if !rt.admitMonsterDrop(11, target) {
 		t.Fatal("a grade-7 monster's quadrupled threshold refused roll 100")

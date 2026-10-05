@@ -123,7 +123,7 @@ func (rt *Runtime) casterAreaVictims(division string, c *enterworld.Character, s
 	if area.MaxTargets == 0 {
 		return nil
 	}
-	lease, present := rt.EntryPopulationLease(division, c.Name)
+	lease, present := rt.casterPopulation(division, c)
 	if !present {
 		return nil
 	}

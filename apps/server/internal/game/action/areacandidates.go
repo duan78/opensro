@@ -161,5 +161,23 @@ func (rt *Runtime) areaPopulation(division string, c *enterworld.Character, prim
 	if primary.monster != nil && rt.Monsters != nil {
 		return rt.Monsters.ObjectPopulation(division, primary.gid)
 	}
-	return rt.EntryPopulationLease(division, c.Name)
+	return rt.casterPopulation(division, c)
+}
+
+/*
+================
+casterPopulation
+
+The monster population of the caster's world: its admitted session's, else
+the world's own lease (a caster admitted before population sessions).
+================
+*/
+func (rt *Runtime) casterPopulation(division string, c *enterworld.Character) (instance.Lease, bool) {
+	if lease, ok := rt.EntryPopulationLease(division, c.Name); ok {
+		return lease, true
+	}
+	if rt.Monsters == nil {
+		return instance.Lease{}, false
+	}
+	return rt.Monsters.PopulationLease(division, instance.ID(domain.CharacterWorldInstance(c)))
 }
