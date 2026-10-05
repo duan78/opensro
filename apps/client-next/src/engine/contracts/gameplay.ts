@@ -216,6 +216,8 @@ export type GameplayCommand =
 	| { readonly kind: "chat"; readonly channel: number; readonly text: string; readonly target?: string; }
 	| { readonly kind: "mount"; readonly gid: number; }
 	| { readonly kind: "pickup"; readonly gid: number; }
+	// The pickup shortcut: the worker chooses the item (pickup-nearest.ts).
+	| { readonly kind: "pickup-nearest"; }
 	| {
 		readonly kind: "release-target";
 	}

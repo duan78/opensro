@@ -1072,6 +1072,16 @@ export function createEntities(
 		read: ( gid: number ) => entities.get( gid ),
 		/*
 		================
+		groundItems
+
+		The ground items in the table now, every despawn already applied.
+		================
+		*/
+		groundItems(): EntityState[] {
+			return [ ...entities.values() ].filter( entity => entity.kind === "ground-item" );
+		},
+		/*
+		================
 		die
 		================
 		*/

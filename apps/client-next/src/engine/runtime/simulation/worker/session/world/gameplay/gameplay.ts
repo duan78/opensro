@@ -154,6 +154,7 @@ import { createMoveReservation } from "./reservation/reservation";
 import { createBetaPlayerMap } from "./beta-map/beta-map";
 import type { GameplayCommand, GameplayState } from "@/engine/contracts/gameplay";
 import type { EntityState } from "@/engine/contracts/world";
+import { nearestPickable } from "@/engine/foundation/gameplay/pickup-nearest";
 import type { WireFrame } from "@/engine/contracts/network";
 /*
 ================
@@ -902,6 +903,25 @@ localIdentity
 		*/
 		localIdentity() {
 			return localGid;
+		},
+		/*
+================
+pickupNearest
+
+The pickup shortcut's item among candidates (pickup-nearest.ts): from the
+live pose, and the party whose drops the server may share.
+================
+		*/
+		pickupNearest( candidates: readonly EntityState[] ): number | undefined {
+			const pose = movement.state().pose;
+			if ( !pose || !localGid ) return undefined;
+			const party = new Set( social.members.map( member => member.id ) );
+			return nearestPickable(
+				candidates,
+				{ gid: localGid, regionId: pose.regionId, x: pose.x, z: pose.z },
+				party
+			)
+				?.gid;
 		},
 		/*
 ================

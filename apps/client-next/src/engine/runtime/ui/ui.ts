@@ -1067,14 +1067,8 @@ export function createUi(
 			return;
 		}
 		if ( id === 1008 ) {
-			const pose = game.pose,
-				item = pose ?
-					view!.entities.filter( e => e.kind === "ground-item" && e.regionId === pose.regionId ).sort( (
-						a,
-						b
-					) => Math.hypot( a.x - pose.x, a.z - pose.z ) - Math.hypot( b.x - pose.x, b.z - pose.z ) )[0] :
-					undefined;
-			if ( item ) sendGameplay( { kind: "pickup", gid: item.gid } );
+			// The worker picks the item; this frame's view may still hold the last.
+			sendGameplay( { kind: "pickup-nearest" } );
 			return;
 		}
 		if ( id === 1002 ) {

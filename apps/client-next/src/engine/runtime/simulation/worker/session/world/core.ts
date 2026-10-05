@@ -272,6 +272,13 @@ UI and quickslot commands. A skill aims at the newest selection intent
 				send( frame );
 				return;
 			}
+			// The worker chooses the shortcut's item: its table already holds every
+			// despawn and grant the server sent before the press (pickup-nearest.ts).
+			if ( command.kind === "pickup-nearest" ) {
+				const gid = gameplay.pickupNearest( entities.groundItems() );
+				if ( !gid ) return;
+				command = { kind: "pickup", gid };
+			}
 			const itemType = command.kind === "item-use" ? gameplay.itemUseType( command.slot ) : undefined;
 			// The UI's snapshot target trails a fresh click by one grant round trip.
 			if ( command.kind === "skill" ) {
