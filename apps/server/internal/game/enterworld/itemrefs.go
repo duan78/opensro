@@ -350,6 +350,7 @@ func buildCharacterRef(fields []string, names map[string]string) *CharacterRef {
 		RefObjID:                   uint32(refObjID),
 		TidWord:                    tidWord,
 		Codename:                   strings.TrimSpace(fields[2]),
+		NextCodename:               characterNextCodename(fields[6]),
 		NameStrID:                  nameStrID,
 		Name:                       names[nameStrID],
 		WalkSpeed:                  float32(walk),
@@ -360,6 +361,21 @@ func buildCharacterRef(fields []string, names map[string]string) *CharacterRef {
 		MaxMP:                      uint32(maxMP),
 		MountedAttackCapability210: uint32(capability),
 	}
+}
+
+/*
+==================
+characterNextCodename
+
+Column 6 names the next form, or "xxx" / blank for none.
+==================
+*/
+func characterNextCodename(field string) string {
+	name := strings.TrimSpace(field)
+	if name == "xxx" {
+		return ""
+	}
+	return name
 }
 
 /*

@@ -166,6 +166,12 @@ func noteParameterIndex(fields []string, row *SkillRow) {
 			if mask, ok := word(i + 1); ok && mask != 0 {
 				row.SelectorMask = mask
 			}
+		case 0x65787069: // expi
+			first, firstOK := word(i + 1)
+			second, secondOK := word(i + 2)
+			if firstOK && secondOK {
+				row.ExpIncrease = [2]uint32{first, second}
+			}
 		case 0x72657163: // reqc
 			if flags, ok := word(i + 1); ok {
 				row.Reqc = SkillReqc{Present: true, KnockedDown: flags&1 != 0, LowHP: flags&4 != 0, Flag16: flags&0x10 != 0, Dance: flags&32 != 0}

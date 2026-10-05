@@ -1984,6 +1984,26 @@ Packet handling must not depend on which HUD panel is currently open.
 					return false;
 				}
 				if ( fortressNext ) return true;
+				if ( frame.opcode === 0x3508 && frame.payload[4] === 7 ) {
+					// 77A570 case 7: a growing pet becomes its next form (server
+					// 4EFD10). The owner's record takes the reference and the full
+					// satiety; the entity lane then swaps every viewer's model.
+					const p = frame.payload;
+					if ( p.length !== 9 ) throw Error( "Invalid COS reference change" );
+					const v = new DataView( p.buffer, p.byteOffset, p.byteLength );
+					const gid = v.getUint32( 0, true ), refObjId = v.getUint32( 5, true );
+					if ( !gid || !refObjId ) throw Error( "Invalid COS reference" );
+					const record = cosRecords.get( gid );
+					if ( record ) {
+						cosRecords.set( gid, {
+							...record,
+							refObjId,
+							...(record.band === 3 ? { satiety: 10000 } : {})
+						} );
+						dirty = true;
+					}
+					return false;
+				}
 				if ( frame.opcode === 0x3508 && frame.payload[4] === 4 ) {
 					const p = frame.payload;
 					if ( p.length !== 7 ) throw Error( "Invalid COS satiety update" );

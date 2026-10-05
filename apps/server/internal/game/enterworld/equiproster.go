@@ -177,10 +177,13 @@ sub_692cb0 treats a nonzero value as the mounted-attack gate.
 type CharacterRef struct {
 	// Parameters shares the RefObjChar tail with monsters, not the rider's
 	// player keeper. The enclosing reference owns identity and movement.
-	Parameters                 monster.MonsterRef
-	RefObjID                   uint32
-	TidWord                    uint16
-	Codename                   string
+	Parameters monster.MonsterRef
+	RefObjID   uint32
+	TidWord    uint16
+	Codename   string
+	// NextCodename is column 6: the reference an attack pet becomes at its
+	// next level (CGObjAttackCOS_AdvanceLevelAndReference walks it, 4D6210).
+	NextCodename               string
 	NameStrID                  string
 	Name                       string
 	WalkSpeed                  float32

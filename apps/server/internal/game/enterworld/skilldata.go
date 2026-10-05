@@ -145,8 +145,12 @@ type SkillRow struct {
 	// SelectorMask is scls (0x73636C73) at RefSkill+0x380. Argument 1 is bit 0,
 	// installed by CSkillManager_InstallSelector while that skill is active.
 	SelectorMask uint32
-	Reqi         SkillReqi
-	Aura         SkillAura
+	// ExpIncrease is expi (0x65787069, RefSkill+0x3EC): the buff writes its
+	// first word to parameter 0xB9 and its second, the EXP percent an
+	// attack pet's award adds (4FCB00), to 0xBA (594D3B).
+	ExpIncrease [2]uint32
+	Reqi        SkillReqi
+	Aura        SkillAura
 	// BuffModifiers are the dru / odar blocks any buff installs (594AC0).
 	BuffModifiers SkillBuffModifiers
 	Heal          SkillHeal

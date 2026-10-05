@@ -377,6 +377,15 @@ func (rt *Runtime) settleMonsterInsideDoor(division string, actor *enterworld.Ch
 			} else if private := wire.ProgressionPrivateFrames(frames); len(private) > 0 {
 				out.others = append(out.others, RecipientFrames{a.character.ID, private})
 			}
+			// 4EAC24: the recipient's attack pets share the award even when
+			// the owner's own EXP came to nothing.
+			petFrames, petArea := rt.awardAttackPetExperience(a.character, impact.Instance, g.damage, factors[i], now)
+			out.public = append(out.public, petArea...)
+			if a.character == actor {
+				out.actorFrames = append(out.actorFrames, petFrames...)
+			} else if len(petFrames) > 0 {
+				out.others = append(out.others, RecipientFrames{a.character.ID, petFrames})
+			}
 		}
 	}
 	if a, ok := roster.actors[winner]; ok {

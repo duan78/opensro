@@ -31,6 +31,7 @@ type residentSkill struct {
 	Knockdown               unique.Handle[SkillKnockdown]
 	Reqc                    SkillReqc
 	SelectorMask            uint32
+	ExpIncrease             [2]uint32
 	Reqi                    SkillReqi
 	Aura                    SkillAura
 	BuffModifiers           SkillBuffModifiers
@@ -133,6 +134,7 @@ func compactSkill(row SkillRow) residentSkill {
 		Knockdown:               unique.Make(row.Knockdown),
 		Reqc:                    row.Reqc,
 		SelectorMask:            row.SelectorMask,
+		ExpIncrease:             row.ExpIncrease,
 		Reqi:                    row.Reqi,
 		Aura:                    row.Aura,
 		BuffModifiers:           row.BuffModifiers,
@@ -237,6 +239,7 @@ func (r residentSkill) value() SkillRow {
 		Knockdown:               r.Knockdown.Value(),
 		Reqc:                    r.Reqc,
 		SelectorMask:            r.SelectorMask,
+		ExpIncrease:             r.ExpIncrease,
 		Reqi:                    r.Reqi,
 		Aura:                    r.Aura,
 		BuffModifiers:           r.BuffModifiers,
