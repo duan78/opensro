@@ -29,6 +29,7 @@ import {
 import { berserkHud, berserkEntryFlash } from "@/engine/foundation/ui/berserk-hud";
 import { resolveTextOverlaps } from "@/engine/foundation/rendering/ui-glyphs";
 import { portalMenu } from "@/engine/foundation/gameplay/portal";
+import { restoreSlotEntry } from "@/engine/foundation/gameplay/commerce";
 import type { BugReportControl } from "@/engine/contracts/bug-report";
 import { equipmentDropSlot } from "@/engine/foundation/gameplay/equipment-drop";
 import { itemEquipmentOverlay, equipmentWarningUv } from "@/engine/foundation/ui/item-equipment-overlay";
@@ -10237,7 +10238,7 @@ export function createUi(
 						);
 					}
 					for ( let i = 0; i < 5; i++ ) {
-						const entry = shop?.buyback?.find( row => row.index === i ),
+						const entry = restoreSlotEntry( shop?.buyback ?? [], i ),
 							index = shop?.buyback?.indexOf( entry! ) ?? -1,
 							node = page["GDR_STORE_ICON_SLOT_0" + (i + 1)]!;
 						nativeItem(
