@@ -13,8 +13,8 @@ import { createMall } from "./mall/mall";
 import type { MallPurchase } from "@/engine/foundation/gameplay/item-mall-wire";
 import {
 	itemCooldown,
-	recoveryCategory,
-	recoveryCooldownMs,
+	potionCategory,
+	potionCooldownMs,
 	type ItemCooldown
 } from "@/engine/foundation/gameplay/item-cooldowns";
 import {
@@ -51,6 +51,9 @@ import {
 import { decodeInventoryItem } from "@/engine/foundation/gameplay/inventory-item";
 import { equipDurabilityWarning } from "@/engine/foundation/audio/item-sounds";
 import type { InventoryItem } from "@/engine/contracts/gameplay";
+
+const NPC_SHOP_CAPABILITY = 0x1;
+const NPC_SPECIAL_TRADE_CAPABILITY = 0x800;
 /*
 ================
 createInventory
@@ -996,12 +999,16 @@ dropGold
 openShop
 ================
 		*/
-		openShop( gid: number, now: number ) {
+		openShop( gid: number, now: number, capabilities = NPC_SHOP_CAPABILITY ) {
 			if ( busy() ) throw Error( "Inventory command unavailable" );
 			commerceInteger( gid, 0xffffffff, 1 );
 			const payload = new Uint8Array( 8 ), v = new DataView( payload.buffer );
 			v.setUint32( 0, gid, true );
-			v.setUint32( 4, 1, true );
+			// 5DA414..5DA426: the shop row selects special trade when granted.
+			const mask = capabilities & NPC_SPECIAL_TRADE_CAPABILITY ?
+				NPC_SPECIAL_TRADE_CAPABILITY :
+				NPC_SHOP_CAPABILITY;
+			v.setUint32( 4, mask, true );
 			const frame = { opcode: 0x7338, payload };
 			send( frame );
 			if ( shop?.npc !== gid ) shop = undefined;
@@ -1130,7 +1137,12 @@ use
 receive
 ================
 		*/
-		receive( op: number, p: Uint8Array, now = 0, recovery?: { country: number | undefined; abnormal: number; } ) {
+		receive(
+			op: number,
+			p: Uint8Array,
+			now = 0,
+			recovery?: { country: number | undefined; abnormal: number; unlimitedItems?: readonly number[]; }
+		) {
 			if ( timedOut ) throw Error( "Inventory transaction timed out; reconnect to resynchronize" );
 			if ( op === 15 ) {
 				const items = mall.projection( p );
@@ -1486,17 +1498,21 @@ receive
 				if ( !item || item.typeFlags !== v.getUint16( 4, true ) ) {
 					throw new Error( "Stale item use result" );
 				}
-				const category = recoveryCategory( item.typeFlags );
+				const category = potionCategory( item.typeFlags );
 				if ( category ) {
-					if ( quantity !== item.quantity - 1 ) throw Error( "Stale recovery item use result" );
+					// The server's published unlimited-item extension acknowledges use
+					// without spending a stack. It still requires this pending request.
+					const unlimited = quantity === item.quantity &&
+						recovery?.unlimitedItems?.includes( item.refObjId ) &&
+						pending?.opcode === op && pending.source === n;
+					if ( !unlimited && quantity !== item.quantity - 1 ) throw Error( "Stale recovery item use result" );
 					// Read the reference before last-stack removal; failed receipts never reach here.
 					{
-						if ( recovery?.country === undefined ) throw Error( "Missing recovery cooldown country" );
-						const durationMs = recoveryCooldownMs(
+						const durationMs = potionCooldownMs(
 							category,
 							tooltipRefs.get( item.refObjId )?.fields ?? {},
-							recovery.country,
-							recovery.abnormal
+							recovery?.country,
+							recovery?.abnormal ?? 0
 						);
 						itemCooldowns = [ ...itemCooldowns.filter( row => row.category !== category ), {
 							category,
@@ -1644,8 +1660,7 @@ state
 				equipmentSlotCount,
 				inventory: published ?? (published = [ ...slots.values() ].map( present )),
 				itemFlashes,
-				inventoryPending: pending !== null || mall.pending() || alchemy.state().pending ||
-					[ "rolling", "waiting" ].includes( gacha.state().phase ),
+				inventoryPending: busy(),
 				error
 			};
 		},
