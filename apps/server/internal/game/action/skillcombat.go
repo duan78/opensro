@@ -357,7 +357,7 @@ func (rt *Runtime) acceptSkillStagePhaseAt(divisionID string, character, snapsho
 	if skill.PositionEffect.Charge {
 		from, owner := rt.liveNav(simulation.WorldKey(divisionID, snapshot.Name), snapshot, nowMs)
 		radius, valid := rt.deps.CharacterBodyRadius(snapshot)
-		goal, admitted := chargeSkillGoal(from, targetAt, skill.PositionEffect.Range, radius+target.Ref.BodyRadius)
+		goal, admitted := chargeSkillGoal(from, targetAt, skill.PositionEffect.Range, radius+target.BodyRadius())
 		if !valid || !admitted {
 			return OpResult{}, skillCastRefused
 		}

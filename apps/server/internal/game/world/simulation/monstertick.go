@@ -516,7 +516,7 @@ func (ops *MonsterMoverOps) planReturnLeg(instance monster.Instance, mover monst
 		// A stationary actor cannot complete this travel-dependent gate.
 		mover.HomingAcquireAfterMs = ^uint32(0)
 		if monster.HomingRuns(instance.Ref.RunSpeed) {
-			mover.HomingAcquireAfterMs = uint32(float64(float32(instance.Nest.SightRange+instance.Ref.BodyRadius)) / float64(float32(instance.RunSpeed())) * 1000)
+			mover.HomingAcquireAfterMs = uint32(float64(float32(instance.Nest.SightRange+instance.BodyRadius())) / float64(float32(instance.RunSpeed())) * 1000)
 		}
 	}
 	dest := anchorPose(instance)

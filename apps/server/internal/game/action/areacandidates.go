@@ -76,7 +76,7 @@ func (rt *Runtime) areaCandidates(q areaQuery) []areaCandidate {
 			at := simulation.Spawn{RegionID: pose.RegionID, X: pose.X, Y: pose.Y, Z: pose.Z}
 			instance := m
 			out = append(out, areaCandidate{target: combatTarget{gid: m.Gid, monster: &instance, at: at},
-				distance: areaDistance(q.center, at), radius: float64(m.Ref.BodyRadius)})
+				distance: areaDistance(q.center, at), radius: m.BodyRadius()})
 		}
 	}
 	out = append(out, rt.areaPlayerCandidates(q)...)

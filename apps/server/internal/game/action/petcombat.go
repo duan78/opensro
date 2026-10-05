@@ -177,7 +177,7 @@ func (rt *Runtime) advancePetCombat(step petCombatStep) ([]simulation.Frame, boo
 	block := rt.cosAbnormal(step.key.division, step.snapshot.Name, step.pet.GID)
 	spacing := simulation.CombatSpacing{
 		ActorBodyRadius:  simulation.BodyRadius(step.ref.Parameters.BodyRadius),
-		TargetBodyRadius: simulation.BodyRadius(target.Ref.BodyRadius),
+		TargetBodyRadius: simulation.BodyRadius(target.BodyRadius()),
 		ActionReach:      reducedActionReach(float32(skill.ActionRange), cosParameter(step.ref, step.pet, block, actionRangeCutParameter)),
 	}
 	if !spacing.Valid() {

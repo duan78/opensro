@@ -96,8 +96,8 @@ func (rt *Runtime) monsterHitMonster(division string, instance, target monster.I
 	from := simulation.Spawn{RegionID: actorPose.RegionID, X: actorPose.X, Y: actorPose.Y, Z: actorPose.Z}
 	to := simulation.Spawn{RegionID: targetPose.RegionID, X: targetPose.X, Y: targetPose.Y, Z: targetPose.Z}
 	spacing := simulation.CombatSpacing{
-		ActorBodyRadius:  simulation.BodyRadius(instance.Ref.BodyRadius),
-		TargetBodyRadius: simulation.BodyRadius(target.Ref.BodyRadius),
+		ActorBodyRadius:  simulation.BodyRadius(instance.BodyRadius()),
+		TargetBodyRadius: simulation.BodyRadius(target.BodyRadius()),
 		ActionReach:      rt.monsterActionReach(instance, skill),
 	}
 	if !spacing.Valid() || simulation.IsDungeonRegion(from.RegionID) != simulation.IsDungeonRegion(to.RegionID) {
