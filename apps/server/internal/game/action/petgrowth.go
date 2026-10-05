@@ -173,6 +173,40 @@ func (rt *Runtime) awardAttackPetExperience(c *enterworld.Character, target mons
 
 /*
 ================
+awardAttackPetPvPExperience
+
+CCOSManager_AwardAttackPetLevelReward (4FCDA0), beside the killer's PvP
+EXP (4EAC40): each summoned attack pet earns leveldata +0x1C of the lower
+of its level and the victim's, doubled for a murderer victim (state 2).
+================
+*/
+func (rt *Runtime) awardAttackPetPvPExperience(killer, victim *enterworld.Character) (owner, area []wire.Frame) {
+	levels := rt.deps.LevelData()
+	if levels == nil {
+		return nil, nil
+	}
+	source := enterworld.ObjectIDForCharacter(victim)
+	for _, pet := range killer.Companions() {
+		ref, ok := rt.cosReference(pet)
+		if !pet.Summoned || pet.CurrentHP == 0 || !ok || !isAttackPetRef(ref) {
+			continue
+		}
+		exp, known := levels.MonsterExpBasis(min(int64(ref.Level), rewardLevel(victim)))
+		if !known || exp <= 0 {
+			continue
+		}
+		if murderer(victim) {
+			exp *= 2
+		}
+		private, public := rt.applyAttackPetExperience(killer, pet, ref, exp, source)
+		owner = append(owner, private...)
+		area = append(area, public...)
+	}
+	return owner, area
+}
+
+/*
+================
 applyAttackPetExperience
 
 4D6370 for a gain. Returns the owner's EXP frame and the area's form and

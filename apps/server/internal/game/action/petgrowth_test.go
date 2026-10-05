@@ -12,6 +12,7 @@ import (
 	"bytes"
 	"testing"
 
+	"opensro.online/server/internal/domain"
 	"opensro.online/server/internal/game/enterworld"
 	"opensro.online/server/internal/game/item/wire"
 	"opensro.online/server/internal/game/world/monster"
@@ -119,5 +120,28 @@ func TestOwnersKillFeedsTheSummonedAttackPet(t *testing.T) {
 	pet.Summoned = false
 	if owner, _ := rt.awardAttackPetExperience(c, target, 50, 1, 0); len(owner) != 0 {
 		t.Fatal("an unsummoned pet grew")
+	}
+}
+
+/*
+================
+TestPlayerKillFeedsThePetTheLowerLevelsBasis
+
+4FCDA0: leveldata +0x1C of min(pet, victim) level, doubled for a murderer.
+================
+*/
+func TestPlayerKillFeedsThePetTheLowerLevelsBasis(t *testing.T) {
+	rt, c, pet := petGrowthFixture(t)
+	rt.deps.(*enterworld.Deps).Levels = combatRewardLevels{exp: map[int64]int64{1: 100, 2: 200, 3: 300},
+		basis: map[int64]int64{1: 24, 4: 94}}
+	victim := testCharacter()
+	victimLevel := int64(4)
+	victim.Level = &victimLevel
+	if owner, _ := rt.awardAttackPetPvPExperience(c, victim); len(owner) != 1 || pet.Experience != 24 {
+		t.Fatalf("pet after the kill %+v", pet)
+	}
+	victim.PK = &domain.PKRecord{Penalty: 1}
+	if _, _ = rt.awardAttackPetPvPExperience(c, victim); pet.Experience != 72 {
+		t.Fatalf("a murderer victim paid %d", pet.Experience-24)
 	}
 }

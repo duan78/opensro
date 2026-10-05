@@ -107,6 +107,9 @@ func (rt *Runtime) payPlayerKillInDoor(division string, killer, victim *enterwor
 		frames := rt.grantKillExperience(killer, exp, victimGid)
 		actor = append(actor, frames...)
 		public = append(public, wire.ProgressionBroadcastFrames(frames)...)
+		petFrames, petArea := rt.awardAttackPetPvPExperience(killer, victim)
+		actor = append(actor, petFrames...)
+		public = append(public, petArea...)
 	}
 	switch kill.kind {
 	case pk.DeathPlayer:
