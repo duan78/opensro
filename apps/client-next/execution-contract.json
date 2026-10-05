@@ -376,7 +376,8 @@
 			"consumer": "src/engine/runtime/simulation/worker/session/world/world.ts",
 			"provider": "src/engine/runtime/simulation/worker/session/session.ts",
 			"functions": [
-				"mintWorldToken"
+				"mintWorldToken",
+				"reportIncident"
 			]
 		},
 		{

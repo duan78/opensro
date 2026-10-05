@@ -11,7 +11,6 @@ apps/client-next/src/engine/contracts/item-process.ts
 apps/client-next/src/engine/contracts/message.ts
 apps/client-next/src/engine/contracts/model.ts
 apps/client-next/src/engine/contracts/navigation.ts
-apps/client-next/src/engine/contracts/network.ts
 apps/client-next/src/engine/contracts/orb.ts
 apps/client-next/src/engine/contracts/presentation-random.ts
 apps/client-next/src/engine/contracts/scenery.ts
@@ -255,7 +254,6 @@ apps/client-next/src/engine/runtime/renderer/surface/surface.ts
 apps/client-next/src/engine/runtime/runtime-errors.ts
 apps/client-next/src/engine/runtime/simulation/worker/entry.ts
 apps/client-next/src/engine/runtime/simulation/worker/network/codec/codec.ts
-apps/client-next/src/engine/runtime/simulation/worker/network/network.ts
 apps/client-next/src/engine/runtime/simulation/worker/session/world/gameplay/feedback/feedback.ts
 apps/client-next/src/engine/runtime/simulation/worker/session/world/gameplay/inventory/alchemy/alchemy.ts
 apps/client-next/src/engine/runtime/simulation/worker/session/world/gameplay/inventory/gacha/gacha.ts
