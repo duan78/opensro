@@ -240,11 +240,13 @@ func (rt *Runtime) ConfigurePortals(dir string) error {
 	rt.portals = catalog
 	for i := range rt.NpcRoster {
 		if id, ok := catalog.sources[rt.NpcRoster[i].RefObjID]; ok {
-			rt.NpcRoster[i].TalkFlags = (rt.NpcRoster[i].TalkFlags &^ simulation.NpcTalkFlagRecallPoint) | 0x80
+			rt.NpcRoster[i].TalkFlags = (rt.NpcRoster[i].TalkFlags &^ simulation.NpcTalkFlagRecallPoint) | simulation.NpcTalkFlagTeleport
+			rt.NpcRoster[i].Services = rt.NpcRoster[i].Services.With(simulation.NpcServiceTeleport)
 			rt.NpcRoster[i].RebirthPoint = simulation.Spawn{}
 			destination := catalog.destinations[id]
 			if destination.recall && destination.spawn.RegionID != 0 && destination.spawn.RegionID&0x8000 == 0 {
 				rt.NpcRoster[i].TalkFlags |= simulation.NpcTalkFlagRecallPoint
+				rt.NpcRoster[i].Services = rt.NpcRoster[i].Services.With(simulation.NpcServiceRecallPoint)
 				rt.NpcRoster[i].RebirthPoint = destination.spawn
 			}
 		}

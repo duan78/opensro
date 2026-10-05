@@ -57,14 +57,10 @@ func Register(hub *transport.Hub, deps Dependencies, presence Presence) {
 			return
 		}
 		_ = s.Send(OpGuildCreateAck, outcome.AckPayload)
-		// The NPC select plane exists now (action answers 0xB45A on the
-		// roster-NPC grant), so this gid COULD be checked against the
-		// selection store. DECISION: not enforced yet - the roster
-		// carries no guild-capable NPC (simulation.NpcTalkCapabilityFlags
-		// grants NpcTalkFlagGuild only to NPC_EU_GUILD, which does not
-		// spawn), and dev/e2e creates legitimately send gid 0, so
-		// enforcement today would refuse every live create. Revisit when
-		// a guild NPC joins the roster.
+		// The guild managers hold service 0xF (simulation.NpcServiceGuild),
+		// but the talk word keeps the guild rows closed until their owners
+		// exist, so no live client sends a create from an NPC yet; the gid is
+		// checked once the guild rows open.
 		log.Debugf("guild: %s created guild %d (selectedTargetGid=%d decoded, not validated - see the enforcement decision above)", actor.Name, outcome.GuildID, outcome.SelectedTargetGid)
 	})
 	hub.Handle(OpGuildNoticeEditRequest, func(s *transport.Session, opcode uint16, payload []byte) {

@@ -330,9 +330,8 @@ func b45aGrantOracle(gid, flags uint32) []byte {
 // TestObjectSelectNpcGrantAnswersTheTalkGrant pins the emission the NPC
 // talk window opens from: the live roster-NPC grant carries exactly one
 // 0xB45A frame whose bytes match the hand-rolled oracle - NPC_EU_SMITH's
-// runtime capability row is 0x03 (shop|talk). The evidence catalogue also
-// records action-0xb, but runtime must not advertise that button until its
-// gameplay owner is reconstructed.
+// word is 0x0B: shop and talk, and repair (option 4, bit 0x8). Its magic
+// option enchant (option 0x20) stays closed until its owner exists.
 func TestObjectSelectNpcGrantAnswersTheTalkGrant(t *testing.T) {
 	character := testCharacter()
 	rt := selectTestRuntime(character)
@@ -351,7 +350,7 @@ func TestObjectSelectNpcGrantAnswersTheTalkGrant(t *testing.T) {
 	if frame.Opcode != wire.OpObjectSelectResult {
 		t.Fatalf("grant frame opcode = 0x%04X, want 0xB45A", frame.Opcode)
 	}
-	if want := b45aGrantOracle(npcGid, 0x03); !bytes.Equal(frame.Payload, want) {
+	if want := b45aGrantOracle(npcGid, 0x0b); !bytes.Equal(frame.Payload, want) {
 		t.Errorf("0xB45A payload\n got % X\nwant % X", frame.Payload, want)
 	}
 	// The grant still records the selection (guild create reads it).
