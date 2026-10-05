@@ -314,3 +314,25 @@ func TestMonsterDropBootstrapCatalogResolvesAgainstShippedV1150Media(t *testing.
 		t.Fatalf("v1.188 natural drop keys missing from v1.150 media: %v", missing)
 	}
 }
+
+/*
+================
+TestDropAdmissionNegativeThresholdAndGradeSeven
+
+4C1840: thirty levels above the monster the threshold is -20 and even
+roll 0 admits nothing; a grade-7 monster quadruples a 60 threshold to the
+cap of 100.
+================
+*/
+func TestDropAdmissionNegativeThresholdAndGradeSeven(t *testing.T) {
+	rt, _, _, target := newCombatTestRuntime(t, 1)
+	rt.DropRoll = dropRollSequence(0)
+	if rt.admitMonsterDrop(31, target) {
+		t.Fatal("a negative threshold admitted roll 0")
+	}
+	target.Ref.MonsterType = 7
+	rt.DropRoll = dropRollSequence(100)
+	if !rt.admitMonsterDrop(11, target) {
+		t.Fatal("a grade-7 monster's quadrupled threshold refused roll 100")
+	}
+}
