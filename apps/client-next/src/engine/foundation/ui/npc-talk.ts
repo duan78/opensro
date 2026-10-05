@@ -121,6 +121,8 @@ export interface NpcTalkInput {
 	readonly prompt?: string;
 	readonly canRecall?: boolean;
 	readonly canStorage?: boolean;
+	// canMagicOption is the smith's row 0x2F (capability 0x80000000).
+	readonly canMagicOption?: boolean;
 	readonly canReverseReturn?: boolean;
 	// jobRows are the job guild rows (job-guild.ts jobMenuRows).
 	readonly jobRows?: readonly { readonly id: string; readonly label: string; }[];
@@ -176,6 +178,13 @@ export function npcTalkLayout( input: NpcTalkInput ) {
 						[]),
 					...(input.canStorage ?
 						[ { id: "storage-open", label: copy( "UIIT_STT_UNITY_SERVER_USE_STORAGEROOM" ) } ] :
+						[]),
+					// 5D9100 lists row 0x2F after the storage rows.
+					...(input.canMagicOption ?
+						[ {
+							id: "magic-option-open",
+							label: copy( "UIIT_STT_AVATAR_MAGICOPTION_ENCHANT_MAGIC_PARAM" )
+						} ] :
 						[]),
 					...(input.canRecall ?
 						[ { id: "npc-recall-designate", label: copy( "UIIT_CTL_RECALL_POSITION" ) } ] :

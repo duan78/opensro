@@ -40,13 +40,12 @@ const (
 	// response lifecycle exists in this port; a row the client would draw
 	// for any other bit could only be refused. Bits without a row (repair,
 	// stable, thief buy, general) carry nothing to refuse. Still closed:
-	// the smith's magic option enchant (0x2F), the fortress staff and gate
-	// pulleys.
+	// the fortress staff and gate pulleys.
 	NpcTalkImplementedFlags uint32 = NpcTalkFlagShop | NpcTalkFlagTalk | NpcTalkFlagStorage |
 		NpcTalkFlagRepair | NpcTalkFlagRecallPoint | NpcTalkFlagTeleport | NpcTalkFlagStable |
 		NpcTalkFlagSpecialTrade | NpcTalkFlagThiefBuy | NpcTalkFlagGeneral | NpcTalkFlagGachaMachine |
 		NpcTalkFlagJobTrader | NpcTalkFlagJobThief | NpcTalkFlagJobHunter | NpcTalkFlagReverseReturn |
-		NpcTalkFlagGuild
+		NpcTalkFlagGuild | NpcTalkFlagMagicOption
 )
 
 // npcGachaMachines are the NPCs the reference data binds a Magic POP to

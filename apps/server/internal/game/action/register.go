@@ -99,6 +99,7 @@ func (rt *Runtime) Register(hub *transport.Hub) {
 	}
 	if rt.Alchemy != nil {
 		rt.registerAlchemy(hub)
+		rt.registerAvatarBless(hub)
 	}
 }
 

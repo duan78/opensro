@@ -41,6 +41,11 @@ import {
 } from "@/engine/foundation/gameplay/interaction-approach";
 import { targetNotice } from "@/engine/foundation/gameplay/target-notices";
 import { constantNativeNotice } from "@/engine/foundation/gameplay/native-notice";
+import {
+	AVATAR_MAGIC_OPTION_ANSWER,
+	AVATAR_MAGIC_OPTION_FUNCTION,
+	AVATAR_MAGIC_OPTION_NOTICE_CATEGORY
+} from "@/engine/foundation/gameplay/avatar-magic-option";
 import { skillNotice } from "@/engine/foundation/gameplay/skill-notices";
 import { returnScrollCast, type ReturnScrollCast } from "@/engine/foundation/gameplay/return-scroll";
 import { fortressActive } from "@/engine/foundation/gameplay/fortress";
@@ -1219,13 +1224,30 @@ state here before a command can claim a native wire conversation.
 				guide = next.state;
 				return next.frame;
 			}
-			if ( command.kind.startsWith( "alchemy-" ) || command.kind.startsWith( "gacha-" ) ) {
+			if (
+				command.kind.startsWith( "alchemy-" ) || command.kind.startsWith( "gacha-" ) ||
+				command.kind.startsWith( "magic-option-" )
+			) {
 				if ( !localGid ) throw Error( "Local player is not initialized" );
 				if (
 					command.kind === "gacha-open" &&
 					(!entity || entity.kind !== "npc" || entity.refObjId !== 9251 ||
 						targeting.state().target !== command.gid || targeting.state().targetPending)
 				) throw Error( "Select the Magic Pop NPC" );
+				// Row 0x2F exists only on a selected smith (0x80000000).
+				if (
+					command.kind === "magic-option-open" &&
+					(targeting.state().target !== command.gid || targeting.state().targetPending ||
+						!((targeting.state().targetCapabilities ?? 0) & AVATAR_MAGIC_OPTION_FUNCTION))
+				) throw Error( "Select a smith" );
+				if ( command.kind === "magic-option-take" || command.kind === "magic-option-grant" ) {
+					const key = inventory.magicOptionItem( command );
+					if ( key ) {
+						notices = [ ...notices.slice( -99 ), { key, value: 0, sequence: ++noticeSequence } ];
+						dirty = true;
+					}
+					return null;
+				}
 				return inventory.process(
 					command as import("@/engine/contracts/item-process").ItemProcessCommand,
 					now
@@ -1862,6 +1884,15 @@ Packet handling must not depend on which HUD panel is currently open.
 					// its reason (code 4, UIIT_MSG_INTERACTION_FAIL_TOO_FAR).
 					const refusal = frame.payload[0] === 2 ? constantNativeNotice( 13, frame.payload[1]! ) : null;
 					if ( refusal ) notices = [ ...notices.slice( -99 ), { ...refusal, sequence: ++noticeSequence } ];
+					dirty = true;
+				}
+				if ( frame.opcode === AVATAR_MAGIC_OPTION_ANSWER ) {
+					// 770140: success prints UIIT_MSG_AVATAR_MAGICOPTION_ADD; [2][code]
+					// is a category 0x20 notice. The item itself is inventory's.
+					const notice = frame.payload[0] === 1 ?
+						{ key: "UIIT_MSG_AVATAR_MAGICOPTION_ADD", value: 0 } :
+						constantNativeNotice( AVATAR_MAGIC_OPTION_NOTICE_CATEGORY, frame.payload[1] ?? 0 );
+					if ( notice ) notices = [ ...notices.slice( -99 ), { ...notice, sequence: ++noticeSequence } ];
 					dirty = true;
 				}
 				if ( frame.opcode === 0xb5b6 ) {

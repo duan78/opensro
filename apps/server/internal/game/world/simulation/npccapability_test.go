@@ -75,15 +75,15 @@ func TestTalkWordShiftsEachOptionBelowItsNumber(t *testing.T) {
 ================
 TestResolvedTalkWordAdvertisesOnlyOwnedRows
 
-A smith offers its shop, talk and repair; the magic option enchant row
-has no owner yet. A guide offers the reverse return.
+A smith offers shop, talk, repair and the avatar magic grant. A guide
+offers reverse return; fortress pulleys still have no response owner.
 ================
 */
 func TestResolvedTalkWordAdvertisesOnlyOwnedRows(t *testing.T) {
 	smith := NpcDef{Codename: "NPC_EU_SMITH", BaseSpeechSymbol: "SN_NPC_EU_SMITH_BS",
 		NpcTalkStoreGroups: []NpcTalkStoreGroup{{StoreGroupID: 7495}}}
 	smith.Services = ResolveNpcServices(smith)
-	if got := ResolveNpcTalkFlags(smith); got != NpcTalkFlagShop|NpcTalkFlagTalk|NpcTalkFlagRepair {
+	if got := ResolveNpcTalkFlags(smith); got != NpcTalkFlagShop|NpcTalkFlagTalk|NpcTalkFlagRepair|NpcTalkFlagMagicOption {
 		t.Fatalf("smith flags %#x", got)
 	}
 	guide := NpcDef{Codename: "NPC_EU_ADVICE3", BaseSpeechSymbol: "SN_NPC_EU_ADVICE_BS"}

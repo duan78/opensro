@@ -481,6 +481,7 @@ export interface GameplayState {
 	readonly weather?: import("@/engine/foundation/gameplay/weather").WeatherOptions;
 	readonly alchemy?: import("./item-process").AlchemyState;
 	readonly gacha?: import("./item-process").GachaState;
+	readonly magicOption?: import("./item-process").MagicOptionGrantState;
 	readonly targetCapabilities?: number;
 	readonly targetTaxRate?: number;
 	readonly shopCompletionRevision?: number;

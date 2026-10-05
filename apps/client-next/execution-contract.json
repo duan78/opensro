@@ -1438,6 +1438,14 @@
 			]
 		},
 		{
+			"consumer": "src/engine/foundation/gameplay/avatar-magic-option.ts",
+			"provider": "src/engine/runtime/ui/ui.ts",
+			"functions": [
+				"hudCopy",
+				"lookup"
+			]
+		},
+		{
 			"consumer": "src/engine/foundation/animation/reference-appearance.ts",
 			"provider": "src/engine/runtime/characters/characters.ts",
 			"functions": [

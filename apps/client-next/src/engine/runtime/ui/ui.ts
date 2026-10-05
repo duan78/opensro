@@ -118,6 +118,14 @@ import { createRepairHud } from "./hud/repair-hud";
 import { createSkinChangeHud } from "./hud/skin-change-hud";
 import { createJobHud } from "./hud/job-hud";
 import { createGuildManagerHud } from "./hud/guild-manager-hud";
+import { createMagicOptionHud, MAGIC_OPTION_LIST_ROWS } from "./hud/magic-option-hud";
+import {
+	AVATAR_MAGIC_OPTION_FUNCTION,
+	avatarMagicOptionCount,
+	avatarMagicOptionText,
+	avatarPartSymbol,
+	grantableAvatarPart
+} from "@/engine/foundation/gameplay/avatar-magic-option";
 import { guildLevelUpPrice, guildManagerRows, MASTER_RELEASE_VOTE } from "@/engine/foundation/gameplay/guild-manager";
 import { noticeText } from "@/engine/foundation/ui/notice-text";
 import {
@@ -399,6 +407,8 @@ const BUG_REPLAY_OPTION = "option-bug-replay";
 const BUG_REPLAY_LABEL = "Record bug replay";
 // The skin change scroll's window (CIFChangePlayerModel).
 const SKIN_PANEL = "Skin change";
+// The smith's avatar magic option window (CIFGrantMagicAttributeWnd).
+const GRANT_PANEL = "Magic option";
 // The slider's thumb travel inside GDR_SLIDER_CTRL (prev 2..22, next at 125).
 const SKIN_SLIDER_TRAVEL = 85;
 // Item slot controls a carry can leave: inventory, avatar, storage, pet bag.
@@ -592,6 +602,7 @@ export function createUi(
 	const skinHud = createSkinChangeHud();
 	const jobHud = createJobHud();
 	const guildManagerHud = createGuildManagerHud();
+	const magicOptionHud = createMagicOptionHud();
 	const slotEffects = createSlotEffectClock();
 	const spGauge = createSkillGauge();
 	const skillTraining = createSkillTrainingCache();
@@ -994,6 +1005,7 @@ export function createUi(
 		if ( panel === "Option" ) audioPreference( audioSaved, false );
 		if ( panel === "Alchemy" ) sendGameplay( { kind: "alchemy-close" } );
 		if ( panel === "Magic Pop" ) sendGameplay( { kind: "gacha-close" } );
+		if ( panel === GRANT_PANEL ) sendGameplay( { kind: "magic-option-close" } );
 		if ( panel && !next ) sound( "close" );
 		if ( !next ) admittedWindows.clear();
 		const wasOpen = !!panel;
@@ -2704,7 +2716,23 @@ export function createUi(
 				focus = null;
 				goldAmount = "";
 			}
-		} else if ( id === "storage-open" && view.gameplay?.target ) {
+		} else if ( id === "magic-option-open" && view.gameplay?.target ) {
+			// 5DA1B0 case 0x2F; B338 lock 0x80000000 then shows the window.
+			sendGameplay( { kind: "magic-option-open", gid: view.gameplay.target } );
+		} else if ( id.startsWith( "magic-option-row:" ) ) magicOptionHud.choose( id.slice( 17 ) );
+		else if ( id === "magic-option-up" || id === "magic-option-down" ) {
+			const grant = view.gameplay?.magicOption,
+				item = view.gameplay?.inventory.find( r => r.slot === grant?.item ),
+				part = item ? grantableAvatarPart( item.typeFlags ) : null;
+			magicOptionHud.scroll(
+				id === "magic-option-up" ? -1 : 1,
+				grant?.parts.find( p => p.part === part )?.options.length ?? 0
+			);
+		} else if ( id === "magic-option-confirm" ) {
+			const codename = magicOptionHud.state().codename;
+			if ( codename ) sendGameplay( { kind: "magic-option-grant", codename } );
+		} else if ( id === "magic-option-cancel" ) setPanel( "" );
+		else if ( id === "storage-open" && view.gameplay?.target ) {
 			if ( !canLeavePanel() ) return;
 			sendGameplay( { kind: "storage-open", gid: view.gameplay.target } );
 			storagePanel.reset();
@@ -3807,7 +3835,7 @@ export function createUi(
 				if (
 					carried &&
 					(carried.avatar ? event.id.startsWith( "avatar:" ) : event.id === "slot:" + carried.slot) &&
-					[ "Inventory", "Shop", "Alchemy", "COS inventory", "Storage" ].includes( panel ) &&
+					[ "Inventory", "Shop", "Alchemy", GRANT_PANEL, "COS inventory", "Storage" ].includes( panel ) &&
 					view?.session?.phase === "world" && !view.gameplay?.inventoryPending && controls.some( c =>
 						c.id === event.id && c.draggable && !c.disabled
 					)
@@ -3826,6 +3854,11 @@ export function createUi(
 						item && target && !target.disabled && panel === "Alchemy" && target.id.startsWith( "alchemy-" )
 					) {
 						activate( "alchemy-slot:" + item.slot );
+						return;
+					}
+					// 6EB570: an inventory item dropped on the grant window's slot.
+					if ( item && target?.id === "magic-option-slot" && !target.disabled && panel === GRANT_PANEL ) {
+						sendGameplay( { kind: "magic-option-take", slot: item.slot } );
 						return;
 					}
 					const room = view?.gameplay?.storage;
@@ -3944,6 +3977,11 @@ export function createUi(
 					dirty = true;
 					return;
 				}
+				if ( panel === GRANT_PANEL && event.id.startsWith( "slot:" ) ) {
+					sendGameplay( { kind: "magic-option-take", slot: Number( event.id.slice( 5 ) ) } );
+					dirty = true;
+					return;
+				}
 				if (
 					panel === "COS inventory" && (event.id.startsWith( "slot:" ) || event.id.startsWith( "cos-slot:" ))
 				) {
@@ -4002,7 +4040,7 @@ export function createUi(
 			}
 			if (
 				event.kind === "drag" && ITEM_SLOT_PREFIXES.some( prefix => event.id.startsWith( prefix ) ) &&
-				[ "Inventory", "Shop", "Alchemy", "COS inventory", "Storage" ].includes( panel )
+				[ "Inventory", "Shop", "Alchemy", GRANT_PANEL, "COS inventory", "Storage" ].includes( panel )
 			) {
 				const node = controls.find( c => c.id === event.id && !c.disabled && c.draggable );
 				if ( !node ) return;
@@ -5060,6 +5098,13 @@ export function createUi(
 				setPanel( "Magic Pop" );
 			}
 			gachaWasVisible = gachaVisible;
+			// B338 lock 0x80000000 (75AE50) shows the grant window with the inventory.
+			if (
+				magicOptionHud.sync(
+					phase === "world" && !!next.gameplay?.magicOption?.visible,
+					next.gameplay?.magicOption?.item ?? null
+				)
+			) setPanel( GRANT_PANEL );
 			if ( next.session && next.session.revision !== lastSessionRevision ) {
 				if (
 					(loginReplyPending || next.session.nativeTitleStatus !== lastNativeTitleStatus) && titleProcess &&
@@ -8869,7 +8914,10 @@ export function createUi(
 						blocks.push( full );
 					}
 				}
-				if ( [ "Inventory", "Shop", "Alchemy", "COS inventory", "Storage" ].includes( panel ) && hudData ) {
+				if (
+					[ "Inventory", "Shop", "Alchemy", GRANT_PANEL, "COS inventory", "Storage" ].includes( panel ) &&
+					hudData
+				) {
 					const admission = beginWindow();
 					const popup = mainPopupGeometry( "Inventory", hudData.windows.ifmainpopup!, w, h, popupPosition ),
 						[px, py] = popup.frame,
@@ -10256,6 +10304,7 @@ export function createUi(
 						canRecall: !!(capabilities & 0x40),
 						canReverseReturn: !!(capabilities & 0x20000000),
 						canStorage: !!(capabilities & 4),
+						canMagicOption: !!(capabilities & AVATAR_MAGIC_OPTION_FUNCTION),
 						// 5D9100 lists the guild set ahead of the job menu.
 						jobRows: [
 							...guildManagerRows( capabilities, game.social?.guild, game.social?.localName ?? "" ).map(
@@ -10502,6 +10551,107 @@ export function createUi(
 						authoredText( { ...money, color: shown.color }, px, py, shown.text );
 					}
 					endWindow( admission, "service:Storage" );
+				}
+				const grant = game?.magicOption;
+				if ( panel === GRANT_PANEL && grant && hudData?.windows.ifgrantmagicattributewnd ) {
+					// CIFGrantMagicAttributeWnd (6EB3E0): the item slot (8), its count
+					// line (9), the five option rows (0x28..0x2C) and the buttons are live.
+					const admission = beginWindow(),
+						root = hudData.root.GDR_GRANT_MAGIC_ATTRIBUTE!,
+						layout = hudData.windows.ifgrantmagicattributewnd,
+						nodes = Object.values( layout ),
+						at = ( id: number ) => nodes.find( n => n.id === id ),
+						[px, py] = windowOrigin( GRANT_PANEL, [
+							Math.max( 0, w - 388 - root.rect[2] - 8 ),
+							Math.max( 0, h - 478 ),
+							root.rect[2],
+							root.rect[3]
+						] ),
+						item = game?.inventory.find( r => r.slot === grant.item ),
+						part = item ? grantableAvatarPart( item.typeFlags ) : null,
+						options = grant.parts.find( p => p.part === part )?.options ?? [],
+						choice = magicOptionHud.state(),
+						busy = !!game?.inventoryPending || grant.phase !== "idle";
+					nativeFrame( root, px, py, hudCopy( root.text ), "magic-option-cancel" );
+					nativePage( layout, px, py, [ 5, 6, 8, 9, 40, 41, 42, 43, 44 ] );
+					const slot = at( 8 );
+					if ( slot ) nativeItem( "magic-option-slot", item, authoredRect( slot, px, py ), busy );
+					// 6EA540: "<part> - <ADD_COUNT>: <free><UNIT>".
+					const count = at( 9 ), symbol = part === null ? null : avatarPartSymbol( part );
+					if ( count && item && symbol ) {
+						const free = (item.tooltip?.fields.maxMagicOptions51c ?? 0) - avatarMagicOptionCount( item );
+						authoredText(
+							count,
+							px,
+							py,
+							hudCopy( symbol ) + " - " + hudCopy( "UIIT_STT_AVATAR_MAGICOPTION_ADD_COUNT" ) + ": " +
+								free +
+								hudCopy( "UIIT_STT_UNIT" )
+						);
+					}
+					// 6EB3E0 backs every row with gil_bar02; the chosen row is selected.
+					const select = ROOT + "interface/guild/gil_bar02_select.png",
+						deselect = ROOT + "interface/guild/gil_bar02_deselect.png";
+					paths.push( select, deselect );
+					for ( let i = 0; i < MAGIC_OPTION_LIST_ROWS; i++ ) {
+						const bar = at( 0x28 + i ), option = options[choice.top + i];
+						if ( !bar ) continue;
+						const r = authoredRect( bar, px, py );
+						if ( resources.has( select ) && resources.has( deselect ) ) {
+							rect( r, white, option && option.codename === choice.codename ? select : deselect );
+						}
+						if ( !option ) continue;
+						quads.push(
+							...text.quads(
+								avatarMagicOptionText( option.codename, option.value, hudCopy ),
+								[ r[0] + 8, r[1], r[2] - 16, r[3] ],
+								full,
+								white,
+								{ vAlign: 1 }
+							)
+						);
+						controls.push( {
+							id: "magic-option-row:" + option.codename,
+							label: option.codename,
+							rect: r,
+							kind: "button",
+							disabled: busy,
+							selected: option.codename === choice.codename
+						} );
+					}
+					const list = at( 32 );
+					if ( list && options.length > MAGIC_OPTION_LIST_ROWS ) {
+						const r = authoredRect( list, px, py ), range = options.length - MAGIC_OPTION_LIST_ROWS;
+						const scroll = chatScrollbar(
+							"magic-option",
+							[ r[0] + r[2] - 16, r[1] + 16, 16, r[3] - 48 ],
+							options.length,
+							MAGIC_OPTION_LIST_ROWS,
+							range - choice.top,
+							resources.size,
+							full,
+							hover,
+							pressed
+						);
+						paths.push( ...scroll.paths );
+						quads.push( ...scroll.quads );
+						controls.push( ...scroll.controls );
+					}
+					for (
+						const [id, nodeId] of [ [ "magic-option-confirm", 5 ], [ "magic-option-cancel", 6 ] ] as const
+					) {
+						const node = at( nodeId );
+						if ( !node ) continue;
+						authoredLabeledButton(
+							node,
+							px,
+							py,
+							id,
+							hudCopy( node.text ),
+							id === "magic-option-confirm" && (busy || !item || !choice.codename)
+						);
+					}
+					endWindow( admission, "service:" + GRANT_PANEL );
 				}
 				const skin = skinHud.state();
 				if ( panel === SKIN_PANEL && skin && hudData?.windows.ifchangeplayermodel ) {
@@ -13234,7 +13384,7 @@ export function createUi(
 			}
 			if (
 				worldVisible && carriedItem &&
-				[ "Inventory", "Shop", "Alchemy", "COS inventory", "Storage" ].includes( panel )
+				[ "Inventory", "Shop", "Alchemy", GRANT_PANEL, "COS inventory", "Storage" ].includes( panel )
 			) {
 				const item = carriedRow( carriedItem, game ), path = iconPath( item?.icon );
 				if ( path ) {

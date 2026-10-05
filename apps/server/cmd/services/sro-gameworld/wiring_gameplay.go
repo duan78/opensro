@@ -133,6 +133,7 @@ func newGameplayPlane(
 	deps.ExtraRefItemCodenames = items.GroundRefItemCodenames
 	deps.StaticRefItemCodenames = items.StaticRefItemCodenames
 	deps.ExtraMagicOptionIDs = items.AlchemyMagicOptionIDs
+	deps.AvatarMagicOptions = items.AvatarMagicOptions
 	items.Ground.Restore(authorityStore.GroundSnapshotForRestore())
 	authorityStore.AttachGround(items.Ground)
 
