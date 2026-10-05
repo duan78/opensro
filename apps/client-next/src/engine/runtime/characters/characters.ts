@@ -1905,9 +1905,11 @@ export function createCharacterPresentation(
 							anchor ?
 							damageAnchor( victim.pose, source.pose, anchor.offset, bone, saddle ) :
 							victim.pose;
+						// 8D5440 copies the caster's native world matrix: an imported
+						// body's placement x Ry(PI). The program draws native space.
 						const basis = Array.from(
 							{ length: 9 },
-							( _, i ) => matrix[Math.floor( i / 3 ) * 4 + i % 3]! * (i >= 6 ? -1 : 1)
+							( _, i ) => matrix[Math.floor( i / 3 ) * 4 + i % 3]! * (i >= 3 && i < 6 ? 1 : -1)
 						) as unknown as NonNullable<CharacterActor["effectBasis"]>;
 						effectActors.push(
 							...effects.damage(

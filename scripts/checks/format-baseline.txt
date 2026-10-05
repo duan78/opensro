@@ -20,7 +20,6 @@ apps/client-next/src/engine/foundation/animation/action-schedule.ts
 apps/client-next/src/engine/foundation/animation/action-time.ts
 apps/client-next/src/engine/foundation/animation/animation-activation.ts
 apps/client-next/src/engine/foundation/animation/animation-dispatch.ts
-apps/client-next/src/engine/foundation/animation/animation-emission.ts
 apps/client-next/src/engine/foundation/animation/animation-timelines.ts
 apps/client-next/src/engine/foundation/animation/avatar-override.ts
 apps/client-next/src/engine/foundation/animation/body-shape.ts
@@ -43,7 +42,6 @@ apps/client-next/src/engine/foundation/animation/impact-source.ts
 apps/client-next/src/engine/foundation/animation/item-effect-clock.ts
 apps/client-next/src/engine/foundation/animation/locomotion-blend.ts
 apps/client-next/src/engine/foundation/animation/model-animation.ts
-apps/client-next/src/engine/foundation/animation/model-emission.ts
 apps/client-next/src/engine/foundation/animation/model-material-clock.ts
 apps/client-next/src/engine/foundation/animation/model-particles.ts
 apps/client-next/src/engine/foundation/animation/moving-stage.ts
@@ -223,7 +221,6 @@ apps/client-next/src/engine/foundation/ui/unique-banner.ts
 apps/client-next/src/engine/foundation/ui/vertical-spin.ts
 apps/client-next/src/engine/foundation/ui/vital-warning.ts
 apps/client-next/src/engine/foundation/ui/world-cursor.ts
-apps/client-next/src/engine/runtime/assets/worker/effects/effects.ts
 apps/client-next/src/engine/runtime/assets/worker/entry.ts
 apps/client-next/src/engine/runtime/assets/worker/model/model.ts
 apps/client-next/src/engine/runtime/assets/worker/navigation/navigation.ts
@@ -244,7 +241,6 @@ apps/client-next/src/engine/runtime/frontend/stage/stage.ts
 apps/client-next/src/engine/runtime/navigation/navigation.ts
 apps/client-next/src/engine/runtime/presentation/effective-hp.ts
 apps/client-next/src/engine/runtime/random/random.ts
-apps/client-next/src/engine/runtime/renderer/characters/actor-snapshots.ts
 apps/client-next/src/engine/runtime/renderer/characters/palette-streams.ts
 apps/client-next/src/engine/runtime/renderer/device/flares.ts
 apps/client-next/src/engine/runtime/renderer/device/particle-query.ts
@@ -498,8 +494,6 @@ scripts/build/char/materialVariants.mjs
 scripts/build/char/native/animationSetNames.ts
 scripts/build/char/native/scriptObjAnimationRegistry.ts
 scripts/build/char/native/skillEffectAnimationRegistry.ts
-scripts/build/char/native/skillEffectSetParseRow.ts
-scripts/build/char/native/skillEffectStage.ts
 scripts/build/char/publishEntityBsrModifiers.mjs
 scripts/build/char/resourceGlbOutput.mjs
 scripts/build/char/vatPipeline.mjs
