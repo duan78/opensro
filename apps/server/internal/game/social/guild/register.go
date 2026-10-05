@@ -92,6 +92,9 @@ func Register(hub *transport.Hub, deps Dependencies, presence Presence) {
 			return
 		}
 		outcome := HandleKick(deps, divisionID, actor, payload)
+		if outcome.ErrorPayload != nil {
+			_ = s.Send(OpGuildKickAck, outcome.ErrorPayload)
+		}
 		if outcome.Refusal != "" {
 			log.Debugf("guild: 0x74B1 (kick) refused for %s: %s", actor.Name, outcome.Refusal)
 			return
@@ -106,6 +109,9 @@ func Register(hub *transport.Hub, deps Dependencies, presence Presence) {
 			return
 		}
 		outcome := HandleLeave(deps, divisionID, actor, payload)
+		if outcome.Refusal != "" && outcome.AckPayload != nil {
+			_ = s.Send(OpGuildLeaveAck, outcome.AckPayload)
+		}
 		if outcome.Refusal != "" {
 			log.Debugf("guild: 0x756E (leave) refused for %s: %s", actor.Name, outcome.Refusal)
 			return

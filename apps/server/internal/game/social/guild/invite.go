@@ -362,7 +362,7 @@ func (r *InviteRuntime) ApplyConsent(s *transport.Session, divisionID string, ac
 	online := func(name string) bool {
 		return r.presence != nil && r.presence.OnlineByName(divisionID, name)
 	}
-	_ = s.Send(OpGuildInfo, EncodeGuildInfo32C4(guild, joined, online))
+	_ = s.Send(OpGuildInfo, EncodeGuildInfo32C4(guild, joined, online, r.Now().UnixMilli()))
 	joinPush := EncodeMemberJoin3B29(row, online)
 	for _, member := range joined {
 		if member.CharID == actor.ID {

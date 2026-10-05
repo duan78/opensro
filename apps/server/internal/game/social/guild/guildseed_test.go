@@ -12,6 +12,7 @@ package guild_test
 import (
 	"bytes"
 	"encoding/binary"
+	"opensro.online/server/internal/domain"
 	"testing"
 
 	"opensro.online/server/internal/game/enterworld"
@@ -86,6 +87,18 @@ func (s staticGuildStore) DonateGuildPoints(string, int64, uint32) (enterworld.G
 
 func (s staticGuildStore) ClaimWarCompensationAs(string, int64) (int64, enterworld.GuildRefusal) {
 	return 0, enterworld.GuildRefusalUpdateRejected
+}
+
+func (s staticGuildStore) OpenMasterReleaseVoteAs(string, int64, int64, func(int64) int64) (enterworld.GuildSnapshot, enterworld.GuildRefusal) {
+	return enterworld.GuildSnapshot{}, enterworld.GuildRefusalUpdateRejected
+}
+
+func (s staticGuildStore) CastGuildBallotAs(string, int64, uint32, uint8) (domain.GuildVoteBallot, enterworld.GuildRefusal) {
+	return domain.GuildVoteBallot{}, enterworld.GuildRefusalUpdateRejected
+}
+
+func (s staticGuildStore) CloseDueGuildVotes(string, int64, uint8, uint32) []domain.GuildVoteOutcome {
+	return nil
 }
 
 func (s staticGuildStore) LevelUpGuildAs(string, int64) (enterworld.GuildSnapshot, enterworld.GuildRefusal) {

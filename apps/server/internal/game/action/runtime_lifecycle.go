@@ -59,6 +59,7 @@ func (rt *Runtime) TickHook() simulation.TickHook {
 		rt.advanceDepartures(nowMs)
 		rt.advanceReturnScrolls(nowMs)
 		rt.advanceJobDresses(nowMs)
+		rt.advanceGuildVotes(nowMs)
 		// Retirement is presentation-only. Reward state was already committed
 		// by the fatal hit, while the zero-HP source remains resolvable through
 		// the authored death-animation completion.
@@ -342,6 +343,7 @@ func (rt *Runtime) forgetCharacterLocked(divisionID, characterName string) {
 	var departedGID uint32
 	if c := rt.findCharacter(divisionID, characterName); c != nil {
 		departedGID = enterworld.ObjectIDForCharacter(c)
+		rt.noteLastSeen(c)
 	}
 	if rt.Monsters != nil {
 		rt.Monsters.ForgetAbnormalSource(divisionID, departedGID, characterName)

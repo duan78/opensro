@@ -57,6 +57,8 @@ func (rt *Runtime) Register(hub *transport.Hub) {
 	hub.Handle(opGuildMasterLeave, rt.hubHandler(hub, rt.HandleGuildMasterLeave))
 	hub.Handle(opGuildCompensation, rt.hubHandler(hub, rt.HandleGuildCompensation))
 	hub.Handle(opGuildCompensationPay, rt.hubHandler(hub, rt.HandleGuildCompensationClaim))
+	hub.Handle(opGuildMasterRelease, rt.hubHandler(hub, rt.HandleGuildMasterRelease))
+	hub.Handle(opGuildBallot, rt.hubHandler(hub, rt.HandleGuildBallot))
 	hub.Handle(0x72dd, rt.hubHandler(hub, rt.HandleReturnCancel))
 	hub.Handle(wire.OpCosBehaviorRequest, rt.hubHandler(hub, rt.HandleCosBehavior))
 	hub.Handle(0x77e7, rt.hubHandler(hub, rt.HandleRetailBuyback))

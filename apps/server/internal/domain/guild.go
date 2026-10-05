@@ -21,6 +21,8 @@ type GuildRecord struct {
 	// WarCompensation is the gold guild wars owe the guild (v1.188 guild
 	// +0x8C, paid to the master at a guild manager, 5C72A0 / 5C7330).
 	WarCompensation int64 `json:"warCompensation,omitempty"`
+	// Vote is the open master release vote (guildvote.go), or nil.
+	Vote *GuildVote `json:"vote,omitempty"`
 }
 
 // GuildMemberRecord is one guild membership row plus the read-model fields
@@ -109,6 +111,11 @@ const (
 	GuildRefusalGPDeficit
 	GuildRefusalGoldDeficit
 	GuildRefusalNoCompensation
+	GuildRefusalVoteOpen
+	GuildRefusalVoteNotTime
+	GuildRefusalNoVote
+	GuildRefusalNotCandidate
+	GuildRefusalVoteInProgress
 )
 
 // Refused reports whether a command made no change.
@@ -192,4 +199,13 @@ type GuildStore interface {
 	// leader receives the gold the guild is owed and the debt clears, in
 	// ONE commit. It answers the amount paid.
 	ClaimWarCompensationAs(divisionID string, actorID int64) (int64, GuildRefusal)
+	// OpenMasterReleaseVoteAs opens the acting member's guild vote when its
+	// master has been gone GuildMasterAbsenceMs. seen answers a member's
+	// last-seen time (now while online, 0 when never recorded).
+	OpenMasterReleaseVoteAs(divisionID string, actorID int64, nowMs int64, seen func(characterID int64) int64) (GuildSnapshot, GuildRefusal)
+	// CastGuildBallotAs places or moves the acting member's ballot.
+	CastGuildBallotAs(divisionID string, actorID int64, voteID uint32, option uint8) (GuildVoteBallot, GuildRefusal)
+	// CloseDueGuildVotes closes every vote past its end, electing where the
+	// tally allows; the replaced master takes formerGrade and formerPerm.
+	CloseDueGuildVotes(divisionID string, nowMs int64, formerGrade uint8, formerPerm uint32) []GuildVoteOutcome
 }

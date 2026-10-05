@@ -15,6 +15,7 @@ package chat
 
 import (
 	"bytes"
+	"opensro.online/server/internal/domain"
 	"strings"
 	"testing"
 
@@ -188,6 +189,18 @@ func (g stubGuilds) DonateGuildPoints(string, int64, uint32) (enterworld.GuildDo
 
 func (g stubGuilds) ClaimWarCompensationAs(string, int64) (int64, enterworld.GuildRefusal) {
 	return 0, enterworld.GuildRefusalUpdateRejected
+}
+
+func (g stubGuilds) OpenMasterReleaseVoteAs(string, int64, int64, func(int64) int64) (enterworld.GuildSnapshot, enterworld.GuildRefusal) {
+	return enterworld.GuildSnapshot{}, enterworld.GuildRefusalUpdateRejected
+}
+
+func (g stubGuilds) CastGuildBallotAs(string, int64, uint32, uint8) (domain.GuildVoteBallot, enterworld.GuildRefusal) {
+	return domain.GuildVoteBallot{}, enterworld.GuildRefusalUpdateRejected
+}
+
+func (g stubGuilds) CloseDueGuildVotes(string, int64, uint8, uint32) []domain.GuildVoteOutcome {
+	return nil
 }
 
 func (g stubGuilds) LevelUpGuildAs(string, int64) (enterworld.GuildSnapshot, enterworld.GuildRefusal) {

@@ -175,6 +175,8 @@ const (
 	// PROBABLE only), so result=2 is NEVER emitted here - every leave
 	// refusal stays silent (errors.go posture).
 	OpGuildLeaveAck uint16 = 0xB56E
+	// OpGuildKickAck is 0x74B1's answer (75CB30): only [2][code] is read.
+	OpGuildKickAck uint16 = 0xB4B1
 	// OpGuildBreakAck is the 0xB66E break answer: {u8 1} with no
 	// payload beyond the result byte, emitted to the dissolving leader
 	// ONLY on success (client handler sub_75c730 @0x0075c730, mission

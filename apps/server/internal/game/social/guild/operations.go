@@ -147,6 +147,8 @@ func guildRefusalReason(refusal enterworld.GuildRefusal) string {
 		return "not enough gold"
 	case enterworld.GuildRefusalNoCompensation:
 		return "no war compensation is owed"
+	case enterworld.GuildRefusalVoteInProgress:
+		return "voters and candidates stay while the vote runs"
 	default:
 		return "guild command refused"
 	}

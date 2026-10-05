@@ -242,6 +242,9 @@ func (door storeGuildDoor) KickGuildMember(
 	if members[targetIndex].Grade == 0 {
 		return refused, domain.GuildRefusalTargetLeader
 	}
+	if guild.Vote != nil && guild.Vote.Involves(members[targetIndex].JID) {
+		return refused, domain.GuildRefusalVoteInProgress
+	}
 	return door.removeGuildMemberLocked(
 		divisionID,
 		guildID,
@@ -270,6 +273,9 @@ func (door storeGuildDoor) LeaveGuild(
 	}
 	if members[actorIndex].Grade == 0 {
 		return refused, domain.GuildRefusalLeaderCannotLeave
+	}
+	if guild.Vote != nil && guild.Vote.Involves(members[actorIndex].JID) {
+		return refused, domain.GuildRefusalVoteInProgress
 	}
 	return door.removeGuildMemberLocked(
 		divisionID,
