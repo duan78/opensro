@@ -33,6 +33,7 @@ import (
 	"opensro.online/server/internal/game/enterworld"
 	"opensro.online/server/internal/game/item/wire"
 	"opensro.online/server/internal/game/pk"
+	"opensro.online/server/internal/game/world/monster"
 	"opensro.online/server/internal/game/world/simulation"
 )
 
@@ -124,11 +125,13 @@ func (rt *Runtime) payPlayerKillInDoor(division string, killer, victim *enterwor
 		}
 	case pk.DeathJob:
 		if party == nil {
-			if frames, ok := rt.addJobExperience(killer, jobKillExperience(rt.deps.LevelData(), killer, victim)); ok {
+			if frames, ok := rt.addJobExperience(killer, jobKillExperience(rt.deps.LevelData(), killer, rewardLevel(victim))); ok {
 				actor = append(actor, frames...)
 			}
 		} else {
-			for _, share := range rt.jobKillShares(division, killer, victim, party, now) {
+			fallen := jobKillVictim{level: rewardLevel(victim), world: domain.CharacterWorldInstance(victim),
+				at: rt.liveSpawn(simulation.WorldKey(division, victim.Name), victim, now)}
+			for _, share := range rt.jobKillShares(division, killer, fallen, party, now) {
 				if share.member != killer {
 					shares = append(shares, share)
 					continue
@@ -174,6 +177,19 @@ func (rt *Runtime) payJobKillShares(shares []jobKillShare) []RecipientFrames {
 
 /*
 ================
+jobKillVictim
+
+What 4103E0 and 5BD7F0 read of the fallen: its level, world and position.
+================
+*/
+type jobKillVictim struct {
+	level int64
+	world uint32
+	at    simulation.Spawn
+}
+
+/*
+================
 jobKillShares
 
 5BD7F0: the killer's party members alive in the victim's world within
@@ -182,9 +198,8 @@ EXP by level, raised 5% per member beyond the first. Each member's base is
 its own 4103E0 against the victim.
 ================
 */
-func (rt *Runtime) jobKillShares(division string, killer, victim *enterworld.Character, party *RewardParty, now int64) []jobKillShare {
-	world := domain.CharacterWorldInstance(victim)
-	origin := rt.liveSpawn(simulation.WorldKey(division, victim.Name), victim, now)
+func (rt *Runtime) jobKillShares(division string, killer *enterworld.Character, victim jobKillVictim, party *RewardParty, now int64) []jobKillShare {
+	world, origin := victim.world, victim.at
 	hunters := enterworld.DressedJob(killer) == domain.JobHunter
 	var members []*enterworld.Character
 	var levels int64
@@ -213,7 +228,7 @@ func (rt *Runtime) jobKillShares(division string, killer, victim *enterworld.Cha
 	shares := make([]jobKillShare, 0, len(members))
 	for _, member := range members {
 		portion := float32(float64(float32(rewardLevel(member))) / float64(float32(levels)))
-		base := jobKillExperience(rt.deps.LevelData(), member, victim)
+		base := jobKillExperience(rt.deps.LevelData(), member, victim.level)
 		exp := int64(float64(float32(base)) * float64(portion) * float64(bonus))
 		shares = append(shares, jobKillShare{member: member, exp: exp})
 	}
@@ -267,12 +282,12 @@ trunc(GoldMin * 10 * 0.125) times its ratio to the killer's, held to
 0.5..1.5; a trader killer earns half; nothing positive becomes one.
 ================
 */
-func jobKillExperience(levels enterworld.LevelDataSource, killer, victim *enterworld.Character) int64 {
+func jobKillExperience(levels enterworld.LevelDataSource, killer *enterworld.Character, victimLevel int64) int64 {
 	gold, ok := levels.(goldBasisSource)
 	if !ok {
 		return 0
 	}
-	victimGold, okVictim := gold.WithdrawalGoldBasis(rewardLevel(victim))
+	victimGold, okVictim := gold.WithdrawalGoldBasis(victimLevel)
 	killerGold, okKiller := gold.WithdrawalGoldBasis(rewardLevel(killer))
 	if !okVictim || !okKiller {
 		return 0
@@ -365,4 +380,43 @@ levelByte
 */
 func levelByte(c *enterworld.Character) uint8 {
 	return uint8(min(rewardLevel(c), 0xff))
+}
+
+/*
+================
+payMonsterJobKillInDoor
+
+4E1F60's monster branch for the killing blow's player: a thief monster
+killed by a hunter or a trader, or a hunter monster killed by a thief,
+pays job EXP (4103E0 on the monster's level), shared by the killer's
+party (5BD7F0). Inside the reward roster's door, which holds every member.
+================
+*/
+func (rt *Runtime) payMonsterJobKillInDoor(division string, killer *enterworld.Character, victim monster.Instance, pose monster.Pose, now int64) (actor []wire.Frame, others []RecipientFrames) {
+	job := enterworld.DressedJob(killer)
+	thiefKill := victim.ThiefMonster() && (job == domain.JobHunter || job == domain.JobTrader)
+	hunterKill := victim.HunterMonster() && job == domain.JobThief
+	if !thiefKill && !hunterKill {
+		return nil, nil
+	}
+	level := int64(victim.Ref.Level)
+	party := rt.rewardPartyOf(division, enterworld.ObjectIDForCharacter(killer))
+	if party == nil {
+		frames, _ := rt.addJobExperience(killer, jobKillExperience(rt.deps.LevelData(), killer, level))
+		return frames, nil
+	}
+	fallen := jobKillVictim{level: level, world: domain.CharacterWorldInstance(killer),
+		at: simulation.Spawn{RegionID: pose.RegionID, X: pose.X, Y: pose.Y, Z: pose.Z}}
+	for _, share := range rt.jobKillShares(division, killer, fallen, party, now) {
+		frames, ok := rt.addJobExperience(share.member, share.exp)
+		if !ok {
+			continue
+		}
+		if share.member == killer {
+			actor = append(actor, frames...)
+		} else {
+			others = append(others, RecipientFrames{CharacterID: share.member.ID, Frames: frames})
+		}
+	}
+	return actor, others
 }

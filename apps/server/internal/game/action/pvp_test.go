@@ -18,6 +18,7 @@ import (
 	"opensro.online/server/internal/domain"
 	"opensro.online/server/internal/game/enterworld"
 	"opensro.online/server/internal/game/item/wire"
+	"opensro.online/server/internal/game/world/monster"
 	"opensro.online/server/internal/game/world/simulation"
 )
 
@@ -169,11 +170,11 @@ func TestJobKillExperienceRatio(t *testing.T) {
 	levels := jobKillLevels{gold: map[int64]int64{1: 80, 10: 800}}
 	low, high := &enterworld.Character{Level: testInt64(1)}, &enterworld.Character{Level: testInt64(10)}
 	// Victim basis trunc(800*10*0.125) = 1000 against 100: held at 1.5.
-	if got := jobKillExperience(levels, low, high); got != 1500 {
+	if got := jobKillExperience(levels, low, 10); got != 1500 {
 		t.Fatalf("high victim = %d, want 1500", got)
 	}
 	// Victim basis 100 against 1000: held at 0.5.
-	if got := jobKillExperience(levels, high, low); got != 50 {
+	if got := jobKillExperience(levels, high, 1); got != 50 {
 		t.Fatalf("low victim = %d, want 50", got)
 	}
 }
@@ -251,4 +252,36 @@ WithdrawalGoldBasis
 func (l jobKillLevels) WithdrawalGoldBasis(level int64) (int64, bool) {
 	value, ok := l.gold[level]
 	return value, ok
+}
+
+/*
+================
+TestThiefMonsterKillPaysHunterJobExp
+
+4E1F60's monster branch: a hunter's killing blow on a thief monster earns
+job EXP; a thief monster killed outside job mode earns none.
+================
+*/
+func TestThiefMonsterKillPaysHunterJobExp(t *testing.T) {
+	rt, _, c, mob := newCombatTestRuntime(t, 100)
+	mob.Ref.TidWord, mob.Ref.TypeID4 = 0x00c6, 2 // 1/2/1/2: a thief monster
+	var paid int64
+	rt.UpdateJobExperience = func(member *enterworld.Character, delta int64) ([]wire.Frame, bool) {
+		if member == c {
+			paid += delta
+		}
+		return nil, true
+	}
+	if frames, _ := rt.payMonsterJobKillInDoor(testDivision, c, mob, monster.Pose{}, 0); frames != nil || paid != 0 {
+		t.Fatal("a kill outside job mode paid job EXP")
+	}
+	suit := &enterworld.ItemRef{RefObjID: 13, Codename: "ITEM_CH_HUNTER_SUIT", TypeIDs: [4]int64{3, 1, 7, 3}}
+	c.MissionInventory = append(c.MissionInventory, enterworld.InventoryRow{Slot: int64(enterworld.JobSuitSlot),
+		RefObjID: suit.RefObjID, Codename: suit.Codename, TypeFlags: suit.TypeFlags(), VarianceBits: "0", StackCount: 1})
+	rt.deps.(*enterworld.Deps).Levels = jobKillLevels{LevelDataSource: rt.deps.LevelData(), gold: map[int64]int64{1: 80}}
+	rt.payMonsterJobKillInDoor(testDivision, c, mob, monster.Pose{}, 0)
+	// An even level: basis trunc(80 * 10 * 0.125) = 100 at ratio 1.
+	if paid != 100 {
+		t.Fatalf("job EXP %d, want 100", paid)
+	}
 }

@@ -315,6 +315,13 @@ func (rt *Runtime) settleMonsterInsideDoor(division string, actor *enterworld.Ch
 			out.public = append(out.public, playerPVPStateFrame(actor))
 		}
 	}
+	// 4E27C0 -> 4E1F60: the killing blow's job wearer earns job EXP for a
+	// thief or hunter monster (pkreward.go).
+	if actor != nil {
+		jobFrames, others := rt.payMonsterJobKillInDoor(division, actor, impact.Instance, pose, now)
+		out.actorFrames = append(out.actorFrames, jobFrames...)
+		out.others = append(out.others, others...)
+	}
 	groups := monsterRewardGroups(impact.Contributions, roster.actors)
 	var winner uint32
 	var best uint32
