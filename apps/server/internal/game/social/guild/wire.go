@@ -720,6 +720,20 @@ func EncodeMemberDonatedGp3B29(jid uint32, newDonatedGp uint32) []byte {
 	return writer.Payload()
 }
 
+// EncodeMemberGrade3B29 composes the 0x3B29 subOp-6 member delta carrying
+// the &0x04 grade and &0x10 permission legs, in the applicator's read order
+// (5E9D20): {u8 6}{u32 jid}{u8 0x14}{u8 grade}{u32 permMask}. Grade 0 makes
+// the member the master the guild pane names.
+func EncodeMemberGrade3B29(jid uint32, grade uint8, permMask uint32) []byte {
+	writer := wire.NewWriter(11)
+	writer.U8(6)
+	writer.U32(jid)
+	writer.U8(0x04 | 0x10)
+	writer.U8(grade)
+	writer.U32(permMask)
+	return writer.Payload()
+}
+
 // EncodeMemberFortressRole3B29 composes the 0x3B29 subOp-6 member delta
 // carrying ONLY the &0x40 role leg: {u8 6}{u32 jid}{u8 0x40}{u8 role}.
 // The applicator's &0x40 arm writes member+0x5c and resolves the

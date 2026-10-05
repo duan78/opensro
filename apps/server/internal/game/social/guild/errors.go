@@ -15,7 +15,11 @@ const (
 	GuildErrInvalidMasterComment      byte = 0x23
 	// Category 0x10 rows of 68A0xx (table index + 6): the guild level-up
 	// answers (0xB3F0) and the per-level member cap.
-	GuildErrMemberFull         byte = 0x13
+	GuildErrMemberFull     byte = 0x13
+	GuildErrMemberNotFound byte = 0x1D
+	// GuildErrNoCompensation is 0xB140's 0x45 (UIIT_CTL_GUILDWAR_
+	// NOTCOMPENSATION, 7609C0; v1.188 0x4C45).
+	GuildErrNoCompensation     byte = 0x45
 	GuildErrLevelUpFull        byte = 0x21
 	GuildErrLevelUpGoldDeficit byte = 0x31
 	GuildErrLevelUpGPDeficit   byte = 0x32

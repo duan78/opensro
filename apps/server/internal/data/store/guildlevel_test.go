@@ -19,8 +19,9 @@ import (
 TestGuildLevelUpChargesTheMasterAndTheGuild
 
 Level 2 to 3 costs 50,400 GP and 9,000,000 gold (client 0xBE4C58 /
-0xBE4C6C); the GP shortfall answers before the gold, a member is not the
-master, and the result survives a reopen.
+0xBE4C6C, v1.188 0xADE910 / 0xADE8EC); the gold shortfall answers before
+the GP (5C6240), a member is not the master, and the result survives a
+reopen.
 ================
 */
 func TestGuildLevelUpChargesTheMasterAndTheGuild(t *testing.T) {
@@ -39,6 +40,13 @@ func TestGuildLevelUpChargesTheMasterAndTheGuild(t *testing.T) {
 	if _, refusal := s.Guilds().LevelUpGuildAs(testDivision, member.ID); refusal != enterworld.GuildRefusalLeaderRequired {
 		t.Fatalf("a member levelled the guild: %v", refusal)
 	}
+	if _, refusal := s.Guilds().LevelUpGuildAs(testDivision, leader.ID); refusal != enterworld.GuildRefusalGoldDeficit {
+		t.Fatalf("a master without gold levelled the guild: %v", refusal)
+	}
+	gold := int64(9000100)
+	if !s.UpdateCharacters([]*enterworld.Character{leader}, "fixture-gold", func() bool { leader.Gold = &gold; return true }) {
+		t.Fatal("fixture gold refused")
+	}
 	if _, refusal := s.Guilds().LevelUpGuildAs(testDivision, leader.ID); refusal != enterworld.GuildRefusalGPDeficit {
 		t.Fatalf("1500 GP levelled the guild: %v", refusal)
 	}
@@ -47,13 +55,6 @@ func TestGuildLevelUpChargesTheMasterAndTheGuild(t *testing.T) {
 		return g, m
 	}) {
 		t.Fatal("fixture GP refused")
-	}
-	if _, refusal := s.Guilds().LevelUpGuildAs(testDivision, leader.ID); refusal != enterworld.GuildRefusalGoldDeficit {
-		t.Fatalf("a master without gold levelled the guild: %v", refusal)
-	}
-	gold := int64(9000100)
-	if !s.UpdateCharacters([]*enterworld.Character{leader}, "fixture-gold", func() bool { leader.Gold = &gold; return true }) {
-		t.Fatal("fixture gold refused")
 	}
 	snapshot, refusal := s.Guilds().LevelUpGuildAs(testDivision, leader.ID)
 	if refusal.Refused() || snapshot.Guild.Level != 3 || snapshot.Guild.GP != 60000-50400 || *leader.Gold != 100 {

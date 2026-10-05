@@ -84,6 +84,10 @@ func (s staticGuildStore) DonateGuildPoints(string, int64, uint32) (enterworld.G
 	return enterworld.GuildDonationResult{}, enterworld.GuildRefusalUpdateRejected
 }
 
+func (s staticGuildStore) ClaimWarCompensationAs(string, int64) (int64, enterworld.GuildRefusal) {
+	return 0, enterworld.GuildRefusalUpdateRejected
+}
+
 func (s staticGuildStore) LevelUpGuildAs(string, int64) (enterworld.GuildSnapshot, enterworld.GuildRefusal) {
 	return enterworld.GuildSnapshot{}, enterworld.GuildRefusalUpdateRejected
 }

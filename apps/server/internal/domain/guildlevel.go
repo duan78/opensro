@@ -6,8 +6,9 @@ guildlevel.go - the guild level rules the v1.150 client carries
 A guild climbs from level 1 to 5 at a guild manager NPC. The client prints
 the price of the next level from two tables (CIFGuildLevelUp 5EF9A0: GP at
 0xBE4C58, gold at 0xBE4C6C, both by the current level) and the member cap
-from a third (0xBE4490, by level, in the member pane 5E2D76). v1.188 keeps
-them in the shard's level-up job; the v1.150 numbers are the client's.
+from a third (0xBE4490, by level, in the member pane 5E2D76). v1.188's
+level-up admission (5C6240) carries the same prices at 0xADE910 (gold)
+and 0xADE8EC (GP).
 
 ===========================================================================
 */

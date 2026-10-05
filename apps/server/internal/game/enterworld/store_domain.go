@@ -39,6 +39,7 @@ const (
 	GuildRefusalMaxLevel               = domain.GuildRefusalMaxLevel
 	GuildRefusalGPDeficit              = domain.GuildRefusalGPDeficit
 	GuildRefusalGoldDeficit            = domain.GuildRefusalGoldDeficit
+	GuildRefusalNoCompensation         = domain.GuildRefusalNoCompensation
 )
 
 type TrainingCampRecord = domain.TrainingCampRecord

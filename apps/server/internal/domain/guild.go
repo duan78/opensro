@@ -18,6 +18,9 @@ type GuildRecord struct {
 	NoticeContents string `json:"noticeContents"`
 	CrestParam     uint32 `json:"crestParam"`
 	Byte10         uint8  `json:"byte10"`
+	// WarCompensation is the gold guild wars owe the guild (v1.188 guild
+	// +0x8C, paid to the master at a guild manager, 5C72A0 / 5C7330).
+	WarCompensation int64 `json:"warCompensation,omitempty"`
 }
 
 // GuildMemberRecord is one guild membership row plus the read-model fields
@@ -105,6 +108,7 @@ const (
 	GuildRefusalMaxLevel
 	GuildRefusalGPDeficit
 	GuildRefusalGoldDeficit
+	GuildRefusalNoCompensation
 )
 
 // Refused reports whether a command made no change.
@@ -184,4 +188,8 @@ type GuildStore interface {
 	// level rises by one, in ONE commit. The refusals are the last level,
 	// a GP deficit and a gold deficit.
 	LevelUpGuildAs(divisionID string, actorID int64) (GuildSnapshot, GuildRefusal)
+	// ClaimWarCompensationAs is the ATOMIC compensation door: the acting
+	// leader receives the gold the guild is owed and the debt clears, in
+	// ONE commit. It answers the amount paid.
+	ClaimWarCompensationAs(divisionID string, actorID int64) (int64, GuildRefusal)
 }

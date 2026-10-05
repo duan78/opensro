@@ -75,3 +75,75 @@ func TestGuildManagerLevelsTheMastersGuild(t *testing.T) {
 		t.Fatalf("an unselected manager answered %x", out.Frames[0].Payload)
 	}
 }
+
+/*
+================
+TestGuildMasterHandsTheGuildToAMember
+================
+*/
+func TestGuildMasterHandsTheGuildToAMember(t *testing.T) {
+	d := guildManagerFixture(t)
+	c := d.character
+	heir := testCharacter()
+	heir.Name = "Heir"
+	if err := d.authority.CreateCharacter(testDivision, "heir-account", heir); err != nil {
+		t.Fatal(err)
+	}
+	guilds := d.authority.Guilds()
+	guildID, _ := guilds.GuildOfCharacter(testDivision, c.ID)
+	if _, refusal := guilds.AddGuildMemberAs(testDivision, guildID, c.ID, 0, enterworld.GuildMemberRecord{
+		CharID: heir.ID, JID: 2, Name: heir.Name, Grade: guild.JoinerGrade}); refusal.Refused() {
+		t.Fatalf("fixture join %v", refusal)
+	}
+	leave := func(target uint32) OpResult {
+		return d.rt.HandleGuildMasterLeave(testDivision, c, wire.NewWriter(8).U32(guildManagerGid).U32(target).Payload())
+	}
+	if out := leave(99); !bytes.Equal(out.Frames[0].Payload, []byte{2, guild.GuildErrMemberNotFound}) {
+		t.Fatalf("an absent member answered %x", out.Frames[0].Payload)
+	}
+	out := leave(2)
+	assertOpcodes(t, out.Frames, opGuildMasterLeaveDone, guild.OpGuildUpdatePush, guild.OpGuildUpdatePush)
+	_, members, _ := guilds.Guild(testDivision, guildID)
+	for _, member := range members {
+		if member.JID == 2 && member.Grade != 0 || member.JID == 1 && member.Grade != guild.JoinerGrade {
+			t.Fatalf("members after the hand-over %+v", members)
+		}
+	}
+	if out := leave(1); !bytes.Equal(out.Frames[0].Payload, []byte{2, guild.GuildErrPermissionDenied}) {
+		t.Fatalf("a former master answered %x", out.Frames[0].Payload)
+	}
+}
+
+/*
+================
+TestGuildMasterCollectsWarCompensation
+================
+*/
+func TestGuildMasterCollectsWarCompensation(t *testing.T) {
+	d := guildManagerFixture(t)
+	c := d.character
+	request := wire.NewWriter(4).U32(guildManagerGid).Payload()
+	if out := d.rt.HandleGuildCompensation(testDivision, c, request); !bytes.Equal(out.Frames[0].Payload, []byte{2, guild.GuildErrNoCompensation}) {
+		t.Fatalf("an unowed guild answered %x", out.Frames[0].Payload)
+	}
+	guilds := d.authority.Guilds()
+	if _, refusal := guilds.UpdateGuildAs(testDivision, c.ID, "fixture-compensation", enterworld.GuildAuthorization{},
+		func(g enterworld.GuildRecord, m []enterworld.GuildMemberRecord) (enterworld.GuildRecord, []enterworld.GuildMemberRecord, bool) {
+			g.WarCompensation = 70000
+			return g, m, true
+		}); refusal.Refused() {
+		t.Fatalf("fixture compensation %v", refusal)
+	}
+	if out := d.rt.HandleGuildCompensation(testDivision, c, request); !bytes.Equal(out.Frames[0].Payload, wire.NewWriter(5).U8(1).U32(70000).Payload()) {
+		t.Fatalf("the quote answered %x", out.Frames[0].Payload)
+	}
+	before := goldOf(c)
+	out := d.rt.HandleGuildCompensationClaim(testDivision, c, request)
+	assertOpcodes(t, out.Frames, opGuildCompensationPaid, wire.OpPointsUpdate)
+	if goldOf(c) != before+70000 {
+		t.Fatalf("gold %d after the claim", goldOf(c))
+	}
+	if out := d.rt.HandleGuildCompensationClaim(testDivision, c, request); !bytes.Equal(out.Frames[0].Payload, []byte{2, guild.GuildErrNoCompensation}) {
+		t.Fatalf("a second claim answered %x", out.Frames[0].Payload)
+	}
+}

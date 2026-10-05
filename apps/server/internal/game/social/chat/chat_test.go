@@ -186,6 +186,10 @@ func (g stubGuilds) DonateGuildPoints(string, int64, uint32) (enterworld.GuildDo
 	return enterworld.GuildDonationResult{}, enterworld.GuildRefusalUpdateRejected
 }
 
+func (g stubGuilds) ClaimWarCompensationAs(string, int64) (int64, enterworld.GuildRefusal) {
+	return 0, enterworld.GuildRefusalUpdateRejected
+}
+
 func (g stubGuilds) LevelUpGuildAs(string, int64) (enterworld.GuildSnapshot, enterworld.GuildRefusal) {
 	return enterworld.GuildSnapshot{}, enterworld.GuildRefusalUpdateRejected
 }

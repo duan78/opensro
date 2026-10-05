@@ -145,6 +145,8 @@ func guildRefusalReason(refusal enterworld.GuildRefusal) string {
 		return "not enough guild points"
 	case enterworld.GuildRefusalGoldDeficit:
 		return "not enough gold"
+	case enterworld.GuildRefusalNoCompensation:
+		return "no war compensation is owed"
 	default:
 		return "guild command refused"
 	}
