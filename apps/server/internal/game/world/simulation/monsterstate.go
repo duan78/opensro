@@ -99,6 +99,9 @@ type MonsterState struct {
 	clock                func() time.Time
 	// objectLists holds bootstrap object-list gids until the first scope tick.
 	objectLists map[monsterObjectListKey][]uint32
+	// bandits is built once from the immutable template (BanditTables).
+	banditsOnce sync.Once
+	bandits     *monster.BanditTables
 }
 
 /*

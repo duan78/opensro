@@ -64,17 +64,23 @@ func (rt *Runtime) HandleItemMove(
 		return rt.applyAvatarTransfer(character, request)
 
 	case wire.MoveTypeCosPickup, wire.MoveTypeCosDrop:
-		return rt.applyCosGround(divisionID, character, request)
+		result := rt.applyCosGround(divisionID, character, request)
+		rt.registerCaravanForMove(divisionID, character, request.MovementType)
+		return result
 
 	case wire.MoveTypeCosToPlayer, wire.MoveTypePlayerToCos:
-		return rt.applyCosTransfer(character, request)
+		result := rt.applyCosTransfer(character, request)
+		rt.registerCaravanForMove(divisionID, character, request.MovementType)
+		return result
 
 	case wire.MoveTypeCosInventory:
 		return rt.applyCosContainerMove(character, request)
 
 	case wire.MoveTypeShopBuy, wire.MoveTypeShopSell,
 		wire.MoveTypeCosShopBuy, wire.MoveTypeCosShopSell:
-		return rt.applyCommerce(divisionID, character, request)
+		result := rt.applyCommerce(divisionID, character, request)
+		rt.registerCaravanForMove(divisionID, character, request.MovementType)
+		return result
 
 	case wire.MoveTypeInventory:
 		if jobSuitMove(character, request) {

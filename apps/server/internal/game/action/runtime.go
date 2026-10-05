@@ -11,6 +11,7 @@ package action
 import (
 	"math"
 	"opensro.online/server/internal/domain"
+	"opensro.online/server/internal/game/caravan"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -58,14 +59,19 @@ type Runtime struct {
 	returnCasts         sync.Map // simulation.WorldKey -> pendingReturn; division lock owns changes
 	playerDisplacements sync.Map // simulation.WorldKey -> playerDisplacement; a struck player's hold
 	jobDresses          sync.Map // simulation.WorldKey -> jobDress (jobdress.go)
-	criticals           criticalHistory
-	deps                Dependencies
-	Ground              *grounditem.Registry
-	Pending             *grounditem.PendingTracker
-	Worlds              *simulation.WorldStore
-	SkillObjects        skillobject.Registry
-	CanPlaceQuestTrap   func(*enterworld.Character, string) ([]wire.Frame, bool)
-	CaptureQuestTrap    func(*enterworld.Character, string, string, func() bool) ([]wire.Frame, bool)
+	// caravans are the registered trade caravans (caravan.go); caravanMu
+	// serializes the registry and caravanTickMs is its last advance.
+	caravanMu         sync.Mutex
+	caravans          *caravan.Registry
+	caravanTickMs     int64
+	criticals         criticalHistory
+	deps              Dependencies
+	Ground            *grounditem.Registry
+	Pending           *grounditem.PendingTracker
+	Worlds            *simulation.WorldStore
+	SkillObjects      skillobject.Registry
+	CanPlaceQuestTrap func(*enterworld.Character, string) ([]wire.Frame, bool)
+	CaptureQuestTrap  func(*enterworld.Character, string, string, func() bool) ([]wire.Frame, bool)
 
 	// effects is the server-owned active character-effect collection behind
 	// 0x72CD cancel-active-effect. It stays private so packet handlers cannot
@@ -184,6 +190,10 @@ type Runtime struct {
 	// generation and the post-generation player/level admission gate consume
 	// this native rand() domain in order.
 	DropRoll combat.Roll32767
+
+	// CaravanRoll is the caravan owner's rand() domain: spawn timers and
+	// every bandit draw (60BF30), in native order.
+	CaravanRoll combat.Roll32767
 
 	// DropPassRate multiplies a kill's drop passes (gold, equipment and
 	// consumable rolls), still bounded by the monster's native drop
@@ -395,6 +405,8 @@ func NewRuntime(deps Dependencies, monsters *simulation.MonsterState) *Runtime {
 		AlchemyRoll:        secureAlchemyRoll,
 		CombatRoll:         combat.SecureRoll32767,
 		DropRoll:           combat.SecureRoll32767,
+		CaravanRoll:        combat.SecureRoll32767,
+		caravans:           caravan.NewRegistry(),
 		Now:                time.Now,
 		basicAttackIntents: make(map[string]basicAttackIntent),
 		resurrections:      resurrectionOffers{byTarget: make(map[string]resurrectionOffer)},

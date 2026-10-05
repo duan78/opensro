@@ -108,6 +108,9 @@ func (rt *Runtime) TickHook() simulation.TickHook {
 		out = append(out, rt.advanceBasicAttackIntents(nowMs, openActionOwners)...)
 		out = append(out, rt.advanceNaturalRecovery(nowMs)...)
 		out = append(out, rt.advancePets(nowMs)...)
+		// 60C684 after the pets: a fired caravan reads the transport's
+		// cargo and live position as this tick left them.
+		rt.advanceCaravans(nowMs)
 		rt.advancePetSkillWindows(nowMs)
 		rt.advanceParamJobs(nowMs)
 		rt.advancePKRecords()
