@@ -97,13 +97,38 @@ func dropRollSequence(values ...uint32) func() (uint32, error) {
 
 /*
 ================
+assignedDropMisses
+
+The rolls that make every assigned reward of the combat fixture's monster
+miss. Assigned rewards roll before gold (7245C0), and the fixture monster
+(MOB_CH_MANGNYANG) carries its own characterdata materials: a constant
+32767 keeps each count at its minimum and lands each million roll at 741823,
+above every authored chance, so its consumption is measured, not assumed.
+================
+*/
+func assignedDropMisses() []uint32 {
+	n := 0
+	loot.AssignedDrops("MOB_CH_MANGNYANG", 255, func() (uint32, error) {
+		n++
+		return 32767, nil
+	})
+	values := make([]uint32, n)
+	for i := range values {
+		values[i] = 32767
+	}
+	return values
+}
+
+/*
+================
 goldOnlyMonsterDropRoll
 ================
 */
 func goldOnlyMonsterDropRoll(amountRoll, admissionRoll uint32) func() (uint32, error) {
-	// gold chance+amount; ordinary equipment rarity+two-draw class miss;
-	// sixteen class/family draws that reject all consumables; gold admission.
-	values := []uint32{0, amountRoll, 0, 32767, 32767}
+	// assigned misses; gold chance+amount; ordinary equipment rarity+two-draw
+	// class miss; sixteen class/family draws that reject all consumables;
+	// gold admission.
+	values := append(assignedDropMisses(), 0, amountRoll, 0, 32767, 32767)
 	for i := 0; i < 16; i++ {
 		values = append(values, 32767)
 	}
