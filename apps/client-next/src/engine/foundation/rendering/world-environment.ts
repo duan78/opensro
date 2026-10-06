@@ -158,6 +158,14 @@ export function worldEnvironment(
 	const fog = [ ...color( 27 ) ].map( v => Math.fround( Math.max( 0, Math.min( 1, v ) ) ) );
 	const packed = ( v: number ) => Math.trunc( v * 255 ) / 255;
 	const terrainRadius = Math.trunc( (Math.fround( far ) + 1280) / 320 );
+	// The lighting direction (Experimental > Video > Sun direction): the same
+	// X-Y arc the sky's sun quad rides (skyTime.x). Below the horizon the
+	// anti-solar point takes over - the night's light arrives where the moon
+	// sits, and the flip lands at horizon-crossing where the diffuse term is
+	// already zero. Off (stages.y), the shader keeps the retail 45-degree sun.
+	const sunAngle = (time - .25) * Math.PI * 2,
+		sunHeight = Math.sin( sunAngle ),
+		sunFlip = sunHeight < 0 ? -1 : 1;
 	return new Float32Array( [
 		...color( 3 ),
 		values[31]! * 2,
@@ -216,6 +224,10 @@ export function worldEnvironment(
 		terrainRadius * terrainRadius,
 		environment ? 1 : 0,
 		...[ ...color( 6 ) ].map( v => (Math.min( 255, Math.trunc( v * 255 ) ) & 255) / 255 ),
-		1
+		1,
+		Math.fround( Math.cos( sunAngle ) * sunFlip ),
+		Math.fround( sunHeight * sunFlip ),
+		0,
+		0
 	] );
 }

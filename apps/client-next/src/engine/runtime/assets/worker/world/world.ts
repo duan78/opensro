@@ -10,7 +10,12 @@ once per resource, since a town places the same meshes hundreds of times.
 
 ===========================================================================
 */
-import { passes, heightRange, tileUvScale } from "@/engine/foundation/rendering/terrain-associations";
+import {
+	passes,
+	heightRange,
+	terrainBlockNormals,
+	tileUvScale
+} from "@/engine/foundation/rendering/terrain-associations";
 import { clothData } from "@/engine/foundation/animation/cloth";
 
 import { decodeSoundTerrain } from "@/engine/foundation/audio/terrain-sounds";
@@ -595,6 +600,12 @@ noteMaterial
 								}
 							>(),
 							step = 1 << lod;
+						// Heightfield normals (shared by every LOD and pass of the
+						// block): central differences on the 17x17 grid with the
+						// 20-unit cell spacing, one-sided at the borders. The
+						// terrain-relief stage reads them; off, terrain stays
+						// flat-lit and the values are unused.
+						const blockNormals = terrainBlockNormals( block.heights );
 						for ( const p of passes( block.textureData, step ) ) {
 							reserve( 4 * 224 + 6 * 16 );
 							const id = p.key * 2 + (p.mask === 15 ? 0 : 1);
@@ -611,7 +622,8 @@ noteMaterial
 								const dx = (corner & 1) * step, dz = (corner >>> 1) * step;
 								const x = p.x + dx, z = p.z + dz, h = block.heights[z * 17 + x]!;
 								g.positions.push( cx * 320 + x * 20, h, cz * 320 + z * 20 );
-								g.normals.push( 0, 1, 0 );
+								const at = (z * 17 + x) * 3;
+								g.normals.push( blockNormals[at]!, blockNormals[at + 1]!, blockNormals[at + 2]! );
 								g.uvs.push( (block.blockX * 16 + x) * uv, (block.blockZ * 16 + z) * uv );
 								g.colors.push( p.mask & 1, (p.mask >>> 1) & 1, (p.mask >>> 2) & 1, (p.mask >>> 3) & 1 );
 								g.maskUVs.push( dx / step, dz / step );

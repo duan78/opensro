@@ -34,6 +34,26 @@ test("sky rays follow the same left-handed camera roll as world geometry", () =>
 	close( [ ...env.slice( 20, 23 ) ], [ 0, -2, 0 ] );
 	close( [ ...env.slice( 24, 27 ) ], [ 1, 0, 0 ] );
 });
+test("sun direction rides the sky arc and flips to the anti-solar point at night", () => {
+	const camera = { eye: [ 0, 0, 0 ], target: [ 0, 0, 1 ], fov: 1, near: 1, far: 3500 };
+	const at = timeOfDay => worldEnvironment( { startTimeOfDay: timeOfDay, ratePerSecond: 0 }, camera, 1, 0 );
+	const direction = timeOfDay => [ ...at( timeOfDay ).slice( 84, 88 ) ];
+	const close = ( timeOfDay, expected ) =>
+		assert.ok(
+			direction( timeOfDay ).every( ( v, i ) => Math.abs( v - expected[i] ) < 1e-6 ),
+			`${timeOfDay}: ${JSON.stringify( direction( timeOfDay ) )}`
+		);
+	// The block grew by the sun-direction vec4 the shader's stage reads.
+	assert.equal( at( 0.5 ).length, 88 );
+	// The same X-Y arc the sun quad rides: dawn east, noon zenith, dusk west.
+	close( 0.25, [ 1, 0, 0, 0 ] );
+	close( 0.5, [ 0, 1, 0, 0 ] );
+	close( 0.75, [ -1, 0, 0, 0 ] );
+	// Below the horizon the light arrives from the opposite point: midnight
+	// reads zenith, and the flip lands where the diffuse term is already zero.
+	close( 0, [ 0, 1, 0, 0 ] );
+});
+
 test("native environment interpolation clamps endpoints and steps tiny spans", () => {
 	const keys = [ { t: 0.2, r: 0 }, { t: 0.6, r: 1 } ];
 	assert.equal( sampleEnvironment( keys, 0, "r", 9 ), 0 );

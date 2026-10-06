@@ -61,6 +61,30 @@ export const EXPERIMENTAL_TABS: readonly { readonly title: string; readonly rows
 				id: "experimental-height-fog",
 				label: "Height fog",
 				description: "Distance haze that thins with height."
+			},
+			{
+				key: "dynamicSun",
+				id: "experimental-dynamic-sun",
+				label: "Sun direction",
+				description: "Light follows the day arc; retail pins it at 45 degrees."
+			},
+			{
+				key: "terrainRelief",
+				id: "experimental-terrain-relief",
+				label: "Terrain relief",
+				description: "Sun shades ground slopes; retail ground is flat-lit."
+			},
+			{
+				key: "texturedHorizon",
+				id: "experimental-textured-horizon",
+				label: "Textured horizon",
+				description: "Keeps ground texture past the detail band; retail fades to fog."
+			},
+			{
+				key: "floatBloom",
+				id: "experimental-float-bloom",
+				label: "High dynamic glow",
+				description: "Smooth two-level glow; retail is one quantized 512 pass."
 			}
 		]
 	},

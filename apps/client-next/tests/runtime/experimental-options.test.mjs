@@ -25,7 +25,11 @@ const OFF = Object.freeze( {
 	developerDiagnostics: false,
 	postProcessing: false,
 	anisotropicFiltering: false,
-	heightFog: false
+	heightFog: false,
+	dynamicSun: false,
+	terrainRelief: false,
+	texturedHorizon: false,
+	floatBloom: false
 } );
 
 test("only an explicit boolean enables chat timestamps", () => {
@@ -96,9 +100,23 @@ test("every video stage defaults off and only an explicit true enables it", () =
 	assert.deepEqual( experimentalVideo( experimentalOptions() ), {
 		postProcessing: false,
 		anisotropicFiltering: false,
-		heightFog: false
+		heightFog: false,
+		dynamicSun: false,
+		terrainRelief: false,
+		texturedHorizon: false,
+		floatBloom: false
 	} );
-	for ( const key of [ "postProcessing", "anisotropicFiltering", "heightFog" ] ) {
+	for (
+		const key of [
+			"postProcessing",
+			"anisotropicFiltering",
+			"heightFog",
+			"dynamicSun",
+			"terrainRelief",
+			"texturedHorizon",
+			"floatBloom"
+		]
+	) {
 		assert.equal( experimentalOptions( { [key]: 1 } )[key], false );
 		assert.equal( experimentalOptions( { [key]: "true" } )[key], false );
 		assert.equal( experimentalOptions( { [key]: true } )[key], true );
