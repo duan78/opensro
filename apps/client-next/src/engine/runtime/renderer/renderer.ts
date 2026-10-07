@@ -6,7 +6,12 @@ renderer.ts - GPU resource lifetime and ordered scene, character and UI passes
 ===========================================================================
 */
 import { pickVolumeDepth } from "@/engine/foundation/rendering/pick-volume";
-import { defaultVideoOptions, videoOptions, backgroundDrawDistance } from "@/engine/foundation/rendering/video-options";
+import {
+	DEFAULT_RENDER_SCALE,
+	defaultVideoOptions,
+	videoOptions,
+	backgroundDrawDistance
+} from "@/engine/foundation/rendering/video-options";
 import { experimentalOptions, experimentalVideo } from "@/engine/foundation/ui/experimental-options";
 import { uiTextureResidency } from "@/engine/foundation/rendering/ui-texture-residency";
 import { cameraBasis } from "@/engine/foundation/rendering/world-math";
@@ -627,7 +632,17 @@ export function createRenderer(
 							world.night()
 						),
 					targetSurface = surface;
-				const color = surface.acquire( viewport, experimental.postProcessing || !!deferredPlan?.query );
+				// A scaled scene must present through an upscale, so it retains
+				// the offscreen exactly like the presentation pass does.
+				const renderScale = (video.renderScale ?? DEFAULT_RENDER_SCALE) / 100;
+				const retain = experimental.postProcessing || !!deferredPlan?.query || renderScale !== 1;
+				const color = surface.acquire( viewport, retain, renderScale );
+				const sceneWidth = Math.max( 1, Math.round( viewport.width * renderScale ) ),
+					sceneHeight = Math.max( 1, Math.round( viewport.height * renderScale ) );
+				// The offscreen pair the frame presents inside its own command
+				// buffer; without retention the frame renders straight into
+				// the swapchain and no presentation object exists.
+				const presentation = retain ? { color: surface.color(), final: surface.final() } : undefined;
 				const finishDeferred = ( results?: readonly boolean[] ) => {
 					if ( disposed ) throw Error( "Renderer disposed during particle query" );
 					characters.completeDeferred( results );
@@ -712,13 +727,14 @@ export function createRenderer(
 					partyDraws,
 					frameId,
 					deferredPass,
-					device.bloom( viewport.width, viewport.height, !preview && video.records[video.active][11] === 1 ),
+					device.bloom( sceneWidth, sceneHeight, !preview && video.records[video.active][11] === 1 ),
 					device.geometry()!.waterReflection( {
 						matrix: scene.reflectionMatrix,
 						height: scene.waterHeight ?? 0,
 						above: scene.camera.eye[1] >= (scene.waterHeight ?? 0),
 						seconds: timeSeconds
-					}, [ ...scene.draws, ...(preview ? [] : liveCharacters) ] )
+					}, [ ...scene.draws, ...(preview ? [] : liveCharacters) ] ),
+					presentation
 				);
 				probe?.renderMark( "submit" );
 				if ( pending ) {
@@ -726,13 +742,10 @@ export function createRenderer(
 					// visibility query: the frame stays open until that one is submitted.
 					const frameDevice = open;
 					open = null;
-					return pending.then( () => {
-						if ( !disposed ) targetSurface.present();
-					} ).catch( error => {
+					return pending.then( () => {} ).catch( error => {
 						if ( !disposed ) failure = String( error );
 					} ).finally( () => frameDevice.endFrame() );
 				}
-				targetSurface.present();
 			} catch ( error ) {
 				failure = String( error );
 			} finally {

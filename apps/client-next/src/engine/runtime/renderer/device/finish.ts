@@ -61,7 +61,13 @@ const DITHER_GATE = 8; // grade delta (1/8 = 0.125) that fully opens the gate
 
 export interface FinishPresent {
 	readonly ready: Promise<void>;
-	present( source: GPUTexture, target: GPUTexture ): void;
+	/** Encode the pass into the frame's own command buffer, so later passes
+	 * (the HUD) can follow the presentation in the same submit. The frame is
+	 * this owner's only caller, always inside its begin/end bracket. */
+	encode( encoder: GPUCommandEncoder, source: GPUTextureView, target: GPUTextureView ): void;
+	/** The plain linear upscale the render scale presents through when the
+	 * graded pass is off: same geometry and sampler, no FXAA, no grade. */
+	encodeUpscale( encoder: GPUCommandEncoder, source: GPUTextureView, target: GPUTextureView ): void;
 	dispose(): void;
 }
 
@@ -176,6 +182,9 @@ fn fxaa(uv:vec2f,offset:vec2f)->vec3f{
  if(horizontal){finalUv.y=finalUv.y+finalOffset*step;}else{finalUv.x=finalUv.x+finalOffset*step;}
  return tap(finalUv);
 }
+@fragment fn upscale(v:V)->@location(0) vec4f{
+ return textureSampleLevel(source,linear,v.uv,0);
+}
 @fragment fn fs(v:V)->@location(0) vec4f{
  let offset=vec2f(1.0)/vec2f(textureDimensions(source));
  // Resolve the edge first; the sharpen below reads the raw neighbourhood
@@ -213,7 +222,8 @@ fn fxaa(uv:vec2f,offset:vec2f)->vec3f{
 		]
 	} );
 	const pipelineLayout = created.createPipelineLayout( { bindGroupLayouts: [ layout ] } );
-	let pipeline: GPURenderPipeline | null = null;
+	let pipeline: GPURenderPipeline | null = null,
+		upscalePipeline: GPURenderPipeline | null = null;
 	const ready = module.getCompilationInfo().then( info => {
 		const errors = info.messages.filter( m => m.type === "error" );
 		if ( errors.length ) throw Error( errors.map( m => m.message ).join( "\n" ) );
@@ -224,35 +234,49 @@ fn fxaa(uv:vec2f,offset:vec2f)->vec3f{
 			fragment: { module, entryPoint: "fs", targets: [ { format } ] },
 			primitive: { topology: "triangle-list" }
 		} );
+		upscalePipeline = created.createRenderPipeline( {
+			label: "presentation-upscale",
+			layout: pipelineLayout,
+			vertex: { module, entryPoint: "vs" },
+			fragment: { module, entryPoint: "upscale", targets: [ { format } ] },
+			primitive: { topology: "triangle-list" }
+		} );
 	} );
-	// The offscreen frame texture is stable for one surface size; rebuilding
-	// the binding only when that texture changes keeps present() allocation-free.
-	let bound: GPUTexture | null = null,
+	// The frame presents through one stable ColorTarget view per surface
+	// size; rebuilding the binding only when that view changes keeps
+	// encode() allocation-free.
+	let bound: GPUTextureView | null = null,
 		binding: GPUBindGroup | null = null,
 		disposed = false;
+	const encodeWith = (
+		present: GPURenderPipeline | null,
+		label: string,
+		encoder: GPUCommandEncoder,
+		source: GPUTextureView,
+		target: GPUTextureView
+	) => {
+		if ( disposed || !present ) throw Error( "Presentation finish is not ready" );
+		if ( source !== bound || !binding ) {
+			bound = source;
+			binding = created.createBindGroup( {
+				layout,
+				entries: [ { binding: 0, resource: source }, { binding: 1, resource: sampler } ]
+			} );
+		}
+		const pass = encoder.beginRenderPass( {
+			label,
+			colorAttachments: [ { view: target, loadOp: "clear", storeOp: "store" } ]
+		} );
+		pass.setPipeline( present );
+		pass.setBindGroup( 0, binding );
+		pass.draw( 3 );
+		pass.end();
+	};
 	return {
 		ready,
-		present( source, target ) {
-			if ( disposed || !pipeline ) throw Error( "Presentation finish is not ready" );
-			if ( source !== bound ) {
-				bound = source;
-				const view = source.createView();
-				binding = created.createBindGroup( {
-					layout,
-					entries: [ { binding: 0, resource: view }, { binding: 1, resource: sampler } ]
-				} );
-			}
-			const encoder = created.createCommandEncoder( { label: "presentation-finish" } );
-			const pass = encoder.beginRenderPass( {
-				label: "presentation-finish",
-				colorAttachments: [ { view: target.createView(), loadOp: "clear", storeOp: "store" } ]
-			} );
-			pass.setPipeline( pipeline );
-			pass.setBindGroup( 0, binding! );
-			pass.draw( 3 );
-			pass.end();
-			created.queue.submit( [ encoder.finish() ] );
-		},
+		encode: ( encoder, source, target ) => encodeWith( pipeline, "presentation-finish", encoder, source, target ),
+		encodeUpscale: ( encoder, source, target ) =>
+			encodeWith( upscalePipeline, "presentation-upscale", encoder, source, target ),
 		dispose() {
 			disposed = true;
 			bound = null;

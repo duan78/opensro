@@ -124,10 +124,12 @@ test("creation preview overlays cinematic art and stays below foreground control
 		first: 1
 	} ];
 	frame.draw( {}, undefined, undefined, {}, [], ui, [ { pipeline: "character" } ] );
-	assert.deepEqual( log, [ "main-pass", "bars", "character-preview", "character", "controls" ] );
+	// The preview draws in the scene (below the presentation), then the HUD
+	// composes its layers on the final target in one pass.
+	assert.deepEqual( log, [ "main-pass", "character-preview", "character", "hud", "bars", "controls" ] );
 	log.length = 0;
 	frame.draw( {}, undefined, undefined, {}, [], ui, [] );
-	assert.deepEqual( log, [ "main-pass", "bars", "controls" ] );
+	assert.deepEqual( log, [ "main-pass", "hud", "bars", "controls" ] );
 });
 test("surface configures on resize and forbids use after disposal", () => {
 	let configured = 0, disposed = 0;

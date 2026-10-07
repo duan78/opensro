@@ -204,21 +204,28 @@ export function createDevice( timingEnabled = false, gpuAnimationEnabled = true 
 
 						/*
 						================
-						present
+						encodePresent
 
-						Publish the intermediate frame: through the presentation pass
-						when the renderer enabled it, else the byte-exact native copy.
+						Present the offscreen scene inside the frame's own encoder:
+						the presentation pass when the renderer enabled it, else the
+						byte-exact native copy. The HUD follows in the same command
+						buffer, so one submit carries the whole frame.
 						================
 						*/
-						present( target: GPUTexture ) {
+						encodePresent( encoder: GPUCommandEncoder, target: GPUTexture ) {
 							if ( !depthTextures.has( texture ) ) throw Error( "Disposed frame color" );
 							if ( finishEnabled && finish ) {
-								finish.present( texture, target );
+								finish.encode( encoder, this.view, target.createView() );
 								return;
 							}
-							const encoder = current().createCommandEncoder( { label: "deferred-frame-present" } );
-							encoder.copyTextureToTexture( { texture }, { texture: target }, [ width, height ] );
-							current().queue.submit( [ encoder.finish() ] );
+							if ( target.width === width && target.height === height ) {
+								encoder.copyTextureToTexture( { texture }, { texture: target }, [ width, height ] );
+								return;
+							}
+							// A scaled scene presents through the plain upscale:
+							// the copy cannot resize, and the graded pass is off.
+							if ( !finish ) throw Error( "Presentation upscale is not ready" );
+							finish.encodeUpscale( encoder, this.view, target.createView() );
 						},
 
 						/*

@@ -97,9 +97,20 @@ export function createFrame( commands: FrameCommands ): FrameOwner {
 			frameId,
 			deferred,
 			bloom,
-			reflection
+			reflection,
+			presentation
 		) {
 			const sceneView = bloom?.view ?? view;
+			// Everything world-side composes on the scene target; one
+			// presentation step moves it to the swapchain; the HUD follows on
+			// the final view. Without an offscreen the scene target IS the
+			// swapchain and the presentation step collapses to nothing.
+			const finalView = presentation ? presentation.final.view : view;
+			// Bloom composites onto the presentation's offscreen when there is
+			// one (the finish pass must be able to sample its output), else
+			// straight onto the final view - the bloom chain then is the
+			// presentation, exactly as before the reorder.
+			const compositeTarget = presentation ? view : finalView;
 			if ( ui !== recordedUi ) {
 				/*
 				================
@@ -249,7 +260,7 @@ export function createFrame( commands: FrameCommands ): FrameOwner {
 							view: depth,
 							depthClearValue: 1,
 							depthLoadOp: "clear" as const,
-							depthStoreOp: flares || deferred ? "store" as const : "discard" as const
+							depthStoreOp: flares || deferred || worldUiBundle ? "store" as const : "discard" as const
 						}
 					} :
 					{}),
@@ -262,13 +273,6 @@ export function createFrame( commands: FrameCommands ): FrameOwner {
 			} );
 			pass.setBlendConstant( blendFactor );
 			if ( bundles.length ) pass.executeBundles( bundles );
-			if ( !bloom && !deferred && worldUiBundle ) pass.executeBundles( [ worldUiBundle ] );
-			if ( !bloom && !deferred && !flares && !thunder && backgroundBundle ) {
-				pass.executeBundles( [ backgroundBundle ] );
-			}
-			if ( !bloom && !deferred && !flares && !thunder && !preview.length && uiBundle ) {
-				pass.executeBundles( [ uiBundle ] );
-			}
 			pass.end();
 			/*
 			================
@@ -301,13 +305,6 @@ export function createFrame( commands: FrameCommands ): FrameOwner {
 						tail.setIndexBuffer( draw.indices, "uint32" );
 						tail.drawIndexed( draw.indexCount, draw.instanceCount );
 					}
-					if ( !bloom && worldUiBundle ) tail.executeBundles( [ worldUiBundle ] );
-					if ( !bloom && !flares && !thunder && backgroundBundle ) {
-						tail.executeBundles( [ backgroundBundle ] );
-					}
-					if ( !bloom && !flares && !thunder && !preview.length && uiBundle ) {
-						tail.executeBundles( [ uiBundle ] );
-					}
 					tail.end();
 				}
 				if ( thunder ) {
@@ -322,7 +319,7 @@ export function createFrame( commands: FrameCommands ): FrameOwner {
 					overlay.draw( 6 );
 					overlay.end();
 				}
-				bloom?.encode( encoder, view );
+				bloom?.encode( encoder, compositeTarget );
 				if ( bloom ) blendFactor = bloomBlendFactor;
 				if ( flares ) {
 					const compute = encoder.beginComputePass( {
@@ -336,32 +333,34 @@ export function createFrame( commands: FrameCommands ): FrameOwner {
 					const overlay = encoder.beginRenderPass( {
 						timestampWrites: timing?.pass( "flare-chain" ),
 						label: "flare-chain",
-						colorAttachments: [ { view, loadOp: "load", storeOp: "store" } ]
+						colorAttachments: [ { view: compositeTarget, loadOp: "load", storeOp: "store" } ]
 					} );
 					overlay.setBlendConstant( blendFactor );
 					if ( flareBundle ) overlay.executeBundles( [ flareBundle ] );
 					overlay.end();
 				}
-				if ( flares || thunder || bloom ) {
-					const hud = encoder.beginRenderPass( {
-						timestampWrites: timing?.pass( "hud-after-flares" ),
-						label: "hud-after-flares",
+				// The world UI needs the scene's depth (nameplate occlusion), so it
+				// composites on the scene side - after the bloom composite kept it
+				// out of the glow - with the depth LOADED rather than re-cleared:
+				// the old replay cleared depth and lost occlusion behind flares.
+				if ( worldUiBundle ) {
+					const overlay = encoder.beginRenderPass( {
+						timestampWrites: timing?.pass( "world-ui" ),
+						label: "world-ui",
 						...(depth ?
 							{
 								depthStencilAttachment: {
 									view: depth,
-									depthClearValue: 1,
-									depthLoadOp: "clear" as const,
+									depthLoadOp: "load" as const,
 									depthStoreOp: "discard" as const
 								}
 							} :
 							{}),
-						colorAttachments: [ { view, loadOp: "load", storeOp: "store" } ]
+						colorAttachments: [ { view: compositeTarget, loadOp: "load", storeOp: "store" } ]
 					} );
-					if ( bloom && worldUiBundle ) hud.executeBundles( [ worldUiBundle ] );
-					if ( backgroundBundle ) hud.executeBundles( [ backgroundBundle ] );
-					if ( !preview.length && uiBundle ) hud.executeBundles( [ uiBundle ] );
-					hud.end();
+					overlay.setBlendConstant( blendFactor );
+					overlay.executeBundles( [ worldUiBundle ] );
+					overlay.end();
 				}
 				if ( preview.length ) {
 					const overlay = encoder.beginRenderPass( {
@@ -377,7 +376,7 @@ export function createFrame( commands: FrameCommands ): FrameOwner {
 								}
 							} :
 							{}),
-						colorAttachments: [ { view, loadOp: "load", storeOp: "store" } ]
+						colorAttachments: [ { view: compositeTarget, loadOp: "load", storeOp: "store" } ]
 					} );
 					overlay.setBlendConstant( blendFactor );
 					for ( const draw of preview ) {
@@ -386,10 +385,26 @@ export function createFrame( commands: FrameCommands ): FrameOwner {
 						overlay.setBindGroup( 0, draw.binding );
 						overlay.setVertexBuffer( 0, draw.vertices );
 						overlay.setIndexBuffer( draw.indices, "uint32" );
-						overlay.drawIndexed( draw.indexCount, draw.instanceCount, 0, 0, 0 );
+						overlay.drawIndexed( draw.indexCount, draw.instanceCount );
 					}
-					if ( uiBundle ) overlay.executeBundles( [ uiBundle ] );
 					overlay.end();
+				}
+				// The presentation step: the offscreen scene becomes the swapchain
+				// (finish pass or byte-exact copy), then the HUD composes on top at
+				// full resolution, outside every scene effect.
+				if ( presentation ) {
+					presentation.color.encodePresent( encoder, presentation.final.texture );
+				}
+				if ( backgroundBundle || uiBundle ) {
+					const hud = encoder.beginRenderPass( {
+						timestampWrites: timing?.pass( "hud" ),
+						label: "hud",
+						colorAttachments: [ { view: finalView, loadOp: "load", storeOp: "store" } ]
+					} );
+					hud.setBlendConstant( blendFactor );
+					if ( backgroundBundle ) hud.executeBundles( [ backgroundBundle ] );
+					if ( uiBundle ) hud.executeBundles( [ uiBundle ] );
+					hud.end();
 				}
 				const query = timing?.resolve();
 				if ( query ) {

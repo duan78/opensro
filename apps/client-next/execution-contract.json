@@ -1698,8 +1698,14 @@
 			"consumer": "src/engine/runtime/renderer/surface/surface.ts",
 			"provider": "src/engine/runtime/renderer/device/device.ts",
 			"functions": [
-				"createColor",
-				"present"
+				"createColor"
+			]
+		},
+		{
+			"consumer": "src/engine/runtime/renderer/frame/frame.ts",
+			"provider": "src/engine/runtime/renderer/device/device.ts",
+			"functions": [
+				"encodePresent"
 			]
 		},
 		{
