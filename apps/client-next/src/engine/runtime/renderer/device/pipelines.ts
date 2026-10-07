@@ -35,7 +35,7 @@ export const DEFAULT_BLEND: BlendPair = Object.freeze( {
 	destination: D3DBLEND_INVSRCALPHA
 } );
 
-// Experimental video stages (Experimental > Video). Each is off by
+// Experimental video stages (Experimental > Image / World). Each is off by
 // default, which is the native frame; env.stages carries the switches
 // (x height fog; y sun direction; z terrain relief; w textured horizon).
 // Water reflection and equipment shine are native options (Video slots 4
@@ -50,27 +50,25 @@ const FOG_EXP2_REACH = 2.5; // exp2 factor reaches 1 - 1/255 at the fog end
 const FOG_HEIGHT_FALLOFF = 0.004; // fog density e-folds 250 m above the eye
 const FOG_SKY_TINT = 0.3; // global fog colour blended toward the horizon colour
 
-// Sun direction - the retail shader pins one diagonal light
+// Port-only, not native: Sun direction replaces the pinned diagonal light
 // (0.707, 0.707, 0) for every surface and every hour; only its colour
 // animates. The deviation rides the sky's sun arc (env.sunDirection,
 // world-environment.ts packs it) so dawn and dusk rake across geometry.
 //
-// Terrain relief - retail ground is NOLIGHT: flat albedo times the
-// lightmap. The deviation shades terrain slopes against the light
+// Port-only, not native: Terrain relief shades retail NOLIGHT ground.
+// The deviation shades terrain slopes against the light
 // direction using the heightfield normals the worker now computes,
 // normalized against the flat-ground term so level ground keeps its
 // retail brightness and only slopes move. The strength is the whole
 // tuning surface.
 const TERRAIN_RELIEF = 0.45;
+const TERRAIN_RELIEF_MIN_LIGHT = 0.0001;
 
-// Textured horizon - retail discards the lightmap and flat-fogs the
+// Port-only, not native: Textured horizon changes the flat fog applied to
 // terrain past the detail band (8ABFD0): 2005 minification aliased there.
-// The band's texels are stable when the terrain carries a mip chain: with
-// the authored-level default (see #253) a single-level texture samples its
-// base level at every distance, which shimmers exactly as retail did - pair
-// this stage with Experimental > Video > Generated mipmaps for the smooth
-// band, or accept the retail-grade shimmer at grazing angles. Off, the
-// flat fog return stands.
+// Authored mip levels remain unchanged. Single-level terrain textures can
+// alias at grazing angles when the textured band is exposed. Off, the
+// native flat fog return stands.
 
 // Anisotropic filtering - the experimental sampler level; retail is 1.
 const ANISOTROPY = 16;
@@ -393,8 +391,8 @@ struct Out {@location(11) worldY:f32,@location(12) mirrorPosition:vec4f,@builtin
  }
 var light=vec4f(1);if(material.skin.y>0.5){light=textureSampleBias(albedo,textureSampler,input.uv,0,-0.5);}
  // Retail 8ABFD0: cells outside the detailed band use untextured linear fog.
- // The textured-horizon stage keeps the textured fog blend instead: every
- // terrain texture now carries its mip chain, so the band's texels are stable.
+ // The textured-horizon stage keeps the textured fog blend instead;
+ // authored single-level textures can alias at grazing angles.
  let cellDelta=floor(input.worldXZ/320.0)-env.terrainBand.xy;
  let distant=env.terrainBand.w>0.5&&dot(cellDelta,cellDelta)>env.terrainBand.z&&env.stages.w<0.5;
  if(distant&&material.skin.y>0.5){discard;}
@@ -445,7 +443,9 @@ let mask=mix(mix(input.color.x,input.color.y,input.maskUV.x),mix(input.color.z,i
   // brightness at every hour.
   let reliefBase=env.ambient.rgb+env.diffuse.rgb*max(0.0,lightDirection().y);
   let reliefSlope=env.ambient.rgb+env.diffuse.rgb*max(0.0,dot(normalize(input.normal),lightDirection()));
-  lit*=mix(vec3f(1),clamp(reliefSlope/max(reliefBase,vec3f(0.0001)),vec3f(0),vec3f(2)),${TERRAIN_RELIEF});
+  // With no light in a channel there is no slope contrast to apply.
+  let reliefRatio=select(vec3f(1),reliefSlope/max(reliefBase,vec3f(${TERRAIN_RELIEF_MIN_LIGHT})),reliefBase>vec3f(${TERRAIN_RELIEF_MIN_LIGHT}));
+  lit*=mix(vec3f(1),clamp(reliefRatio,vec3f(0),vec3f(2)),${TERRAIN_RELIEF});
  }
  // AEE6D0: stage0 sphere*TFACTOR; stage1 base+base.a*current;
  // stage2 MODULATE2X with saturated vertex diffuse. Opacity gates RGB only.
@@ -537,7 +537,7 @@ let mask=mix(mix(input.color.x,input.color.y,input.maskUV.x),mix(input.color.z,i
 		)
 	);
 	// Retail 87cbc0 sets MIN/MAG/MIP to LINEAR (2) with no anisotropic filter;
-	// these defaults are that. Experimental > Video > Anisotropic filtering
+	// these defaults are that. Experimental > Image / World > Anisotropic filtering
 	// swaps in the ANISOTROPY samplers below (geometry textureOptions).
 	const worldSampler = created.createSampler( {
 		minFilter: "linear",

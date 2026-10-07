@@ -5,8 +5,8 @@ bloom.ts - the native glow pass and its float-quality sibling
 
 Owns the bloom targets, shaders and pipelines, and encodes either chain
 onto the frame's encoder: the native five-pass replication
-(SWorld_RenderBloom 8A99B0), or - Experimental > Video > High dynamic
-glow - the same capture, kernel and composite constants carried by an
+(SWorld_RenderBloom 8A99B0), or - Experimental > Image > Smooth
+bloom - the same capture, kernel and composite constants carried by an
 rgba16float two-level chain without the 2005 per-tap quantization.
 
 ===========================================================================
@@ -24,7 +24,7 @@ vertical accumulate -> source BLENDFACTOR + destination SRCALPHA.
 Constructor 8BB530 installs radius 13, alpha 198, blend 192, input scale
 128, threshold 40 and kernel alpha bytes 80,70,50.
 
-The float chain keeps every constant but drops the quantization and adds a
+Port-only, not native: the float chain keeps every constant but drops the quantization and adds a
 second 256 blur level, so large glows keep their gradient instead of
 banding at eight bits per tap.
 ================
@@ -61,39 +61,7 @@ export function createBloom( device: GPUDevice, format: GPUTextureFormat, retire
  @fragment fn composite(v:V)->@location(0) vec4f{return vec4f(textureSample(source,linear,v.uv).rgb,198.0/255);}
  `
 	} );
-	const floatModule = device.createShaderModule( {
-		label: "float-bloom",
-		code: `
- @group(0) @binding(0) var source:texture_2d<f32>;
- @group(0) @binding(1) var linear:sampler;
- struct V {@builtin(position) position:vec4f,@location(0) uv:vec2f};
- @vertex fn vs(@builtin(vertex_index) i:u32)->V{
-  let p=array<vec2f,3>(vec2f(-1,-1),vec2f(3,-1),vec2f(-1,3))[i];
-  return V(vec4f(p,0,1),vec2f(p.x*.5+.5,.5-p.y*.5));
- }
- fn tap(uv:vec2f,subtract:bool)->vec3f{
-  let c=textureSampleLevel(source,linear,uv,0).rgb;
-  let inside=all(uv>=vec2f(0))&&all(uv<=vec2f(1));
-  return select(vec3f(0),max(vec3f(0),c-select(0.0,40.0/255,subtract)),inside);
- }
- fn blur(uv:vec2f,axis:vec2f,span:f32,subtract:bool)->vec4f{
-  var c=tap(uv,subtract)*(80.0/255);
-  for(var i=1;i<=2;i++){
-   let d=axis*(2.6*f32(i)/span);let weight=select(70.0,50.0,i==2)/255;
-   c=c+tap(uv-d,subtract)*weight;c=c+tap(uv+d,subtract)*weight;
-  }
-  return vec4f(c,1);
- }
- @fragment fn down(v:V)->@location(0) vec4f{return vec4f(textureSample(source,linear,v.uv).rgb*(128.0/255),1);}
- @fragment fn h1(v:V)->@location(0) vec4f{return blur(v.uv,vec2f(1,0),512.0,true);}
- @fragment fn v1(v:V)->@location(0) vec4f{return blur(v.uv,vec2f(0,1),512.0,false);}
- @fragment fn down2(v:V)->@location(0) vec4f{return vec4f(textureSample(source,linear,v.uv).rgb,1);}
- @fragment fn h2(v:V)->@location(0) vec4f{return blur(v.uv,vec2f(1,0),256.0,false);}
- @fragment fn v2(v:V)->@location(0) vec4f{return blur(v.uv,vec2f(0,1),256.0,false);}
- @fragment fn original(v:V)->@location(0) vec4f{return vec4f(textureSample(source,linear,v.uv).rgb,1);}
- @fragment fn composite(v:V)->@location(0) vec4f{return vec4f(textureSample(source,linear,v.uv).rgb,198.0/255);}
- `
-	} );
+
 	const sampler = device.createSampler( { minFilter: "linear", magFilter: "linear" } );
 	// The composite's D3DRS_BLENDFACTOR: this owner's blend byte in RGB,
 	// alpha 255 (SWorld_CompositeBloom 8AA560).
@@ -134,13 +102,50 @@ export function createBloom( device: GPUDevice, format: GPUTextureFormat, retire
 			} )
 		);
 	} );
-	// The float chain builds lazily, the first time the option is enabled:
-	// a native-only device never pays for it, and a float-shader error cannot
-	// break the native chain (synchronous pipeline creation surfaces shader
-	// errors through the device's uncaptured-error listener at first use,
-	// leaving the native pipelines untouched).
+	/*
+	================
+	floatEnsure
+
+	Port-only, not native. Compile only on first enabled use. Compilation
+	and validation failures use the device's existing terminal error path;
+	a device that never enables this stage never compiles its shader.
+	================
+	*/
 	const floatEnsure = () => {
 		if ( floatPipelines.length ) return;
+		const floatModule = device.createShaderModule( {
+			label: "float-bloom",
+			code: `
+	 @group(0) @binding(0) var source:texture_2d<f32>;
+	 @group(0) @binding(1) var linear:sampler;
+	 struct V {@builtin(position) position:vec4f,@location(0) uv:vec2f};
+	 @vertex fn vs(@builtin(vertex_index) i:u32)->V{
+	  let p=array<vec2f,3>(vec2f(-1,-1),vec2f(3,-1),vec2f(-1,3))[i];
+	  return V(vec4f(p,0,1),vec2f(p.x*.5+.5,.5-p.y*.5));
+	 }
+	 fn tap(uv:vec2f,subtract:bool)->vec3f{
+	  let c=textureSampleLevel(source,linear,uv,0).rgb;
+	  let inside=all(uv>=vec2f(0))&&all(uv<=vec2f(1));
+	  return select(vec3f(0),max(vec3f(0),c-select(0.0,40.0/255,subtract)),inside);
+	 }
+	 fn blur(uv:vec2f,axis:vec2f,span:f32,subtract:bool)->vec4f{
+	  var c=tap(uv,subtract)*(80.0/255);
+	  for(var i=1;i<=2;i++){
+	   let d=axis*(2.6*f32(i)/span);let weight=select(70.0,50.0,i==2)/255;
+	   c=c+tap(uv-d,subtract)*weight;c=c+tap(uv+d,subtract)*weight;
+	  }
+	  return vec4f(c,1);
+	 }
+	 @fragment fn down(v:V)->@location(0) vec4f{return vec4f(textureSample(source,linear,v.uv).rgb*(128.0/255),1);}
+	 @fragment fn h1(v:V)->@location(0) vec4f{return blur(v.uv,vec2f(1,0),512.0,true);}
+	 @fragment fn v1(v:V)->@location(0) vec4f{return blur(v.uv,vec2f(0,1),512.0,false);}
+	 @fragment fn down2(v:V)->@location(0) vec4f{return vec4f(textureSample(source,linear,v.uv).rgb,1);}
+	 @fragment fn h2(v:V)->@location(0) vec4f{return blur(v.uv,vec2f(1,0),256.0,false);}
+	 @fragment fn v2(v:V)->@location(0) vec4f{return blur(v.uv,vec2f(0,1),256.0,false);}
+	 @fragment fn original(v:V)->@location(0) vec4f{return vec4f(textureSample(source,linear,v.uv).rgb,1);}
+	 @fragment fn composite(v:V)->@location(0) vec4f{return vec4f(textureSample(source,linear,v.uv).rgb,198.0/255);}
+	 `
+		} );
 		floatPipelines = [ "down", "h1", "v1", "down2", "h2", "v2", "original", "composite" ].map( entryPoint =>
 			device.createRenderPipeline( {
 				label: "float-bloom-" + entryPoint,
@@ -189,8 +194,8 @@ export function createBloom( device: GPUDevice, format: GPUTextureFormat, retire
 
 		The bloom draw for a w x h frame, (re)creating the targets when the
 		size or quality changed; undefined (and no targets) while bloom is
-		off. The float chain's capture target is rgba16float and carries two
-		ping-pong blur levels (512 and 256); the native chain keeps its three
+		off. Both capture targets keep the canvas format. The float chain uses
+		two rgba16float ping-pong blur levels (512 and 256); the native chain keeps its three
 		8-bit targets byte-compatible with 8A99B0.
 		================
 		*/

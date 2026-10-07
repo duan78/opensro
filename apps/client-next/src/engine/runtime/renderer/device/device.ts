@@ -22,10 +22,10 @@ import { createRetirement } from "./retirement";
 import type { RuntimePhase } from "@/engine/contracts/runtime";
 
 const DEFAULT_TEXTURE_DETAIL = 2;
-// The environment block (352 bytes, ending in the sun-direction vec4 the
-// world environment packs) and the experimental video stages vec4 after
-// it (Environment.stages: height fog, sun direction, terrain relief,
-// textured horizon).
+// The native prefix is 336 bytes; the port-only sun-direction vec4 makes
+// the environment block 352 bytes. The world environment packs it; the
+// experimental video stages vec4 follows at byte 352 (368 bytes total):
+// height fog, sun direction, terrain relief, textured horizon.
 const ENVIRONMENT_BLOCK_BYTES = 352;
 const ENVIRONMENT_UNIFORM_BYTES = ENVIRONMENT_BLOCK_BYTES + 16;
 const FULLSCREEN_VERTEX_COUNT = 6;
@@ -39,7 +39,7 @@ Initialize one device generation and grant checked capabilities after its pipeli
 */
 export function createDevice( timingEnabled = false, gpuAnimationEnabled = true ): DeviceOwner {
 	let textureFiltered = true, textureDetail = DEFAULT_TEXTURE_DETAIL;
-	// Experimental > Video. All off is the native frame: the plain copy to the
+	// Experimental > Image / World. All off is the native frame: the plain copy to the
 	// swapchain, retail samplers and env.stages zero.
 	let finishEnabled = false, anisotropic = false, bloomFloat = false;
 	const stages = new Float32Array( 4 );
@@ -460,7 +460,7 @@ export function createDevice( timingEnabled = false, gpuAnimationEnabled = true 
 		================
 		experimentalVideo
 
-		Experimental > Video: the presentation pass, the anisotropic samplers
+		Experimental > Image / World: the presentation pass, the anisotropic samplers
 		and the shader stages. Retained across startup like textureOptions.
 		================
 		*/

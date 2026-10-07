@@ -124,22 +124,46 @@ test("every video stage defaults off and only an explicit true enables it", () =
 	}
 });
 
+test("new environment preferences persist only on Confirm and Default remains a draft", () => {
+	for ( const key of [ "dynamicSun", "terrainRelief", "texturedHorizon", "floatBloom" ] ) {
+		const hud = createExperimentalHud();
+		hud.open();
+		hud.toggle( key );
+		assert.deepEqual( hud.state().saved, OFF );
+		const saved = hud.confirm();
+		assert.deepEqual( saved, { ...OFF, [key]: true } );
+		const restored = createExperimentalHud();
+		restored.restore( experimentalOptions( JSON.parse( JSON.stringify( saved ) ) ) );
+		restored.open();
+		assert.equal( restored.state().draft[key], true );
+		restored.reset();
+		assert.deepEqual( restored.state().draft, OFF );
+		assert.equal( restored.state().saved[key], true );
+		restored.open();
+		assert.equal( restored.state().draft[key], true, "Unconfirmed Default must be discarded" );
+		restored.reset();
+		assert.deepEqual( restored.confirm(), OFF );
+		restored.open();
+		assert.deepEqual( restored.state().draft, OFF );
+	}
+});
+
 /*
 ================
 Tabs
 ================
 */
-test("the window's tabs cover every preference once and Open returns to Video", () => {
-	assert.deepEqual( EXPERIMENTAL_TABS.map( tab => tab.title ), [ "Video", "Chat", "Developer" ] );
+test("the window's tabs cover every preference once and Open returns to Image", () => {
+	assert.deepEqual( EXPERIMENTAL_TABS.map( tab => tab.title ), [ "Image", "World", "Chat", "Developer" ] );
 	const keys = EXPERIMENTAL_TABS.flatMap( tab => tab.rows.map( row => row.key ) ).sort();
 	assert.deepEqual( keys, Object.keys( OFF ).sort() );
 	const ids = EXPERIMENTAL_TABS.flatMap( tab => tab.rows.map( row => row.id ) );
 	assert.equal( new Set( ids ).size, ids.length );
 	const hud = createExperimentalHud();
-	hud.selectTab( 2 );
-	assert.equal( hud.state().tab, 2 );
+	hud.selectTab( 3 );
+	assert.equal( hud.state().tab, 3 );
 	hud.open();
 	assert.equal( hud.state().tab, 0 );
-	assert.throws( () => hud.selectTab( 3 ) );
+	assert.throws( () => hud.selectTab( EXPERIMENTAL_TABS.length ) );
 	assert.throws( () => hud.selectTab( -1 ) );
 });

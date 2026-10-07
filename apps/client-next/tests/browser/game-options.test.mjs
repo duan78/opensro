@@ -174,12 +174,12 @@ test(
 			assert.equal( menuRows[1] - menuRows[0], 34 );
 			await page.screenshot( { path: "temp/artifacts/experimental-options/escape-menu.png" } );
 			await click( "open-window:Experimental" );
-			// Video is the first tab; every stage is off, which is the native frame.
+			// Image is the first tab; every stage is off, which is the native frame.
 			for (
 				const id of [
 					"experimental-post-processing",
 					"experimental-anisotropic-filtering",
-					"experimental-height-fog"
+					"experimental-float-bloom"
 				]
 			) {
 				await draw( id );
@@ -188,7 +188,30 @@ test(
 					"false"
 				);
 			}
-			await page.screenshot( { path: "temp/artifacts/experimental-options/experimental-video.png" } );
+			await page.screenshot( { path: "temp/artifacts/experimental-options/experimental-image.png" } );
+			await click( "experimental-tab:1" );
+			for (
+				const id of [
+					"experimental-height-fog",
+					"experimental-dynamic-sun",
+					"experimental-terrain-relief",
+					"experimental-textured-horizon"
+				]
+			) {
+				await draw( id );
+				assert.equal(
+					await page.locator( '[data-ui-id="' + id + '"]' ).getAttribute( "aria-pressed" ),
+					"false"
+				);
+				await click( id );
+				assert.equal(
+					await page.locator( '[data-ui-id="' + id + '"]' ).getAttribute( "aria-pressed" ),
+					"true"
+				);
+			}
+			await page.screenshot( { path: "temp/artifacts/experimental-options/experimental-world.png" } );
+			await click( "experimental-tab:0" );
+			await click( "experimental-float-bloom" );
 			await click( "experimental-tab:2" );
 			await draw( "experimental-chat-timestamps" );
 			assert.equal(
@@ -257,7 +280,11 @@ test(
 					developerDiagnostics: true,
 					postProcessing: false,
 					anisotropicFiltering: false,
-					heightFog: false
+					heightFog: false,
+					dynamicSun: false,
+					terrainRelief: false,
+					texturedHorizon: false,
+					floatBloom: false
 				}
 			);
 			await page.keyboard.press( "Escape" );
@@ -291,11 +318,48 @@ test(
 					developerDiagnostics: false,
 					postProcessing: false,
 					anisotropicFiltering: false,
-					heightFog: false
+					heightFog: false,
+					dynamicSun: false,
+					terrainRelief: false,
+					texturedHorizon: false,
+					floatBloom: false
 				}
 			);
 			assert.equal( await page.locator( "#developer-toggle" ).isVisible(), false );
 			assert.equal( await page.locator( "#developer-readout" ).isVisible(), false );
+			await page.keyboard.press( "Escape" );
+			await click( "open-window:Experimental" );
+			const environmentControls = [
+				{ key: "floatBloom", id: "experimental-float-bloom", tab: 0 },
+				{ key: "dynamicSun", id: "experimental-dynamic-sun", tab: 1 },
+				{ key: "terrainRelief", id: "experimental-terrain-relief", tab: 1 },
+				{ key: "texturedHorizon", id: "experimental-textured-horizon", tab: 1 }
+			];
+			for ( const control of environmentControls ) {
+				await click( "experimental-tab:" + control.tab );
+				await click( control.id );
+			}
+			await click( "experimental-confirm" );
+			const savedEnvironment = await page.evaluate( () =>
+				JSON.parse( localStorage.getItem( "sro:v1150:experimental-options:1" ) )
+			);
+			for ( const control of environmentControls ) assert.equal( savedEnvironment[control.key], true );
+			await page.keyboard.press( "Escape" );
+			await click( "open-window:Experimental" );
+			for ( const control of environmentControls ) {
+				await click( "experimental-tab:" + control.tab );
+				assert.equal(
+					await page.locator( '[data-ui-id="' + control.id + '"]' ).getAttribute( "aria-pressed" ),
+					"true",
+					"Confirmed environment preference must survive reopening"
+				);
+			}
+			await click( "experimental-default" );
+			await click( "experimental-confirm" );
+			const resetEnvironment = await page.evaluate( () =>
+				JSON.parse( localStorage.getItem( "sro:v1150:experimental-options:1" ) )
+			);
+			for ( const control of environmentControls ) assert.equal( resetEnvironment[control.key], false );
 			await page.evaluate( () => {
 				flagFixture.ui.event( { kind: "activate", id: "open-window:Option" } );
 				flagFixture.draw();

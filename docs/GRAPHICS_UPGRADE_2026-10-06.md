@@ -1,120 +1,65 @@
-# Graphics modernization - 2026-10-06, wave two
+# Optional environment graphics stages
 
-Four more opt-in stages in the Experimental window (High dynamic glow on
-the Image tab; Sun direction, Terrain relief and Textured horizon on the
-World tab), plus the heightfield normals that feed one of them. The renderer stays a faithful 2005 D3D9
-reconstruction: off is the native frame (the pinned 45-degree light, the
-flat NOLIGHT ground, the fog band at the horizon, the quantized one-level
-bloom), and each stage here is a deliberate, documented deviation with one
-named constant and one revert line in its owning file. Wave one (the
-presentation pass, anisotropy, height fog, water fresnel, garment sheen,
-authored block textures) lives in `GRAPHICS_UPGRADE_2026-10-05.md`; the
-upstream roadmap is tracked in opensro-dev/opensro#273.
+These four stages are **port-only, not native**. Each is off by default in
+Experimental. Turning them off preserves the existing palette, fixed light,
+terrain shading, distant fog band, and native bloom chain.
 
-`env.stages` grew to four switches: x height fog, y sun direction,
-z terrain relief, w textured horizon. The environment block grew one vec4
-(`Environment.sunDirection`, packed by `world-environment.ts`) ahead of
-the stages; nothing else about the uniform layout moved.
+## Moving sunlight
 
-## 1. Sun direction
+The World tab switch replaces the fixed diagonal light with a direction
+following the sky sun's X-Y arc. At night it uses the anti-solar direction;
+this is an artistic choice, not the native moon's separately scaled arc.
+Within `SUN_TWILIGHT_HEIGHT` (0.2) of the horizon, the direction blends toward
+zenith so the day/night transition remains continuous. Vertex and fragment
+lighting use the same `lightDirection()` helper in `pipelines.ts`.
 
-`pipelines.ts` (`lightDirection()`), `world-environment.ts` (packing)
+`world-environment.ts` preserves the original 336-byte prefix and appends
+`sunDirection` at byte 336. The resulting environment block is 352 bytes.
+The device appends `stages` at byte 352, for a 368-byte uniform:
+x height fog, y sun direction, z terrain relief, w textured horizon.
 
-Retail shades every surface with one pinned diagonal light
-(`dot(normal, vec3(0.707, 0.707, 0))`, both the vs_1_1 oD0 vertex path and
-the per-pixel world path) while only its colour animates through the day.
-The stage replaces the direction with the same X-Y arc the sky's sun quad
-rides (`skyTime.x`, native 8cbe10), so mornings and afternoons rake
-across geometry and noon lights from above. Below the horizon the
-anti-solar point takes over - the night's light arrives from where the
-moon sits. The flip alone would jump a wall's light from one side to the
-other at the horizon, so within `SUN_TWILIGHT_HEIGHT` (0.2) of it the light
-blends toward the zenith: both sides of the crossing meet straight up and
-every surface's diffuse stays continuous (`world-environment.test.mjs`
-pins it). The vertex and pixel paths share one `lightDirection()` helper;
-deleting it (or clearing stage y) restores the pinned diagonal. Retail
-fixes its world light once (`SWorld_Construct` stores the direction the
-directional D3DLIGHT9 reuses every frame), so the pinned diagonal is the
-native look.
+## Terrain relief
 
-## 2. Terrain relief
+The World tab switch shades terrain slopes using heightfield normals.
+`terrainBlockNormals` computes normals from the 17-by-17 height grid with
+20-unit spacing, using one-sided differences at block edges. Asset loading
+requests these normals when relief is enabled; native decoding retains flat
+normals. Toggling invalidates pending requests, cached terrain parts, and
+frontend preloads; the displayed scene remains until replacement geometry
+is ready.
 
-`terrain-associations.ts` (`terrainBlockNormals`), the asset worker's
-terrain emission, `pipelines.ts` (the relief block)
+The shader divides slope lighting by the response on level ground, using
+`TERRAIN_RELIEF` (0.45) as its strength. Channels with effectively zero base
+lighting retain a multiplier of one instead of darkening otherwise flat
+ground. The existing lightmap still multiplies the result.
 
-Retail terrain is NOLIGHT: flat albedo that the lightmap then multiplies,
-with authored normals of (0,1,0) that nothing reads. Two changes:
+## Textured horizon
 
-- With the stage on, the worker computes one normal per 17x17 height
-  sample (central differences over the 20-unit cells, one-sided at the
-  borders, shared by every association pass and detail level) when it
-  decodes a region (`WorldDecodeOptions.terrainNormals`). Off, it emits the
-  retail flat (0,1,0) normals and skips the differencing. The choice is
-  made at decode time, so toggling the option applies to newly loaded
-  areas; already-loaded terrain keeps the normals it was decoded with.
-- The stage shades slopes against `lightDirection()` through those
-  normals, levelled against the flat-ground term
-  (`ambient + diffuse * max(0, lightDirection().y)`, the same light's
-  response on level ground) so level terrain keeps its brightness at every
-  hour and only slopes move.
-  `TERRAIN_RELIEF` (0.45) is the whole tuning surface; 0 restores flat
-  ground.
+The World tab switch keeps terrain textures and their fog blend beyond the
+native detail band instead of the flat fog return. Texture mip levels remain
+exactly those authored in the source assets. Single-level textures can alias
+at grazing angles; this feature does not generate extra levels.
 
-The lightmap still multiplies on top unchanged: relief modulates albedo,
-the lightmap stays the baked lighting it always was.
+## Smooth bloom
 
-## 3. Textured horizon
+The Image tab switch modifies the bloom chain when Bloom effect in Video options
+is enabled. It retains the capture scale, threshold, kernel and composite
+constants but removes per-tap 8-bit rounding and adds a second blur level.
+This changes both glow spread and intensity; it is not an HDR scene renderer.
 
-`pipelines.ts` (the `distant` flag)
+The capture target keeps the canvas format for compatibility with scene
+pipelines. Only the 512- and 256-pixel blur targets use `rgba16float`.
+Switching back rebuilds the native targets and uses the original native
+shader and pass sequence. Float shader and pipelines are created only on
+first enabled use. Validation failures use the existing terminal device
+error path; they are not silently ignored or recovered by disabling bloom.
 
-Retail discards the lightmap and flat-fogs terrain past the detail band
-(8ABFD0): 2005 minification aliased out there. Terrain textures ship
-their authored levels only (#253, as retail sampled them), so a
-single-level surface samples its base level at every distance and the
-band shimmers at grazing angles as retail's would have - the stage keeps
-the textured fog blend (`mix(lit, terrainFogColor, fog)`) instead of the flat return. The
-cost is the texture fetches those fragments were already skipping; the
-seam behaviour is unchanged because both fog targets still agree. With
-height fog on, distant peaks now keep their texture as they rise out of
-the haze. Revert: drop `&& env.stages.w < 0.5` from the flag.
+## Verification scope
 
-## 4. High dynamic glow
-
-`bloom.ts`
-
-The native glow chain is a byte-exact 8A99B0 replica, including its
-per-tap 8-bit re-quantization and its single 512 blur level - which bands
-on wide gradients. The float stage keeps every authored constant (capture
-scale 128/255, threshold 40/255, kernel 80/70/50, composite alpha 198,
-blend byte 192) but carries them through `rgba16float` targets and adds a
-second 256 ping-pong level, so large glows keep their gradient instead of
-stepping. The capture target stays in the canvas format (the main pass
-renders into it); only the blur levels are float. Turning the stage off
-hands quality straight back to the native chain with no reallocation
-beyond the targets' own rebuild.
-
-Soft particles were evaluated and deferred: they need the scene depth
-sampled mid-frame, which means splitting the main render pass - a frame
-order change through `execution-contract.json`, its own wave.
-
-## Verification
-
-- `pnpm --filter @sro/client-next run verify:quick` (typecheck, ownership,
-  capabilities, execution map): PASS.
-- `tests/runtime/world-environment.test.mjs` pins the grown block (88
-  floats) and the arc: mid-morning east, noon zenith, mid-afternoon west,
-  midnight anti-solar, unit length throughout, and continuous diffuse for
-  walls through both horizon crossings. `tests/runtime/terrain-normals.test.mjs` pins the normal
-  table: flat stays (0,1,0), ramps tilt by gradient, borders use their
-  actual span, everything unit length.
-- `tests/browser/environment-stages.test.mjs` (against a local dev
-  server): the native frame is byte-stable across repeat submits; the
-  three world stages together change more than 2000 pixels of the full
-  Constantinople dock frame; the float bloom chain composites
-  (dark stays 0, mid-gray gains glow, bright saturates), survives resize
-  and hands quality back without a device error.
-- The device compiles the modified geometry uber-shader and the native
-  bloom chain before its running phase, so every booting browser test
-  proves that WGSL. The float bloom pipelines compile lazily, the first
-  time High dynamic glow is enabled, so a native-only device never builds
-  them.
+The environment unit tests cover the appended direction, its unit length,
+and continuity across both horizon crossings. Terrain normal tests cover
+flat ground, ramps, and border differences. Browser verification must cover
+each switch separately, restoration after disabling, float bloom resize and
+native handback, and exact default pixels against the reviewed baseline.
+Check the PR validation record for commands and results actually run; this
+document does not assert a pass from an earlier contributor session.
