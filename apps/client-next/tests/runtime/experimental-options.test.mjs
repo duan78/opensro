@@ -125,7 +125,7 @@ test("every video stage defaults off and only an explicit true enables it", () =
 });
 
 test("new environment preferences persist only on Confirm and Default remains a draft", () => {
-	for ( const key of [ "dynamicSun", "terrainRelief", "texturedHorizon", "floatBloom" ] ) {
+	for ( const key of /** @type {const} */ ([ "dynamicSun", "terrainRelief", "texturedHorizon", "floatBloom" ]) ) {
 		const hud = createExperimentalHud();
 		hud.open();
 		hud.toggle( key );
