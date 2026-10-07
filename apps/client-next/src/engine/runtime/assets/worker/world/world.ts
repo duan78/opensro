@@ -19,6 +19,11 @@ import {
 import { clothData } from "@/engine/foundation/animation/cloth";
 
 import { decodeSoundTerrain } from "@/engine/foundation/audio/terrain-sounds";
+
+// The retail terrain normal table: every sample (0,1,0). Shared by all
+// blocks when the relief stage is off.
+const FLAT_BLOCK_NORMALS = new Float32Array( 17 * 17 * 3 );
+for ( let i = 1; i < FLAT_BLOCK_NORMALS.length; i += 3 ) FLAT_BLOCK_NORMALS[i] = 1;
 import { dungeonWaterGroup } from "@/engine/foundation/rendering/dungeon-water";
 import { createCharacterPose } from "@/engine/foundation/animation/animation-pose";
 import { characterRadius } from "@/engine/foundation/animation/character-bounds";
@@ -61,6 +66,10 @@ export type WorldDecodePart = "all" | "objects" | "terrain";
 export interface WorldDecodeOptions {
 	readonly origin?: number;
 	readonly part?: WorldDecodePart;
+	/** Compute heightfield normals for the terrain-relief stage; off, the
+	 * terrain emits the retail flat (0,1,0) normals and the load skips the
+	 * per-block differencing entirely. */
+	readonly terrainNormals?: boolean;
 }
 
 /*
@@ -108,6 +117,7 @@ reserve
 			const region = b.source.sectorX | (b.source.sectorY << 8),
 				origin = options.origin ?? region,
 				part = options.part ?? "all",
+				terrainNormals = options.terrainNormals === true,
 				groups: WorldGroup[] = [],
 				warnings: string[] = [];
 			// A dungeon is its own coordinate space; only outdoor scenes share an anchor.
@@ -605,7 +615,9 @@ noteMaterial
 						// 20-unit cell spacing, one-sided at the borders. The
 						// terrain-relief stage reads them; off, terrain stays
 						// flat-lit and the values are unused.
-						const blockNormals = terrainBlockNormals( block.heights );
+						const blockNormals = terrainNormals ?
+							terrainBlockNormals( block.heights ) :
+							FLAT_BLOCK_NORMALS;
 						for ( const p of passes( block.textureData, step ) ) {
 							reserve( 4 * 224 + 6 * 16 );
 							const id = p.key * 2 + (p.mask === 15 ? 0 : 1);

@@ -291,6 +291,13 @@
 			]
 		},
 		{
+			"consumer": "src/engine/runtime/runtime.ts",
+			"provider": "src/engine/runtime/world/world.ts",
+			"functions": [
+				"setTerrainNormals"
+			]
+		},
+		{
 			"consumer": "src/engine/runtime/ui/hud/resources.ts",
 			"provider": "src/engine/foundation/ui/skill-tooltip-catalog.ts",
 			"functions": [

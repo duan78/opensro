@@ -61,12 +61,21 @@ const FOG_SKY_TINT = 0.3; // global fog colour blended toward the horizon colour
 // normalized against the flat-ground term so level ground keeps its
 // retail brightness and only slopes move. The strength is the whole
 // tuning surface.
-const TERRAIN_RELIEF = 0.45; // slope shading mix; 0 restores flat ground
+const TERRAIN_RELIEF = 0.45;
+
+// The smallest light elevation the shading uses: the sun arc dips to zero
+// at dawn/dusk while the anti-solar flip lights walls from the other side;
+// this floor keeps vertical diffuse continuous through the crossing.
+const SUN_SHADING_MIN_ELEVATION = 0.2; // slope shading mix; 0 restores flat ground
 
 // Textured horizon - retail discards the lightmap and flat-fogs the
 // terrain past the detail band (8ABFD0): 2005 minification aliased there.
-// The mip chains every terrain texture now carries make the band's texels
-// stable, so the deviation keeps the textured fog blend instead.
+// The band's texels are stable when the terrain carries a mip chain: with
+// the authored-level default (see #253) a single-level texture samples its
+// base level at every distance, which shimmers exactly as retail did - pair
+// this stage with Experimental > Video > Generated mipmaps for the smooth
+// band, or accept the retail-grade shimmer at grazing angles. Off, the
+// flat fog return stands.
 
 // Anisotropic filtering - the experimental sampler level; retail is 1.
 const ANISOTROPY = 16;
@@ -298,8 +307,15 @@ fn stageColor(stage:vec4f,i:StageInputs)->vec4f {
 // The retail light is the pinned 45-degree diagonal; the sun-direction
 // stage replaces it with the arc direction env carries (see the stage
 // comment above the constants).
-fn lightDirection()->vec3f {
- return select(vec3f(0.70710678,0.70710678,0),normalize(env.sunDirection.xyz),env.stages.y>0.5);
+fn lightDirection()->vec3f{
+ var d=select(vec3f(0.70710678,0.70710678,0),normalize(env.sunDirection.xyz),env.stages.y>0.5);
+ // The sun flips to the anti-solar point at the horizon; a flat zero
+ // elevation would black out every wall's diffuse at the crossing. Clamp
+ // the shading height so vertical surfaces keep a floor of light through
+ // dawn and dusk (the flip's own discontinuity sits where level ground's
+ // diffuse is already zero).
+ d.y=max(d.y,${SUN_SHADING_MIN_ELEVATION});
+ return d;
 }
 struct SkinVertex {joints:vec4u,weights:vec4f}
 @group(0) @binding(6) var<storage,read> skinVertices:array<SkinVertex>;
@@ -433,7 +449,11 @@ let mask=mix(mix(input.color.x,input.color.y,input.maskUV.x),mix(input.color.z,i
  // direction through the heightfield normals the worker computes, levelled
  // against the flat-ground term so level terrain keeps its retail brightness.
  if(env.stages.z>0.5&&material.options.z>0.5){
-  let reliefBase=env.ambient.rgb+env.diffuse.rgb*0.70710678;
+  // The flat-ground term follows the SAME light as the slope term: level
+  // ground's response is dot((0,1,0), L), which is 0.707 under the retail
+  // diagonal and the sun's height under the arc - level terrain keeps its
+  // brightness at every hour.
+  let reliefBase=env.ambient.rgb+env.diffuse.rgb*max(0.0,lightDirection().y);
   let reliefSlope=env.ambient.rgb+env.diffuse.rgb*max(0.0,dot(normalize(input.normal),lightDirection()));
   lit*=mix(vec3f(1),clamp(reliefSlope/max(reliefBase,vec3f(0.0001)),vec3f(0),vec3f(2)),${TERRAIN_RELIEF});
  }

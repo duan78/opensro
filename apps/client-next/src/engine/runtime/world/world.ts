@@ -100,6 +100,14 @@ export function createWorldStream(
 	clearFuture
 	================
 	*/
+	// The terrain-relief preference at decode time: regions streamed while it
+	// is on carry heightfield normals; off, the retail flat normals load and
+	// the differencing is skipped entirely.
+	let terrainNormals = false;
+	function setTerrainNormals( value: boolean ) {
+		terrainNormals = value === true;
+	}
+
 	function clearFuture() {
 		if ( !future ) return;
 		if ( future.result ) { for ( const row of future.result.images ?? [] ) row.image.close(); }
@@ -158,7 +166,7 @@ export function createWorldStream(
 				(path.endsWith( ".texture" ) ? undefined : path.toLowerCase().endsWith( ".dds" ) ? "dds" : "png") :
 				undefined,
 			// The worker returns a DDS texture's picking mask with it (pick-alpha.ts).
-			kind === "texture" ? { pickAlpha: true } : undefined
+			kind === "texture" ? { pickAlpha: true } : terrainNormals ? { terrainNormals: true } : undefined
 		);
 		jobs.set( id, { kind, path, ...(scene ? { outdoor: scene } : {}) } );
 	}
@@ -389,6 +397,7 @@ export function createWorldStream(
 		}
 	}
 	return {
+		setTerrainNormals,
 		/*
 		================
 		pumpCameraScripts

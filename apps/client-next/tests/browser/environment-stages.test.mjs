@@ -74,7 +74,10 @@ test(
 				out.height = 845;
 				const ctx = out.getContext( "2d" );
 				if ( !ctx ) throw Error( "2d context unavailable" );
-				const scene = { ...createWorldDecoder().decode( bundle, true ), terrainDetail: "full" };
+				const decoder = createWorldDecoder();
+				// Heightfield normals are a decode-time option (the relief stage's
+				// data); the retail flat normals are the default.
+				const scene = { ...decoder.decode( bundle, true, { terrainNormals: true } ), terrainDetail: "full" };
 				const textures = new Map();
 				for (
 					const path of new Set( [

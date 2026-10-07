@@ -8,7 +8,7 @@ bloom), and each stage here is a deliberate, documented deviation with one
 named constant and one revert line in its owning file. Wave one (the
 presentation pass, anisotropy, height fog, water fresnel, garment sheen,
 authored block textures) lives in `GRAPHICS_UPGRADE_2026-10-05.md`; the
-perf cleanup and the whole roadmap live in `todo.md`.
+upstream roadmap is tracked in opensro-dev/opensro#273.
 
 `env.stages` grew to four switches: x height fog, y sun direction,
 z terrain relief, w textured horizon. The environment block grew one vec4

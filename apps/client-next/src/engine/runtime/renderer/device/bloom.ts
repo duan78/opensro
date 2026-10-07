@@ -114,48 +114,50 @@ export function createBloom( device: GPUDevice, format: GPUTextureFormat, retire
 	// The float chain's blur levels live in rgba16float; the capture target
 	// keeps the canvas format because the main pass renders into it.
 	let floatPipelines: GPURenderPipeline[] = [];
-	const ready = Promise.all( [
-		module.getCompilationInfo().then( info => {
-			const errors = info.messages.filter( m => m.type === "error" );
-			if ( errors.length ) throw Error( errors.map( m => m.message ).join( "\n" ) );
-			pipelines = [ "down", "horizontal", "vertical", "original", "composite" ].map( entryPoint =>
-				device.createRenderPipeline( {
-					label: "bloom-" + entryPoint,
-					layout: pipelineLayout,
-					vertex: { module, entryPoint: "vs" },
-					fragment: {
-						module,
-						entryPoint,
-						targets: [ {
-							format,
-							...(entryPoint === "composite" ? { blend: compositeBlend } : {})
-						} ]
-					},
-					primitive: { topology: "triangle-list" }
-				} )
-			);
-		} ),
-		floatModule.getCompilationInfo().then( info => {
-			const errors = info.messages.filter( m => m.type === "error" );
-			if ( errors.length ) throw Error( errors.map( m => m.message ).join( "\n" ) );
-			floatPipelines = [ "down", "h1", "v1", "down2", "h2", "v2", "original", "composite" ].map( entryPoint =>
-				device.createRenderPipeline( {
-					label: "float-bloom-" + entryPoint,
-					layout: pipelineLayout,
-					vertex: { module: floatModule, entryPoint: "vs" },
-					fragment: {
-						module: floatModule,
-						entryPoint,
-						targets: [ {
-							format: entryPoint === "original" || entryPoint === "composite" ? format : "rgba16float",
-							...(entryPoint === "composite" ? { blend: compositeBlend } : {})
-						} ]
-					},
-					primitive: { topology: "triangle-list" }
-				} )
-			);
-		} )
-	] );
+	const ready = module.getCompilationInfo().then( info => {
+		const errors = info.messages.filter( m => m.type === "error" );
+		if ( errors.length ) throw Error( errors.map( m => m.message ).join( "\n" ) );
+		pipelines = [ "down", "horizontal", "vertical", "original", "composite" ].map( entryPoint =>
+			device.createRenderPipeline( {
+				label: "bloom-" + entryPoint,
+				layout: pipelineLayout,
+				vertex: { module, entryPoint: "vs" },
+				fragment: {
+					module,
+					entryPoint,
+					targets: [ {
+						format,
+						...(entryPoint === "composite" ? { blend: compositeBlend } : {})
+					} ]
+				},
+				primitive: { topology: "triangle-list" }
+			} )
+		);
+	} );
+	// The float chain builds lazily, the first time the option is enabled:
+	// a native-only device never pays for it, and a float-shader error cannot
+	// break the native chain (synchronous pipeline creation surfaces shader
+	// errors through the device's uncaptured-error listener at first use,
+	// leaving the native pipelines untouched).
+	const floatEnsure = () => {
+		if ( floatPipelines.length ) return;
+		floatPipelines = [ "down", "h1", "v1", "down2", "h2", "v2", "original", "composite" ].map( entryPoint =>
+			device.createRenderPipeline( {
+				label: "float-bloom-" + entryPoint,
+				layout: pipelineLayout,
+				vertex: { module: floatModule, entryPoint: "vs" },
+				fragment: {
+					module: floatModule,
+					entryPoint,
+					targets: [ {
+						format: entryPoint === "original" || entryPoint === "composite" ? format : "rgba16float",
+						...(entryPoint === "composite" ? { blend: compositeBlend } : {})
+					} ]
+				},
+				primitive: { topology: "triangle-list" }
+			} )
+		);
+	};
 	let targets: GPUTexture[] = [],
 		views: GPUTextureView[] = [],
 		bindings: GPUBindGroup[] = [],
@@ -198,6 +200,7 @@ export function createBloom( device: GPUDevice, format: GPUTextureFormat, retire
 				clear();
 				return;
 			}
+			if ( float ) floatEnsure();
 			if ( width !== w || height !== h || quality !== float ) {
 				clear();
 				width = w;
@@ -237,6 +240,7 @@ export function createBloom( device: GPUDevice, format: GPUTextureFormat, retire
 				*/
 				encode( encoder, target ) {
 					if ( disposed || epoch !== revision ) throw Error( "Stale bloom target" );
+					if ( quality && !floatPipelines.length ) throw Error( "Float bloom pipelines are not ready" );
 					// [out, input, pipeline, blend]
 					const steps: readonly (readonly [number, number, number, boolean])[] = quality ?
 						[
