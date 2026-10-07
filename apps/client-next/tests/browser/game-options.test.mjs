@@ -204,6 +204,7 @@ test(
 					"false"
 				);
 				await click( id );
+				await draw( id );
 				assert.equal(
 					await page.locator( '[data-ui-id="' + id + '"]' ).getAttribute( "aria-pressed" ),
 					"true"

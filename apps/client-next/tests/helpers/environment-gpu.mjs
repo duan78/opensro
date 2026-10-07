@@ -38,7 +38,7 @@ export async function prepareEnvironmentFixture( page, origin ) {
 			contentType: "text/html",
 			body: "<!doctype html><html><body></body></html>"
 		} ) );
-	await page.route( "**/assets/**", route => {
+	await page.route( origin + "/assets/**", route => {
 		try {
 			return route.fulfill( {
 				body: Buffer.from( readPublishedAssetBytesSync( new URL( route.request().url() ).pathname, root ) )
