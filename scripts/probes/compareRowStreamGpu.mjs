@@ -167,16 +167,16 @@ for ( const root of roots ) {
 				await capture( "opaque-two", [ actor( 1, -23 ), actor( 2, 23 ) ] );
 				await capture( "half-two", [ actor( 1, -23, .5, true ), actor( 2, 23, .5 ) ] );
 				await capture( "grow-four", [
-					actor( 1, -36, .5, true ),
-					actor( 2, -12, .5 ),
-					actor( 3, 12, .5, true ),
-					actor( 4, 36, .5 )
+					actor( 1, -36, .2, true ),
+					actor( 2, -12, .4 ),
+					actor( 3, 12, .6, true ),
+					actor( 4, 36, .8 )
 				] );
 				await capture( "reorder-four", [
-					actor( 4, 36, .5 ),
-					actor( 3, 12, .5 ),
-					actor( 2, -12, .5, true ),
-					actor( 1, -36, .5 )
+					actor( 4, 36, .8 ),
+					actor( 3, 12, .6 ),
+					actor( 2, -12, .4, true ),
+					actor( 1, -36, .2 )
 				] );
 				await capture( "shrink-one-lit", [ actor( 3, 0, .5, true ) ] );
 				await capture( "expire-one-light", [ actor( 3, 0, .5 ) ] );
@@ -234,7 +234,7 @@ for ( const root of roots ) {
 					far: 100,
 					fov: 1
 				} );
-				renderer.setCharacterActors( [ { ...actor( 10, 0 ), model: "cloth" } ] );
+				renderer.setCharacterActors( [ { ...actor( 10, 0, .5 ), model: "cloth" } ] );
 				let clothFrame = 0;
 				for (
 					const [name, enabled] of [ [ "cloth-static", false ], [ "cloth-moving", true ], [
