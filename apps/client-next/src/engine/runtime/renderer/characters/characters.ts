@@ -105,52 +105,60 @@ function samePoseInputs( a: CharacterActor, b: CharacterActor ): boolean {
 
 /*
 ================
-RibbonBuffers
+RowStreams
 
-One ribbon primitive's vertex streams, sized for its batch's capacity.
+One renderer-owned scratch, bounded by the admitted actor count. Geometry
+copies its values synchronously before the next group can overwrite them.
 ================
 */
+interface RowStreams {
+	rowScratch?: Float32Array;
+	lightScratch?: Float32Array;
+}
+const POINT_LIGHT_FLOATS = 12;
+
 /*
 ================
 fillRowOpacities
 
-The batch's shared fading-opacity stream, written once per batch instead of
-once per primitive. The scratch grows with the row count and is reused
-frame to frame; updateInstances copies through packInstances before
-writeBuffer, so reuse cannot corrupt a queued frame.
+Write fading opacities once per group instead of once per primitive. One
+scratch serves every group and frame; updateInstances packs these values
+synchronously before returning, so later reuse cannot alter queued draws.
 ================
 */
 export function fillRowOpacities(
-	batch: { rowScratch?: Float32Array; lightScratch?: Float32Array; },
+	streams: RowStreams,
 	rows: readonly CharacterActor[],
 	opacity: ( actor: CharacterActor ) => number
 ): Float32Array {
-	if ( !batch.rowScratch || batch.rowScratch.length < rows.length ) {
-		batch.rowScratch = new Float32Array( 2 ** Math.ceil( Math.log2( rows.length ) ) );
+	if ( rows.length > CHARACTER_ACTORS ) throw Error( "Character row scratch exceeds actor limit" );
+	if ( !streams.rowScratch || streams.rowScratch.length < rows.length ) {
+		streams.rowScratch = new Float32Array( rows.length );
 	}
-	for ( let i = 0; i < rows.length; i++ ) batch.rowScratch[i] = opacity( rows[i]! );
-	return batch.rowScratch.subarray( 0, rows.length );
+	for ( let i = 0; i < rows.length; i++ ) streams.rowScratch[i] = opacity( rows[i]! );
+	return streams.rowScratch.subarray( 0, rows.length );
 }
 
 /*
 ================
 fillRowPointLights
 
-The batch's shared hit-point-light stream (position, attenuation, ambient,
-diffuse - twelve floats a row), written once per batch instead of once per
-primitive. Same reuse contract as the opacity scratch.
+The group's shared hit-point-light stream (position, attenuation, ambient,
+diffuse - twelve floats a row), written once per group instead of once per
+primitive. Same renderer-owned reuse contract as the opacity scratch.
 ================
 */
 export function fillRowPointLights(
-	batch: { lightScratch?: Float32Array; },
+	streams: RowStreams,
 	rows: readonly CharacterActor[],
 	origin: number
 ): Float32Array {
-	const needed = rows.length * 12;
-	if ( !batch.lightScratch || batch.lightScratch.length < needed ) {
-		batch.lightScratch = new Float32Array( 2 ** Math.ceil( Math.log2( needed ) ) );
+	if ( rows.length > CHARACTER_ACTORS ) throw Error( "Character row scratch exceeds actor limit" );
+	const needed = rows.length * POINT_LIGHT_FLOATS;
+	if ( !streams.lightScratch || streams.lightScratch.length < needed ) {
+		streams.lightScratch = new Float32Array( needed );
 	}
-	const lights = batch.lightScratch;
+	const lights = streams.lightScratch;
 	lights.fill( 0, 0, needed );
 	for ( let i = 0; i < rows.length; i++ ) {
 		const light = rows[i]!.pointLight;
@@ -163,7 +171,7 @@ export function fillRowPointLights(
 			light.pose.z,
 			rows[i]!.pose.yaw
 		);
-		const at = i * 12;
+		const at = i * POINT_LIGHT_FLOATS;
 		lights[at] = pos[12]!;
 		lights[at + 1] = pos[13]!;
 		lights[at + 2] = pos[14]!;
@@ -178,6 +186,13 @@ export function fillRowPointLights(
 	return lights.subarray( 0, needed );
 }
 
+/*
+================
+RibbonBuffers
+
+One ribbon primitive's vertex streams, sized for its batch's capacity.
+================
+*/
 interface RibbonBuffers {
 	readonly capacity: number;
 	used: number;
@@ -196,6 +211,10 @@ Own source resources separately from borrowed assemblies and per-frame draw batc
 ================
 */
 export function createCharacters( random?: import("@/engine/contracts/presentation-random").PresentationRandom ) {
+	// prepareGroup consumes this scratch synchronously before the next group.
+	// Account it separately from admission: caching must not remove actors
+	// that fit the existing draw budget. Actor snapshots bound both arrays.
+	const rowStreams: RowStreams = {};
 	/*
  ================
  clothRandom
@@ -326,10 +345,6 @@ export function createCharacters( random?: import("@/engine/contracts/presentati
 		ribbons: (RibbonBuffers | undefined)[];
 		cloth?: Map<number, ReturnType<typeof createClothVertices>>;
 		poseKey?: string;
-		// Per-row instance streams reused across frames: fading opacities and
-		// hit point lights are identical for every primitive of the batch.
-		rowScratch?: Float32Array;
-		lightScratch?: Float32Array;
 	}>();
 	// ownedModels counts the owned entries of models (decoded sources); the
 	// rest are borrowed or assembled views, so their count is the difference.
@@ -997,11 +1012,11 @@ export function createCharacters( random?: import("@/engine/contracts/presentati
 		readonly batch: CharacterBatch;
 		readonly capacity: number;
 		instancesChanged: boolean;
-		// The batch's shared instance streams, written once per batch (not per
-		// primitive): fading opacities and hit point lights depend only on the
-		// rows. Undefined when the batch never fades / carries no lights.
-		readonly opacities: Float32Array | undefined;
-		readonly pointLights: Float32Array | undefined;
+		// Borrow the renderer's scratch for this synchronous group only.
+		// Undefined when the group never fades / carries no lights.
+		streamsPrepared: boolean;
+		opacities: Float32Array | undefined;
+		pointLights: Float32Array | undefined;
 	}
 	/*
 	================
@@ -2130,14 +2145,6 @@ export function createCharacters( random?: import("@/engine/contracts/presentati
 	}
 	/*
 	================
-	pointLightRows
-
-	Each row's point light (position, attenuation, ambient, diffuse), or
-	undefined when no row carries one or this is a preview.
-	================
-	*/
-	/*
-	================
 	drawCloth
 
 	A cloth primitive: its instance streams, then CPU cloth vertices from the
@@ -2145,7 +2152,7 @@ export function createCharacters( random?: import("@/engine/contracts/presentati
 	================
 	*/
 	function drawCloth( frame: PrepareFrame, group: GroupFrame, p: number, streams: PrimitiveRows ): GeometryDraw {
-		const geometry = frame.geometry, opacity = frame.opacity;
+		const geometry = frame.geometry;
 		const { preview, view } = frame, { rows, batch, fading } = group;
 		const { instances, appearance, pointLights } = streams, primitive = group.model.primitives[p]!;
 		batch.cloth ??= new Map();
@@ -2193,7 +2200,7 @@ export function createCharacters( random?: import("@/engine/contracts/presentati
 	================
 	*/
 	function drawSkinned( frame: PrepareFrame, group: GroupFrame, p: number, streams: PrimitiveRows ): GeometryDraw {
-		const geometry = frame.geometry, opacity = frame.opacity;
+		const geometry = frame.geometry;
 		const { preview, view } = frame, { rows, batch, fading, capacity } = group;
 		const { instances, appearance, pointLights } = streams, primitive = group.model.primitives[p]!;
 		const stream = batch.streams?.streams[p],
@@ -2254,6 +2261,15 @@ export function createCharacters( random?: import("@/engine/contracts/presentati
 		const primitive = group.model.primitives[p]!;
 		if ( primitive.ribbon ) return drawRibbon( frame, group, p );
 		if ( group.batch.particles[p] ) return drawParticles( frame, group, p );
+		// Only mesh and cloth draws consume these streams. A cached group or
+		// one containing only particles/ribbons needs no scratch writes.
+		if ( !group.streamsPrepared ) {
+			group.opacities = group.fading ? fillRowOpacities( rowStreams, group.rows, frame.opacity ) : undefined;
+			group.pointLights = !frame.preview && group.rows.some( row => row.pointLight ) ?
+				fillRowPointLights( rowStreams, group.rows, frame.origin ) :
+				undefined;
+			group.streamsPrepared = true;
+		}
 		const streams: PrimitiveRows = {
 			appearance: writeAppearance( group, p ),
 			instances: group.batch.instances.subarray( 0, group.rows.length * 16 ),
@@ -2288,10 +2304,9 @@ export function createCharacters( random?: import("@/engine/contracts/presentati
 			batch,
 			capacity,
 			instancesChanged: membershipChanged,
-			opacities: fading ? fillRowOpacities( batch, rows, frame.opacity ) : undefined,
-			pointLights: !frame.preview && rows.some( row => row.pointLight ) ?
-				fillRowPointLights( batch, rows, frame.origin ) :
-				undefined
+			streamsPrepared: false,
+			opacities: undefined,
+			pointLights: undefined
 		};
 		const poseKey = batchPoseKey( frame, group );
 		for ( let i = 0; i < rows.length; i++ ) batch.times[i] = rows[i]!.time;
@@ -2746,6 +2761,7 @@ export function createCharacters( random?: import("@/engine/contracts/presentati
 				actors: actors.length,
 				draws: [ ...batches.values() ].reduce( ( n, batch ) => n + batch.draws.length, 0 ),
 				renderBytes,
+				rowStreamBytes: (rowStreams.rowScratch?.byteLength ?? 0) + (rowStreams.lightScratch?.byteLength ?? 0),
 				deferredActors,
 				poseRequests,
 				poseEvaluations,
@@ -3126,6 +3142,7 @@ export function createCharacters( random?: import("@/engine/contracts/presentati
 		================
 		*/
 		invalidate() {
+			rowStreams.rowScratch = rowStreams.lightScratch = undefined;
 			batches.clear();
 			textures.clear();
 			for ( const resource of models.values() ) {
@@ -3144,6 +3161,7 @@ export function createCharacters( random?: import("@/engine/contracts/presentati
 				return;
 			}
 			disposed = true;
+			rowStreams.rowScratch = rowStreams.lightScratch = undefined;
 			framePoses = null;
 			residentBytes = 0;
 			ownedModels = 0;
