@@ -18,6 +18,7 @@ import {
 } from "../../../../scripts/lib/publishedAsset.mjs";
 import { launchProbeBrowser } from "../../../../scripts/lib/probeBrowser.mjs";
 import { CLIENT_NEXT_BASE_URL } from "../../../../scripts/lib/probeEndpoints.mjs";
+const CAPTURE_SECONDS = 0.16;
 test(
 	"retail title full-detail terrain prevents ocean showing through the dock surface",
 	{ timeout: 120000 },
@@ -52,7 +53,7 @@ test(
 				}
 			} );
 			await page.goto( CLIENT_NEXT_BASE_URL );
-			const result = await page.evaluate( async ( { bundle, camera } ) => {
+			const result = await page.evaluate( async ( { bundle, camera, captureSeconds } ) => {
 				const { decodeDxt1 } = await import( "/src/engine/foundation/assets/dds.ts" );
 				const { decodeNativeTexture } = await import(
 					"/src/engine/foundation/assets/native-texture.ts"
@@ -151,7 +152,10 @@ test(
 							}
 							let k = 0;
 							do {
-								r.frame( { width: 1823, height: 845 }, k++ * .016 );
+								// Residency work can take a different number of frames per mode.
+								// Keep water and environment time identical throughout preparation.
+								await r.frame( { width: 1823, height: 845 }, captureSeconds );
+								k++;
 								await new Promise( requestAnimationFrame );
 								if ( r.phase() === "failed" || k > 1000 ) {
 									throw Error( JSON.stringify( {
@@ -176,7 +180,7 @@ test(
 					r.dispose();
 					for ( const b of textures.values() ) if ( !("kind" in b) ) b.close();
 				}
-			}, { bundle, camera } );
+			}, { bundle, camera, captureSeconds: CAPTURE_SECONDS } );
 			for ( const t of [ .7, .9 ] ) {
 				const rows = result.filter( r => r.t === t ),
 					normal = rows.find( r => r.mode === "normal" ).pixels,
