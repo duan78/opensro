@@ -89,7 +89,11 @@ export function characterBatchBytes( model: CharacterModel, count: number ): num
 	if ( !model.primitives.some( p => p.ribbon ) ) count = 2 ** Math.ceil( Math.log2( count ) );
 	// Reserve bounded pose indices/revisions and per-binding offsets as well.
 	// Palette storage below deliberately charges the unshared worst case.
-	return count * (72 + 64) + model.primitives.reduce( ( bytes, primitive ) => {
+	// The shared per-row instance streams (fading opacities, hit point
+	// lights) are retained at capacity: 4 bytes of opacity plus 48 bytes of
+	// light per row, charged whether the batch ever fades or not, so the
+	// totals stay an upper bound.
+	return count * (72 + 64 + 52) + model.primitives.reduce( ( bytes, primitive ) => {
 		const geometry = primitive.geometry,
 			instances = count * (primitive.emission?.capacity ?? primitive.emission?.births.length ?? 1),
 			slots = 2 ** Math.ceil( Math.log2( Math.max( 1, instances ) ) );
