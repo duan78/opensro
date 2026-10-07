@@ -45,13 +45,27 @@ test("sun direction rides the sky arc and flips to the anti-solar point at night
 		);
 	// The block grew by the sun-direction vec4 the shader's stage reads.
 	assert.equal( at( 0.5 ).length, 88 );
-	// The same X-Y arc the sun quad rides: dawn east, noon zenith, dusk west.
-	close( 0.25, [ 1, 0, 0, 0 ] );
+	// The same X-Y arc the sun quad rides: mid-morning rakes from the east,
+	// noon is overhead, mid-afternoon rakes from the west.
+	const mid = Math.SQRT1_2;
+	close( 0.375, [ mid, mid, 0, 0 ] );
 	close( 0.5, [ 0, 1, 0, 0 ] );
-	close( 0.75, [ -1, 0, 0, 0 ] );
+	close( 0.625, [ -mid, mid, 0, 0 ] );
 	// Below the horizon the light arrives from the opposite point: midnight
-	// reads zenith, and the flip lands where the diffuse term is already zero.
+	// reads zenith.
 	close( 0, [ 0, 1, 0, 0 ] );
+	// At the crossing the light meets the zenith from both sides, so a wall
+	// facing either way keeps continuous diffuse through dawn and dusk.
+	for ( const crossing of [ 0.25, 0.75 ] ) {
+		const before = direction( crossing - 1e-6 ), after = direction( crossing + 1e-6 );
+		for ( const wall of [ [ 1, 0 ], [ -1, 0 ] ] ) {
+			const lit = d => Math.max( 0, d[0] * wall[0] + d[1] * wall[1] );
+			assert.ok( Math.abs( lit( before ) - lit( after ) ) < 1e-3, `wall ${wall} pops at ${crossing}` );
+		}
+		close( crossing, [ 0, 1, 0, 0 ] );
+	}
+	// Every packed direction is unit length.
+	for ( let t = 0; t < 1; t += 1 / 64 ) assert.ok( Math.abs( Math.hypot( ...direction( t ) ) - 1 ) < 1e-6 );
 });
 
 test("native environment interpolation clamps endpoints and steps tiny spans", () => {

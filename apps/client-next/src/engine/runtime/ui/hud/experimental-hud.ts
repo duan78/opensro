@@ -5,7 +5,7 @@ experimental-hud.ts - saved and draft experimental preferences
 
 Opening starts a fresh draft on the first tab. Only Confirm changes
 effective preferences; closing or Escape leaves the saved value intact.
-The window's tabs (Video, Chat, Developer) only choose which rows show;
+The window's tabs (Image, World, Chat, Developer) only choose which rows show;
 every tab edits the same draft.
 
 ===========================================================================
@@ -36,13 +36,15 @@ export interface ExperimentalRow {
 ================
 EXPERIMENTAL_TABS
 
-The window's tabs, Options style: Video holds the renderer stages that
-deviate from the 2005 look, Chat and Developer the earlier additions.
+The window's tabs, Options style, at most four rows each: Image holds the
+frame-wide stages (edges, filtering, glow), World the lighting and
+atmosphere stages that deviate from the 2005 look, Chat and Developer the
+earlier additions.
 ================
 */
 export const EXPERIMENTAL_TABS: readonly { readonly title: string; readonly rows: readonly ExperimentalRow[]; }[] = [
 	{
-		title: "Video",
+		title: "Image",
 		rows: [
 			{
 				key: "postProcessing",
@@ -56,6 +58,17 @@ export const EXPERIMENTAL_TABS: readonly { readonly title: string; readonly rows
 				label: "Anisotropic filtering",
 				description: "Sharper ground and walls at shallow angles."
 			},
+			{
+				key: "floatBloom",
+				id: "experimental-float-bloom",
+				label: "High dynamic glow",
+				description: "Smooth two-level glow; retail is one quantized 512 pass."
+			}
+		]
+	},
+	{
+		title: "World",
+		rows: [
 			{
 				key: "heightFog",
 				id: "experimental-height-fog",
@@ -72,19 +85,13 @@ export const EXPERIMENTAL_TABS: readonly { readonly title: string; readonly rows
 				key: "terrainRelief",
 				id: "experimental-terrain-relief",
 				label: "Terrain relief",
-				description: "Sun shades ground slopes; retail ground is flat-lit."
+				description: "Sun shades ground slopes in newly loaded areas; retail ground is flat-lit."
 			},
 			{
 				key: "texturedHorizon",
 				id: "experimental-textured-horizon",
 				label: "Textured horizon",
 				description: "Keeps ground texture past the detail band; retail fades to fog."
-			},
-			{
-				key: "floatBloom",
-				id: "experimental-float-bloom",
-				label: "High dynamic glow",
-				description: "Smooth two-level glow; retail is one quantized 512 pass."
 			}
 		]
 	},

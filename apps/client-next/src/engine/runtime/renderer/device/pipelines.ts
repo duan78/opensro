@@ -63,11 +63,6 @@ const FOG_SKY_TINT = 0.3; // global fog colour blended toward the horizon colour
 // tuning surface.
 const TERRAIN_RELIEF = 0.45;
 
-// The smallest light elevation the shading uses: the sun arc dips to zero
-// at dawn/dusk while the anti-solar flip lights walls from the other side;
-// this floor keeps vertical diffuse continuous through the crossing.
-const SUN_SHADING_MIN_ELEVATION = 0.2; // slope shading mix; 0 restores flat ground
-
 // Textured horizon - retail discards the lightmap and flat-fogs the
 // terrain past the detail band (8ABFD0): 2005 minification aliased there.
 // The band's texels are stable when the terrain carries a mip chain: with
@@ -308,14 +303,9 @@ fn stageColor(stage:vec4f,i:StageInputs)->vec4f {
 // stage replaces it with the arc direction env carries (see the stage
 // comment above the constants).
 fn lightDirection()->vec3f{
- var d=select(vec3f(0.70710678,0.70710678,0),normalize(env.sunDirection.xyz),env.stages.y>0.5);
- // The sun flips to the anti-solar point at the horizon; a flat zero
- // elevation would black out every wall's diffuse at the crossing. Clamp
- // the shading height so vertical surfaces keep a floor of light through
- // dawn and dusk (the flip's own discontinuity sits where level ground's
- // diffuse is already zero).
- d.y=max(d.y,${SUN_SHADING_MIN_ELEVATION});
- return d;
+ // world-environment.ts packs a unit direction that stays continuous through
+ // the horizon crossing (it blends toward the zenith there).
+ return select(vec3f(0.70710678,0.70710678,0),env.sunDirection.xyz,env.stages.y>0.5);
 }
 struct SkinVertex {joints:vec4u,weights:vec4f}
 @group(0) @binding(6) var<storage,read> skinVertices:array<SkinVertex>;

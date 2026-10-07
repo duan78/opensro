@@ -1,7 +1,8 @@
 # Graphics modernization - 2026-10-06, wave two
 
-Four more opt-in stages under Experimental > Video, plus the heightfield
-normals that feed one of them. The renderer stays a faithful 2005 D3D9
+Four more opt-in stages in the Experimental window (High dynamic glow on
+the Image tab; Sun direction, Terrain relief and Textured horizon on the
+World tab), plus the heightfield normals that feed one of them. The renderer stays a faithful 2005 D3D9
 reconstruction: off is the native frame (the pinned 45-degree light, the
 flat NOLIGHT ground, the fog band at the horizon, the quantized one-level
 bloom), and each stage here is a deliberate, documented deviation with one
@@ -23,12 +24,18 @@ Retail shades every surface with one pinned diagonal light
 (`dot(normal, vec3(0.707, 0.707, 0))`, both the vs_1_1 oD0 vertex path and
 the per-pixel world path) while only its colour animates through the day.
 The stage replaces the direction with the same X-Y arc the sky's sun quad
-rides (`skyTime.x`, native 8cbe10), so dawn and dusk rake across geometry
-and noon lights from above. Below the horizon the anti-solar point takes
-over - the night's light arrives from where the moon sits, and the flip
-lands exactly at horizon-crossing where the diffuse term is already zero,
-so no frame pops. The vertex and pixel paths share one `lightDirection()`
-helper; deleting it (or clearing stage y) restores the pinned diagonal.
+rides (`skyTime.x`, native 8cbe10), so mornings and afternoons rake
+across geometry and noon lights from above. Below the horizon the
+anti-solar point takes over - the night's light arrives from where the
+moon sits. The flip alone would jump a wall's light from one side to the
+other at the horizon, so within `SUN_TWILIGHT_HEIGHT` (0.2) of it the light
+blends toward the zenith: both sides of the crossing meet straight up and
+every surface's diffuse stays continuous (`world-environment.test.mjs`
+pins it). The vertex and pixel paths share one `lightDirection()` helper;
+deleting it (or clearing stage y) restores the pinned diagonal. Retail
+fixes its world light once (`SWorld_Construct` stores the direction the
+directional D3DLIGHT9 reuses every frame), so the pinned diagonal is the
+native look.
 
 ## 2. Terrain relief
 
@@ -38,15 +45,18 @@ terrain emission, `pipelines.ts` (the relief block)
 Retail terrain is NOLIGHT: flat albedo that the lightmap then multiplies,
 with authored normals of (0,1,0) that nothing reads. Two changes:
 
-- The worker now computes one normal per 17x17 height sample (central
-  differences over the 20-unit cells, one-sided at the borders, shared by
-  every association pass and detail level) and writes it into the terrain
-  vertex stream. This is data, not a look change: with the stage off the
-  values are unused and the frame is byte-identical.
+- With the stage on, the worker computes one normal per 17x17 height
+  sample (central differences over the 20-unit cells, one-sided at the
+  borders, shared by every association pass and detail level) when it
+  decodes a region (`WorldDecodeOptions.terrainNormals`). Off, it emits the
+  retail flat (0,1,0) normals and skips the differencing. The choice is
+  made at decode time, so toggling the option applies to newly loaded
+  areas; already-loaded terrain keeps the normals it was decoded with.
 - The stage shades slopes against `lightDirection()` through those
   normals, levelled against the flat-ground term
-  (`ambient + diffuse * 0.707`, the retail diagonal's ground response) so
-  level terrain keeps its exact retail brightness and only slopes move.
+  (`ambient + diffuse * max(0, lightDirection().y)`, the same light's
+  response on level ground) so level terrain keeps its brightness at every
+  hour and only slopes move.
   `TERRAIN_RELIEF` (0.45) is the whole tuning surface; 0 restores flat
   ground.
 
@@ -58,10 +68,11 @@ the lightmap stays the baked lighting it always was.
 `pipelines.ts` (the `distant` flag)
 
 Retail discards the lightmap and flat-fogs terrain past the detail band
-(8ABFD0): 2005 minification aliased out there. Every terrain texture now
-carries its authored-plus-generated mip chain (the block-container work),
-so the band's texels are stable - the stage simply keeps the textured fog
-blend (`mix(lit, terrainFogColor, fog)`) instead of the flat return. The
+(8ABFD0): 2005 minification aliased out there. Terrain textures ship
+their authored levels only (#253, as retail sampled them), so a
+single-level surface samples its base level at every distance and the
+band shimmers at grazing angles as retail's would have - the stage keeps
+the textured fog blend (`mix(lit, terrainFogColor, fog)`) instead of the flat return. The
 cost is the texture fetches those fragments were already skipping; the
 seam behaviour is unchanged because both fog targets still agree. With
 height fog on, distant peaks now keep their texture as they rise out of
@@ -91,16 +102,19 @@ order change through `execution-contract.json`, its own wave.
 - `pnpm --filter @sro/client-next run verify:quick` (typecheck, ownership,
   capabilities, execution map): PASS.
 - `tests/runtime/world-environment.test.mjs` pins the grown block (88
-  floats) and the arc: dawn east, noon zenith, dusk west, midnight
-  anti-solar. `tests/runtime/terrain-normals.test.mjs` pins the normal
+  floats) and the arc: mid-morning east, noon zenith, mid-afternoon west,
+  midnight anti-solar, unit length throughout, and continuous diffuse for
+  walls through both horizon crossings. `tests/runtime/terrain-normals.test.mjs` pins the normal
   table: flat stays (0,1,0), ramps tilt by gradient, borders use their
   actual span, everything unit length.
 - `tests/browser/environment-stages.test.mjs` (against a local dev
   server): the native frame is byte-stable across repeat submits; the
-  three world stages together move the Constantinople dock frame by more
-  than 500 pixels of the 400x300 probe; the float bloom chain composites
+  three world stages together change more than 2000 pixels of the full
+  Constantinople dock frame; the float bloom chain composites
   (dark stays 0, mid-gray gains glow, bright saturates), survives resize
   and hands quality back without a device error.
-- The device compiles the modified geometry uber-shader and both bloom
-  chains before its running phase, so every booting browser test also
-  proves the WGSL.
+- The device compiles the modified geometry uber-shader and the native
+  bloom chain before its running phase, so every booting browser test
+  proves that WGSL. The float bloom pipelines compile lazily, the first
+  time High dynamic glow is enabled, so a native-only device never builds
+  them.

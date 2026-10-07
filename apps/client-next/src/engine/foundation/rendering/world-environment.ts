@@ -1,6 +1,10 @@
 import { cameraBasis } from "@/engine/foundation/rendering/world-math";
 import type { EnvironmentTrack, WorldEnvironment, WorldCamera } from "@/engine/contracts/scene";
 
+// Sun direction stage: the sun height (sine of its arc angle) below which
+// the light blends toward the zenith so the night flip stays continuous.
+const SUN_TWILIGHT_HEIGHT = 0.2;
+
 // Retail sub_4dc920/sub_4dcab0: clamped endpoints, linear interpolation,
 // and a lower-key step for spans below the native epsilon.
 export function sampleEnvironment(
@@ -161,11 +165,18 @@ export function worldEnvironment(
 	// The lighting direction (Experimental > Video > Sun direction): the same
 	// X-Y arc the sky's sun quad rides (skyTime.x). Below the horizon the
 	// anti-solar point takes over - the night's light arrives where the moon
-	// sits, and the flip lands at horizon-crossing where the diffuse term is
-	// already zero. Off (stages.y), the shader keeps the retail 45-degree sun.
+	// sits. The flip alone would jump a wall's light from one side to the
+	// other at the crossing, so within SUN_TWILIGHT_HEIGHT of the horizon the
+	// light blends toward the zenith: both sides of the crossing meet straight
+	// up and every surface's diffuse stays continuous. Off (stages.y), the
+	// shader keeps the retail 45-degree sun.
 	const sunAngle = (time - .25) * Math.PI * 2,
 		sunHeight = Math.sin( sunAngle ),
-		sunFlip = sunHeight < 0 ? -1 : 1;
+		sunFlip = sunHeight < 0 ? -1 : 1,
+		twilight = Math.min( 1, Math.abs( sunHeight ) / SUN_TWILIGHT_HEIGHT ),
+		sunX = Math.cos( sunAngle ) * sunFlip * twilight,
+		sunY = sunHeight * sunFlip * twilight + (1 - twilight),
+		sunLength = Math.hypot( sunX, sunY );
 	return new Float32Array( [
 		...color( 3 ),
 		values[31]! * 2,
@@ -225,8 +236,8 @@ export function worldEnvironment(
 		environment ? 1 : 0,
 		...[ ...color( 6 ) ].map( v => (Math.min( 255, Math.trunc( v * 255 ) ) & 255) / 255 ),
 		1,
-		Math.fround( Math.cos( sunAngle ) * sunFlip ),
-		Math.fround( sunHeight * sunFlip ),
+		Math.fround( sunX / sunLength ),
+		Math.fround( sunY / sunLength ),
 		0,
 		0
 	] );

@@ -189,7 +189,7 @@ test(
 				);
 			}
 			await page.screenshot( { path: "temp/artifacts/experimental-options/experimental-video.png" } );
-			await click( "experimental-tab:1" );
+			await click( "experimental-tab:2" );
 			await draw( "experimental-chat-timestamps" );
 			assert.equal(
 				await page.locator( '[data-ui-id="experimental-chat-timestamps"]' ).getAttribute( "aria-pressed" ),
@@ -197,7 +197,7 @@ test(
 			);
 			await page.screenshot( { path: "temp/artifacts/experimental-options/experimental.png" } );
 			assert.equal( await page.locator( "#developer-toggle" ).isVisible(), false );
-			await click( "experimental-tab:2" );
+			await click( "experimental-tab:3" );
 			await page.screenshot( { path: "temp/artifacts/experimental-options/experimental-developer.png" } );
 			await click( "experimental-developer-diagnostics" );
 			assert.equal(
@@ -205,7 +205,7 @@ test(
 				false,
 				"draft must not enable diagnostics"
 			);
-			await click( "experimental-tab:1" );
+			await click( "experimental-tab:2" );
 			await click( "experimental-chat-timestamps" );
 			await click( "experimental-cancel" );
 			assert.equal(
@@ -214,21 +214,21 @@ test(
 			);
 			await page.keyboard.press( "Escape" );
 			await click( "open-window:Experimental" );
-			await click( "experimental-tab:1" );
+			await click( "experimental-tab:2" );
 			await draw( "experimental-chat-timestamps" );
 			assert.equal(
 				await page.locator( '[data-ui-id="experimental-chat-timestamps"]' ).getAttribute( "aria-pressed" ),
 				"false"
 			);
 			assert.equal( await page.locator( "#developer-toggle" ).isVisible(), false );
-			await click( "experimental-tab:2" );
+			await click( "experimental-tab:3" );
 			await click( "experimental-developer-diagnostics" );
 			assert.equal(
 				await page.locator( "#developer-toggle" ).isVisible(),
 				false,
 				"draft must not enable diagnostics"
 			);
-			await click( "experimental-tab:1" );
+			await click( "experimental-tab:2" );
 			await click( "experimental-chat-timestamps" );
 			await click( "experimental-confirm" );
 			assert.equal( await page.locator( "#developer-toggle" ).isVisible(), true );
@@ -262,7 +262,7 @@ test(
 			);
 			await page.keyboard.press( "Escape" );
 			await click( "open-window:Experimental" );
-			await click( "experimental-tab:1" );
+			await click( "experimental-tab:2" );
 			await draw( "experimental-chat-timestamps" );
 			assert.equal(
 				await page.locator( '[data-ui-id="experimental-chat-timestamps"]' ).getAttribute( "aria-pressed" ),
@@ -275,7 +275,7 @@ test(
 				flagFixture.ui.event( { kind: "activate", id: "open-window:Experimental" } );
 				flagFixture.draw();
 			} );
-			await click( "experimental-tab:1" );
+			await click( "experimental-tab:2" );
 			await draw( "experimental-chat-timestamps" );
 			assert.equal(
 				await page.locator( '[data-ui-id="experimental-chat-timestamps"]' ).getAttribute( "aria-pressed" ),
