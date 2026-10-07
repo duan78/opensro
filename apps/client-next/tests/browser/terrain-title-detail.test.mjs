@@ -1,3 +1,13 @@
+/*
+===========================================================================
+
+terrain-title-detail.test.mjs - native terrain coverage through the GPU
+
+Compare production terrain selection with authored LOD0 using the same
+renderer-owned texture demand and native texture upload path.
+
+===========================================================================
+*/
 import { CLIENT_PUBLIC_ROOT } from "../../../../scripts/lib/generatedRoot.mjs";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
@@ -68,14 +78,8 @@ test(
 				const scene = { ...createWorldDecoder().decode( bundle, true ), terrainDetail: "full" }, images = [];
 				const textures = new Map();
 				try {
-					for (
-						const path of new Set( [
-							...(scene.flareTextures ?? []),
-							...scene.groups.flatMap( g =>
-								g.material.frames ?? (g.material.texture ? [ g.material.texture ] : [])
-							)
-						] )
-					) {
+					r.setWorld( scene );
+					for ( const path of r.neededWorldTextures() ) {
 						try {
 							const blob = await (await fetch( path )).blob();
 							if ( path.endsWith( ".dds" ) ) {
@@ -149,7 +153,13 @@ test(
 							do {
 								r.frame( { width: 1823, height: 845 }, k++ * .016 );
 								await new Promise( requestAnimationFrame );
-								if ( k > 1000 ) throw Error( JSON.stringify( r.worldStats?.() ) );
+								if ( r.phase() === "failed" || k > 1000 ) {
+									throw Error( JSON.stringify( {
+										error: r.error(),
+										stats: r.worldStats(),
+										missing: r.neededWorldTextures()
+									} ) );
+								}
 							} while ( k < 10 || r.worldStats().pendingGroups || r.worldStats().pendingTextures );
 							const bitmap = await createImageBitmap( canvas );
 							ctx.drawImage( bitmap, 0, 0 );
