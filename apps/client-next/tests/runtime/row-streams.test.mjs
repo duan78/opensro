@@ -24,6 +24,7 @@ const { createUiResources } = await import( sourceFileUrl( "src/engine/runtime/r
 actor
 ================
 */
+/** @param {ReturnType<typeof light> | undefined} pointLight */
 const actor = ( gid, opacity, pointLight = undefined ) => ({
 	gid,
 	opacity,
@@ -152,7 +153,8 @@ test("the portrait target allocates one view per resident texture", async t => {
 	const descriptors = names.map( name => Object.getOwnPropertyDescriptor( globalThis, name ) );
 	t.after( () => {
 		for ( let i = 0; i < names.length; i++ ) {
-			if ( descriptors[i] ) Object.defineProperty( globalThis, names[i], descriptors[i] );
+			const descriptor = descriptors[i];
+			if ( descriptor ) Object.defineProperty( globalThis, names[i], descriptor );
 			else delete globalThis[names[i]];
 		}
 	} );
