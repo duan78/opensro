@@ -322,9 +322,11 @@ import {
 } from "@/engine/foundation/ui/buff-viewer";
 import { matchingSlots } from "@/engine/foundation/ui/matching-slots";
 import {
+	DEFAULT_RENDER_SCALE,
 	defaultVideoOptions,
 	DEFAULT_FRAME_LIMIT,
 	frameLimits,
+	renderScales,
 	videoOptions,
 	videoRows,
 	displaySizes,
@@ -483,6 +485,9 @@ const COS_LOW_SATIETY = [ 0x99 / 255, 0x99 / 255, 0x99 / 255, 1 ] as const;
 // No video option combo is open (slot -1 is the screen-size combo).
 const VIDEO_COMBO_CLOSED = -99;
 const VIDEO_FRAME_LIMIT_SLOT = -3;
+// Browser addition beside the frame rate: the scene's render scale. The
+// canvas and the HUD stay at the backing store's size.
+const VIDEO_RENDER_SCALE_SLOT = -4;
 const VIDEO_VISIBLE_ROWS = 6;
 const VIDEO_SCROLL_MAX = videoRows().length + 1 - VIDEO_VISIBLE_ROWS;
 const ROOT = "/assets/images/Media_extracted/", BUTTON = ROOT + "interface/ifcommon/com_button.png";
@@ -2168,6 +2173,9 @@ export function createUi(
 			if ( Number( slot ) === VIDEO_FRAME_LIMIT_SLOT ) {
 				const frameLimit = frameLimits()[Number( value )];
 				if ( frameLimit !== undefined ) videoDraft = { ...videoDraft, frameLimit };
+			} else if ( Number( slot ) === VIDEO_RENDER_SCALE_SLOT ) {
+				const renderScale = renderScales()[Number( value )];
+				if ( renderScale !== undefined ) videoDraft = { ...videoDraft, renderScale };
 			} else if ( Number( slot ) === -1 ) {
 				const size = displaySizes()[Number( value )];
 				if ( size ) {
@@ -9152,6 +9160,11 @@ export function createUi(
 								key: "Frame rate",
 								entries: frameLimits().map( fps => fps ? `${fps} FPS` : "Display refresh rate" ),
 								supported: true
+							}, {
+								slot: VIDEO_RENDER_SCALE_SLOT,
+								key: "Render scale",
+								entries: renderScales().map( scale => `${scale}%` ),
+								supported: true
 							} ],
 							combos: {
 								slot: number;
@@ -9214,8 +9227,12 @@ export function createUi(
 								entries: row.entries,
 								selected: row.slot === VIDEO_FRAME_LIMIT_SLOT ?
 									frameLimits().indexOf( videoDraft.frameLimit ?? DEFAULT_FRAME_LIMIT ) :
+									row.slot === VIDEO_RENDER_SCALE_SLOT ?
+									renderScales().indexOf( videoDraft.renderScale ?? DEFAULT_RENDER_SCALE ) :
 									videoDraft.records[videoDraft.active][row.slot]!,
-								label: row.slot === VIDEO_FRAME_LIMIT_SLOT ? row.key : hudCopy( row.key ),
+								label: row.slot === VIDEO_FRAME_LIMIT_SLOT || row.slot === VIDEO_RENDER_SCALE_SLOT ?
+									row.key :
+									hudCopy( row.key ),
 								disabled: !row.supported
 							} );
 						}

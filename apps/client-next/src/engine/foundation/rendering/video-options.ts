@@ -17,6 +17,9 @@ lays out at the resulting pixel size rather than resampling its bitmap font.
 export const NATIVE_CHARACTER_LIGHTING = false;
 // Zero follows requestAnimationFrame at the current display refresh rate.
 export const DEFAULT_FRAME_LIMIT = 0;
+// 100 keeps the native frame: the scene renders at the backing store's exact
+// size and no upscale step exists.
+export const DEFAULT_RENDER_SCALE = 100;
 /*
 ================
 frameLimits
@@ -26,6 +29,18 @@ Browser presentation preference; never encoded into the native detail banks.
 */
 export function frameLimits(): readonly number[] {
 	return [ 60, 120, 240, 0 ];
+}
+/*
+================
+renderScales
+
+Browser performance preference; never encoded into the native detail banks.
+The scene renders at this percentage of the backing store and the
+presentation upscales it; the HUD always composes at full resolution.
+================
+*/
+export function renderScales(): readonly number[] {
+	return [ 100, 75, 50 ];
 }
 /*
 ================
@@ -73,6 +88,7 @@ VideoOptions
 */
 export interface VideoOptions {
 	readonly frameLimit?: number;
+	readonly renderScale?: number;
 	readonly custom?: VideoRecords;
 	readonly active: 0 | 1;
 	readonly records: readonly [readonly number[], readonly number[]];
@@ -87,7 +103,12 @@ defaultVideoOptions
 */
 export function defaultVideoOptions(): VideoOptions {
 	const row = [ 1, 0, 2, 2, 0, 1, 1, 1, 1, 2, 1, 0, 1, 2, 0, 0 ];
-	return { active: 0, records: [ [ ...row ], [ ...row ] ], frameLimit: DEFAULT_FRAME_LIMIT };
+	return {
+		active: 0,
+		records: [ [ ...row ], [ ...row ] ],
+		frameLimit: DEFAULT_FRAME_LIMIT,
+		renderScale: DEFAULT_RENDER_SCALE
+	};
 }
 // Slots 3 and 5 are selectable but change nothing, as in the native client:
 // 713EC0 maps them to SWorld properties 9 and 7, which 8A54C0 only stores
@@ -195,6 +216,9 @@ export function videoOptions( value: unknown ): VideoOptions {
 	}
 	return {
 		frameLimit: v.frameLimit ?? DEFAULT_FRAME_LIMIT,
+		renderScale: v.renderScale !== undefined && renderScales().includes( v.renderScale ) ?
+			v.renderScale :
+			DEFAULT_RENDER_SCALE,
 		active: v.active,
 		records: [ [ ...v.records[0] ], [ ...v.records[1] ] ],
 		...(v.custom ? { custom: [ [ ...v.custom[0] ], [ ...v.custom[1] ] ] as VideoRecords } : {}),
@@ -264,5 +288,5 @@ export function resetVideoRecord( options: VideoOptions ): VideoOptions {
 		custom = (options.custom ?? options.records).map( r => [ ...r ] ) as [number[], number[]];
 	records[options.active] = [ ...defaults.records[options.active] ];
 	custom[options.active] = [ ...defaults.records[options.active] ];
-	return { ...options, records, custom, frameLimit: DEFAULT_FRAME_LIMIT };
+	return { ...options, records, custom, frameLimit: DEFAULT_FRAME_LIMIT, renderScale: DEFAULT_RENDER_SCALE };
 }
