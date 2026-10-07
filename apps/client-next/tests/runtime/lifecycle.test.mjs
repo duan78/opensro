@@ -124,12 +124,10 @@ test("creation preview overlays cinematic art and stays below foreground control
 		first: 1
 	} ];
 	frame.draw( {}, undefined, undefined, {}, [], ui, [ { pipeline: "character" } ] );
-	// The preview draws in the scene (below the presentation), then the HUD
-	// composes its layers on the final target in one pass.
-	assert.deepEqual( log, [ "main-pass", "character-preview", "character", "hud", "bars", "controls" ] );
+	assert.deepEqual( log, [ "main-pass", "bars", "character-preview", "character", "controls" ] );
 	log.length = 0;
 	frame.draw( {}, undefined, undefined, {}, [], ui, [] );
-	assert.deepEqual( log, [ "main-pass", "hud", "bars", "controls" ] );
+	assert.deepEqual( log, [ "main-pass", "bars", "controls" ] );
 });
 test("surface configures on resize and forbids use after disposal", () => {
 	let configured = 0, disposed = 0;
@@ -166,6 +164,87 @@ test("surface configures on resize and forbids use after disposal", () => {
 	surface.dispose();
 	assert.equal( disposed, 1 );
 	assert.throws( () => surface.acquire( { width: 1, height: 1 } ) );
+});
+
+test("deferred frames acquire the swapchain only after readback and present in the final submit", async () => {
+	const log = [];
+	const target = {};
+	let turn = 0;
+	const canvas = {
+		getContext: () => ({
+			getCurrentTexture() {
+				log.push( `acquire ${turn}` );
+				return target;
+			},
+			unconfigure() {}
+		})
+	};
+	const surface = createSurface( canvas, {
+		configure() {},
+		createDepth: () => ({ view: {}, dispose() {} }),
+		createColor: () => ({
+			view: {},
+			encodePresent( encoder, actual ) {
+				assert.equal( actual, target );
+				log.push( `present ${encoder.id}` );
+			},
+			dispose() {}
+		})
+	}, "bgra8unorm" );
+	let nextEncoder = 0;
+	const frame = createFrame( {
+		createEncoder() {
+			const id = ++nextEncoder;
+			return {
+				id,
+				beginRenderPass( descriptor ) {
+					log.push( descriptor.label );
+					return { setBlendConstant() {}, end() {} };
+				},
+				finish: () => id
+			};
+		},
+		submit: id => log.push( `submit ${id}` )
+	} );
+	let resolveReadback;
+	const ready = new Promise( resolve => resolveReadback = resolve );
+	try {
+		const view = surface.acquire( { width: 32, height: 32 }, true );
+		assert.deepEqual( log, [], "retention must not acquire a canvas texture" );
+		const pending = frame.draw(
+			view,
+			undefined,
+			undefined,
+			surface.depth(),
+			[],
+			[],
+			[],
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			[],
+			undefined,
+			{ asynchronous: true, prepare: () => ready },
+			undefined,
+			undefined,
+			surface
+		);
+		assert.deepEqual( log, [ "main-pass", "submit 1" ] );
+		turn = 1;
+		defined( resolveReadback )( [] );
+		await pending;
+		assert.deepEqual( log, [
+			"main-pass",
+			"submit 1",
+			"deferred-particles",
+			"acquire 1",
+			"present 2",
+			"submit 2"
+		] );
+	} finally {
+		surface.dispose();
+	}
 });
 test("snapshot contract rejects wrong version and size", () => {
 	const b = new ArrayBuffer( SNAPSHOT_BYTES );

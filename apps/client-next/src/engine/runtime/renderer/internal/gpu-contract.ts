@@ -38,9 +38,6 @@ ColorTarget
 ================
 */
 export interface ColorTarget extends DepthTarget {
-	/** Present the offscreen scene onto the swapchain texture inside the
-	 * frame's own encoder (the finish pass, or the byte-exact 1:1 copy), so
-	 * the HUD can follow it in the same command buffer. */
 	encodePresent( encoder: GPUCommandEncoder, target: GPUTexture ): void;
 }
 /*
@@ -129,15 +126,10 @@ SurfaceOwner
 */
 export interface SurfaceOwner extends Disposable {
 	depth(): GPUTextureView;
-	/** The retained offscreen of the current acquire; absent when the frame
-	 * renders straight into the swapchain. */
-	color(): ColorTarget;
-	/** `scale` shrinks only the scene's intermediate and depth (render scale);
-	 * the canvas and the HUD stay at the backing store's full size. */
-	acquire( viewport: Viewport, offscreen?: boolean, scale?: number ): GPUTextureView;
-	/** The swapchain pair acquire() reserved for this frame; the HUD composes
-	 * on the view after the frame presents the scene onto the texture. */
-	final(): { readonly texture: GPUTexture; readonly view: GPUTextureView; };
+	acquire( viewport: Viewport, offscreen?: boolean ): GPUTextureView;
+	/** Acquire the current swapchain texture only when encoding the final
+	 * presentation; a deferred query may have crossed browser frames. */
+	encodePresent( encoder: GPUCommandEncoder ): void;
 }
 /*
 ================
@@ -183,13 +175,7 @@ export interface FrameOwner {
 		deferred?: DeferredDraw,
 		bloom?: BloomDraw,
 		reflection?: { encode( encoder: GPUCommandEncoder ): void; },
-		/** The offscreen presentation: the scene's ColorTarget plus the
-		 * swapchain pair it presents onto. Absent when the frame renders
-		 * straight into the swapchain - then `view` is the final target. */
-		presentation?: {
-			readonly color: ColorTarget;
-			readonly final: { readonly texture: GPUTexture; readonly view: GPUTextureView; };
-		}
+		presentation?: SurfaceOwner
 	): void | Promise<void>;
 }
 

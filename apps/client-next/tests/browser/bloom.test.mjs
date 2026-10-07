@@ -1,3 +1,10 @@
+/*
+===========================================================================
+
+bloom.test.mjs - native bloom composition followed by same-submit presentation
+
+===========================================================================
+*/
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { launchProbeBrowser } from "../../../../scripts/lib/probeBrowser.mjs";
@@ -39,10 +46,8 @@ test( "native bloom compiles, filters, resizes, disables and rejects stale targe
 					} );
 					pass.end();
 					bloom.encode( encoder, out.view );
+					out.encodePresent( encoder, context.getCurrentTexture() );
 					device.commands().submit( encoder.finish() );
-					const present = device.commands().createEncoder();
-					out.encodePresent( present, context.getCurrentTexture() );
-					device.commands().submit( present.finish() );
 					const copy = document.createElement( "canvas" );
 					copy.width = copy.height = size;
 					const ctx = copy.getContext( "2d" ), image = await createImageBitmap( canvas );

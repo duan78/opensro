@@ -310,7 +310,6 @@ apps/client-next/tests/browser/notice-input-live.test.mjs
 apps/client-next/tests/browser/npc-travel-live.test.mjs
 apps/client-next/tests/browser/npc-window-live.test.mjs
 apps/client-next/tests/browser/overlays.test.mjs
-apps/client-next/tests/browser/particle-query.test.mjs
 apps/client-next/tests/browser/particle-rotation.test.mjs
 apps/client-next/tests/browser/passive-critical-live.test.mjs
 apps/client-next/tests/browser/picking.test.mjs

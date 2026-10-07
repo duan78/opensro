@@ -1,11 +1,20 @@
+/*
+===========================================================================
+
+finish.test.mjs - real GPU presentation shader and native copy behavior
+
+The public experimental setting selects the pass. Both paths encode after
+scene drawing in one submission; source pixels and edge checks stay fixed.
+
+===========================================================================
+*/
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { launchProbeBrowser } from "../../../../scripts/lib/probeBrowser.mjs";
 import { CLIENT_NEXT_BASE_URL } from "../../../../scripts/lib/probeEndpoints.mjs";
 
-// The presentation pass replaces the byte-exact copy with FXAA, sharpening
-// and a grade; both present as encode steps inside the frame's own command
-// buffer (ColorTarget.encodePresent). Black, mid gray and white are fixed points
+// The presentation pass replaces ColorTarget.encodePresent's byte-exact copy with
+// FXAA, sharpening and a grade. Black, mid gray and white are fixed points
 // and sit below FXAA's local-contrast floor, so a three-band pattern pins
 // the pass: flat interiors survive byte-for-byte, the soft band boundary
 // (gray/white) anti-aliases toward the neighbouring band, the near-binary
@@ -35,10 +44,18 @@ test( "presentation finish preserves flat colours and gates FXAA off hard edges"
 			const bitmap = await createImageBitmap( pattern );
 			const canvas = document.createElement( "canvas" );
 			document.body.append( canvas );
-			// targetWidth/targetHeight default to the color's own size (1:1);
-			// passing larger ones presents through the upscale.
-			const run = async ( finishEnabled, width, height, targetWidth = width, targetHeight = height ) => {
-				const device = createDevice( false, true, finishEnabled );
+			/*
+			================
+			run
+			================
+			*/
+			const run = async ( finishEnabled, width, height ) => {
+				const device = createDevice();
+				device.experimentalVideo( {
+					postProcessing: finishEnabled,
+					anisotropicFiltering: false,
+					heightFog: false
+				} );
 				try {
 					const deadline = performance.now() + 15000;
 					while ( device.phase() === "starting" ) {
@@ -69,26 +86,30 @@ test( "presentation finish preserves flat colours and gates FXAA off hard edges"
 					pass.setViewport( 0, 0, width, height, 0, 1 );
 					pass.draw( 6 );
 					pass.end();
-					device.commands().submit( encoder.finish() );
-					canvas.width = targetWidth;
-					canvas.height = targetHeight;
+					canvas.width = width;
+					canvas.height = height;
 					const context = canvas.getContext( "webgpu" );
 					if ( !context ) throw Error( "WebGPU canvas unavailable" );
 					device.surfaceCommands().configure( context, device.format() );
-					const present = device.commands().createEncoder();
-					out.encodePresent( present, context.getCurrentTexture() );
-					device.commands().submit( present.finish() );
+					out.encodePresent( encoder, context.getCurrentTexture() );
+					device.commands().submit( encoder.finish() );
 					const copy = document.createElement( "canvas" );
-					copy.width = targetWidth;
-					copy.height = targetHeight;
+					copy.width = width;
+					copy.height = height;
 					const reader = copy.getContext( "2d" );
 					if ( !reader ) throw Error( "2d canvas unavailable" );
 					const image = await createImageBitmap( canvas );
 					reader.drawImage( image, 0, 0 );
 					image.close();
-					const pixel = x => [ ...reader.getImageData( x, targetHeight >> 1, 1, 1 ).data ];
+					/*
+					================
+					pixel
+					================
+					*/
+					const pixel = x => [ ...reader.getImageData( x, height >> 1, 1, 1 ).data ];
 					depth.dispose();
 					out.dispose();
+					if ( device.error() ) throw Error( device.error() );
 					return pixel;
 				} finally {
 					device.dispose();
@@ -98,18 +119,12 @@ test( "presentation finish preserves flat colours and gates FXAA off hard edges"
 			const plain = await run( false, 128, 16 );
 			// A second surface size rebuilds the pass binding for a new source.
 			const resized = await run( true, 64, 16 );
-			// A scaled scene: half-size color onto the full canvas, graded pass
-			// off - the plain upscale path. At half scale the bands sit at
-			// source 0-20 / 20-44 / 44-64, so target x=64 reads the gray band's
-			// middle and x=104 the white one.
-			const scaled = await run( false, 64, 16, 128, 16 );
 			bitmap.close();
 			canvas.remove();
 			return {
 				finish: [ 10, 40, 64, 88, 120 ].map( finish ),
 				plain: [ 40, 64 ].map( plain ),
 				resized: resized( 32 ),
-				scaled: [ 64, 104 ].map( scaled ),
 				error: null
 			};
 		} );
@@ -119,12 +134,10 @@ test( "presentation finish preserves flat colours and gates FXAA off hard edges"
 		assert.deepEqual( result.finish[2], [ 128, 128, 128, 255 ] );
 		assert.deepEqual( result.finish[4], [ 255, 255, 255, 255 ] );
 		// The near-binary boundary (typography stand-in): FXAA must not pull it
-		// toward black. The sharpen's halo-guarded contrast term is
-		// driver-rounded: observed 128 (the term fully gradient-limited, the
-		// value naked main reads on this machine, 2026-10-07) up to a few
-		// counts above. At or below 127 the hard-edge gate has failed and
-		// text is smearing - that is the contract this pins.
-		assert.ok( result.finish[1][0] >= 128, JSON.stringify( result ) );
+		// toward black. The sharpen still adds its halo-guarded contrast term,
+		// so it lands a few counts above the untouched 128 - if it ever reads
+		// at or below 127, the hard-edge gate has failed and text is smearing.
+		assert.ok( result.finish[1][0] >= 129, JSON.stringify( result ) );
 		assert.ok( result.finish[1][0] <= 160, JSON.stringify( result ) );
 		// The soft boundary (gray/white, under the hard-edge floor): a straight
 		// synthetic band gives the FXAA walk nothing to resolve, so only the
@@ -137,10 +150,6 @@ test( "presentation finish preserves flat colours and gates FXAA off hard edges"
 		assert.deepEqual( result.plain[0], [ 128, 128, 128, 255 ] );
 		assert.deepEqual( result.plain[1], [ 128, 128, 128, 255 ] );
 		assert.deepEqual( result.resized, [ 128, 128, 128, 255 ] );
-		// The render-scale presentation: half-size scene, full-size canvas,
-		// upscaled mid-gray and white land on their band values.
-		assert.deepEqual( result.scaled[0], [ 128, 128, 128, 255 ] );
-		assert.deepEqual( result.scaled[1], [ 255, 255, 255, 255 ] );
 	} finally {
 		await browser.close();
 	}
