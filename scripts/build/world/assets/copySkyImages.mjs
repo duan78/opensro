@@ -81,10 +81,12 @@ export function resolveSkyTextures() {
 /*
 ================
 copyReferencedSkyImages
+
+The lens prerequisite is injectable so isolated tests drive the copy alone.
 ================
 */
-export async function copyReferencedSkyImages( skyTextures ) {
-	await buildNativeLensResources();
+export async function copyReferencedSkyImages( skyTextures, lensBuild = buildNativeLensResources ) {
+	await lensBuild();
 	for ( const texture of skyTextures.textures ) {
 		const relativeImagePath = skyImageRelativePath( texture.sourcePath );
 		const source = path.join( imageSourceRoot, "Map_extracted", ...relativeImagePath.split( "/" ) );
@@ -94,7 +96,14 @@ export async function copyReferencedSkyImages( skyTextures ) {
 			throw new Error( `Missing converted sky texture ${source}; run the DDJ image conversion first.` );
 		}
 
-		await copyIntoPublicTree( source, target );
+		// The flares bind their native containers (flareTexturePublicPaths
+		// below); their PNG conversions have no consumer, so only the sun
+		// disc (lens2, role "sun") publishes a PNG beside its container.
+		// Publishing the other seven packed them into the game-images
+		// startup group for nothing (issue #273, delivery duplicates).
+		if ( texture.role !== "flare" ) {
+			await copyIntoPublicTree( source, target );
+		}
 		if ( FLARE_TEXTURE_SOURCES.includes( texture.sourcePath ) ) {
 			const resource = source.replace( /\.png$/, ".texture" );
 			if ( !(await exists( resource )) ) throw Error( `Native lens generation did not publish ${resource}` );
