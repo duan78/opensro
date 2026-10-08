@@ -166,10 +166,19 @@ function assertWorldMapReleaseProjection( manifest, closure ) {
 	if ( !group || group.load !== "startup" || group.assetCount === 0 || group.packs?.length === 0 ) {
 		fail( "world-map assets require a populated startup-resident game-images group." );
 	}
+	// The check's intent is startup residency: the world map must never wait
+	// on an on-demand group. The images preload (native-ui) has been a
+	// startup group beside game-images since it took the map's pages, so
+	// every startup group satisfies the residency the closure needs.
+	const startupGroups = new Set(
+		(manifest.groups ?? []).filter( ( candidate ) => candidate.load === "startup" ).map( ( candidate ) =>
+			candidate.name
+		)
+	);
 	const assets = new Map( (manifest.assets ?? []).map( ( asset ) => [ asset.path.toLowerCase(), asset ] ) );
 	for ( const ddjPath of closure.references ) {
 		const publicPath = toPublicImagePath( "Media_extracted", ddjPath );
-		if ( assets.get( publicPath.toLowerCase() )?.group !== "game-images" ) {
+		if ( !startupGroups.has( assets.get( publicPath.toLowerCase() )?.group ?? "" ) ) {
 			fail( `world-map dependency is absent from startup packs: ${publicPath}` );
 		}
 	}
