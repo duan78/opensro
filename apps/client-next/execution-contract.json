@@ -2102,6 +2102,27 @@
 				"read",
 				"rider"
 			]
+		},
+		{
+			"consumer": "src/engine/runtime/renderer/frame/frame.ts",
+			"provider": "src/engine/runtime/renderer/device/hdr.ts",
+			"functions": [
+				"encode"
+			]
+		},
+		{
+			"consumer": "src/engine/runtime/renderer/frame/frame.ts",
+			"provider": "src/engine/runtime/renderer/device/sun-shadow.ts",
+			"functions": [
+				"encode"
+			]
+		},
+		{
+			"consumer": "src/engine/runtime/renderer/renderer.ts",
+			"provider": "src/engine/runtime/renderer/device/sun-shadow.ts",
+			"functions": [
+				"prepare"
+			]
 		}
 	],
 	"boundaries": [
