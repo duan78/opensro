@@ -103,10 +103,12 @@ aucun système nouveau n'entre sans preuve binaire.
 Dans SRObro, les points d'appui (chemins exacts, vérifiés le 2026-10-09) :
 
 - Tables du client live déjà importées en JSON :
-  `server/data/game/items.json` (21 529 items), `characters.json` et
-  `monsters_official.json` (7 825 monstres), `skills_official.json`
-  (36 008 skills), `skills.json`. Parseur : `server/scripts/import-textdata.ts`
-  (colonnes `_RefObj*` vérifiées empiriquement).
+  `server/data/game/items.json` (21 529 items), `characters.json`
+  (14 642 personnages), `monsters_official.json` (6 483 monstres),
+  `skills_official.json` (6 909 skills) — compteurs revérifiés le
+  2026-10-09 par mesure directe. Parseur :
+  `server/scripts/import-textdata.ts` (colonnes `_RefObj*` vérifiées
+  empiriquement).
 - Extractions brutes du client live :
   `assets/pk2_media/` (textdata UTF-16LE, icônes, minimaps),
   `assets/pk2_data/` (meshes `prim/`, navmesh `.nvm` + `object.ifo`),
@@ -192,6 +194,17 @@ build — jamais en silence — sur un schéma qui a glissé.
 
 - `LevelCap` devient une valeur injectée : 90 en natif (inchangé, gel d'XP
   au cap identique), 140 en étendu.
+- **Règle du cap (décision owner du 2026-10-09)** : le cap étendu est le
+  plus haut niveau auquel la chaîne officielle est **complète** — courbe XP
+  (`leveldata`), courbe d'or (`levelgold`), équipement, contenu de mobs.
+  Vérifié le 2026-10-09 sur le client live : la courbe XP va jusqu'à 150,
+  mais l'or s'arrête à 140 ; l'équipement jouable complet s'arrête au degré
+  14 (les degrés 15-17 existent mais sont pré-provisionnés, même pattern
+  que le v1.150 qui provisionnait 140 pour un cap 90) ; 101 mobs au niveau
+  140 contre 1 seul au niveau 141 ; le dernier cap officiel annoncé est
+  Lv.140. **Cap étendu = 140.** Le build V1 recalcule cette intersection
+  et refuse un cap sans chaîne complète ; quand un futur client complétera
+  les niveaux 141+, la règle relèvera le cap sans changer de doctrine.
 - Courbe XP : le natif continue d'utiliser le `leveldata.txt` 1.150 (qui va
   déjà à 140 — aucune donnée nouvelle nécessaire pour la courbe elle-même) ;
   l'étendu utilise le `leveldata.txt` 2026 (16 colonnes) de la projection
@@ -243,8 +256,9 @@ système réellement nouveau.
 - `buildExtendedGameDataBundle.mjs` : lit les pk2 2026, produit la
   projection `.generated/game-data/extended/` + manifest scellé (sha256 des
   pk2 sources, compteurs). Parseurs fragments + 16 colonnes.
-- Vérification croisée SRObro : compteurs (21 529 / 7 825 / 36 008) et
-  sondages de valeurs ; écarts documentés.
+- Vérification croisée SRObro : compteurs (items 21 529, characters
+  14 642, monsters 6 483, skills 6 909) et sondages de valeurs ; écarts
+  documentés.
 - AC : build reproductible (deux runs = même manifest) ; rapport de
   cross-check dans `docs/evolution/V1-audit.md` ; flag off = chargement
   serveur identique au natif (test) ; `pnpm check source` vert.
@@ -303,25 +317,29 @@ système réellement nouveau.
 - Ne pas introduire d'opcode/wire non prouvé.
 - Ne pas copier-coller de code SRObro : réécrire + attribuer.
 
-## 8. Questions ouvertes pour l'owner
+## 8. Décisions actées et questions ouvertes pour l'owner
 
-1. Cap par défaut du mode étendu : **140** (proposé) ou 120 (choix SRObro) ?
-2. Zone prioritaire V4 : **Alexandria** (proposée), Constantinople, autre ?
-3. Degrés 11–14 d'un bloc en V3, ou progressif (11 puis 12…) ?
-4. Skills « rebirth » (`skilldata_r_*`) dans le scope V3 ou reportés ?
-5. Pets seconde génération / fellowship : reportés à V5 ?
+Acté le 2026-10-09 par l'owner : **cap étendu = 140**, le plus haut niveau
+à chaîne officielle complète (règle et preuves en §4.5).
+
+Questions restantes :
+
+1. Zone prioritaire V4 : **Alexandria** (proposée), Constantinople, autre ?
+2. Degrés 11–14 d'un bloc en V3, ou progressif (11 puis 12…) ?
+3. Skills « rebirth » (`skilldata_r_*`) dans le scope V3 ou reportés ?
+4. Pets seconde génération / fellowship : reportés à V5 ?
 
 ## Annexe A — Faits établis par l'audit du 2026-10-09
 
 | Fait | Preuve |
 | --- | --- |
 | L'install Program Files est le client live iSRO Global | `sro_client.exe` signé Wemade Max, build PE 2026-09-04, certificat émis 2026-08-13 ; installé 2026-10-01 |
-| Cap réel 140 | `levelgold.txt` 2026 → 140 ; `leveldata.txt` → 150 (provision) ; annonce officielle « Lv.140 » ; le v1.150 provisionnait déjà 140 pour un cap 90 — la seule table XP ne suffit pas, levelgold oui |
+| Cap réel 140 (max exploitable) | Mesuré 2026-10-09 sur les données : `leveldata.txt` 1→150 mais `levelgold.txt` 1→140 ; équipement DG14 ×66 complet, DG15-17 ×66 chacun pré-provisionnés ; 101 mobs au niveau 140, 1 au niveau 141 ; dernier cap officiel annoncé = Lv.140 (15 sept.) ; pattern historique v1.150 (tables à 140 pour un cap 90) |
 | Conteneur pk2 inchangé | `scripts/sro_pk2.py` lit l'index du Media.pk2 2026 sans modification (29 292 fichiers listés) ; même clé, même UTF-16LE |
 | Volume 2026 vs 1.150 | Data 3,24 Go / 64 861 fichiers (×2,4) ; Media 927 Mo / 29 292 (×3,2) ; Map 1,30 Go / 19 587 |
 | Schémas étendus | `characterdata_*` ×203, `itemdata_*` ×555, `skilldata_*` ×379, `skilldata_r_*` ×376 ; leveldata 16 colonnes |
 | Couplage opensro 1.150 | `bundle.go` `SupportedGameVersion = "1.150"` (manifest crypto-vérifié) ; ~1400 opcodes épinglés client ; 16+ packages wire serveur |
 | Cap 90 = code, pas données | `levelup.go:36` `LevelCap = 90` ; le `leveldata.txt` 1.150 (déjà extrait, déjà chargé) couvre 1→140 |
-| SRObro : MIT, complet côté assets | Tables JSON (21 529 items / 7 825 mobs / 36 008 skills), 18 648 GLB, 59 115 placements `.o2`, 76 fichiers de docs ; dernier commit 2026-10-04 |
+| SRObro : MIT, complet côté assets | Tables JSON (21 529 items / 14 642 personnages / 6 483 monstres / 6 909 skills, comptés 2026-10-09), 18 648 GLB, 59 115 placements `.o2`, 76 fichiers de docs ; dernier commit 2026-10-04 |
 | SRObro : pas de wire natif | Transport Socket.io maison ; aucune connaissance opcode du client 2026 à reprendre |
 | `../research` absent de ce poste | `apps/server/AGENTS.md` attend `../research/tools/re/verify_*.py` ; le dossier n'existe pas — les fichiers pinnés ne sont pas modifiables ici |
