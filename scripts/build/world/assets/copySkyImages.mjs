@@ -59,9 +59,13 @@ resolveSkyTextures
 export function resolveSkyTextures() {
 	return {
 		nativeSkyDistance: 3500,
+		// Each row names the file that ships: a flare publishes only its native
+		// container, so its row points there rather than at a PNG it no longer has.
 		textures: SKYBOX_TEXTURES.map( ( texture ) => ({
 			...texture,
-			publicPath: skyImagePublicPath( texture.sourcePath )
+			publicPath: texture.role === "flare" ?
+				skyImagePublicPath( texture.sourcePath ).replace( /\.png$/, ".texture" ) :
+				skyImagePublicPath( texture.sourcePath )
 		}) ),
 		glowTexturePublicPath: skyImagePublicPath( "skybox/glow.ddj" ),
 		cloudTexturePublicPath: skyImagePublicPath( "skybox/cloud1.ddj" ),

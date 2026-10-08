@@ -8,6 +8,7 @@ sun disc its PNG, so the flare-only lens PNGs have no consumer: publishing
 them packed them into the game-images startup group for nothing (issue
 #273, delivery duplicates). Synthetic sources inside the test's own
 generated root prove the split; the lens build is injected as a no-op.
+
 ===========================================================================
 */
 import { test } from "node:test";
@@ -19,7 +20,7 @@ import path from "node:path";
 const generatedRoot = await mkdtemp( path.join( os.tmpdir(), "sro-sky-published-" ) );
 process.env.SRO_GENERATED_ROOT = generatedRoot;
 
-const { copyReferencedSkyImages } = await import( "../../build/world/assets/copySkyImages.mjs" );
+const { copyReferencedSkyImages, resolveSkyTextures } = await import( "../../build/world/assets/copySkyImages.mjs" );
 const { imageSourceRoot, imagePublicRoot } = await import( "../../build/world/paths.mjs" );
 const { exists } = await import( "../../build/world/io.mjs" );
 
@@ -102,5 +103,14 @@ test("the sky publisher ships every consumed format and no flare-only PNG", asyn
 		]
 	) {
 		assert.ok( await published( relative ), `${relative} must publish` );
+	}
+});
+
+test("every published sky texture row names a file the publisher ships", () => {
+	// A row is data the client and audits read: it must never name the PNG a
+	// flare no longer publishes.
+	for ( const row of resolveSkyTextures().textures ) {
+		if ( row.role === "flare" ) assert.match( row.publicPath, /\/sun\/lens\d\.texture$/, row.sourcePath );
+		else assert.match( row.publicPath, /\.png$/, row.sourcePath );
 	}
 });
