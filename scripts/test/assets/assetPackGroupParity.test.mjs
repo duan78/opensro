@@ -94,6 +94,10 @@ const FIXTURE_FILES = [
 	"assets/ui/preload.png",
 	"assets/images/minimap/tile0.png",
 	"assets/images/loose.png",
+	"assets/images/Media_extracted/icon/skill.png",
+	"assets/images/Map_extracted/tile2d/tile.png",
+	"assets/images/Particles_extracted/textures/spark.png",
+	"assets/world/constantinople/object-textures/wall.texture",
 	"assets/char/vat/crowd.bin",
 	"assets/char/vat/crowd.json",
 	"assets/npc/vat/npc.bin",
@@ -143,6 +147,14 @@ function expectedGroups( { outdoorFiles } ) {
 	return [
 		{ name: "native-ui", load: "startup", files: UI_PRELOAD_PATHS },
 		{ name: "game-images", load: "startup", files: [ "/assets/images/loose.png" ] },
+		{
+			name: "world-textures",
+			load: "lazy",
+			files: [ "/assets/world/constantinople/object-textures/wall.texture" ]
+		},
+		{ name: "map-tiles", load: "lazy", files: [ "/assets/images/Map_extracted/tile2d/tile.png" ] },
+		{ name: "ui-icons", load: "lazy", files: [ "/assets/images/Media_extracted/icon/skill.png" ] },
+		{ name: "particle-textures", load: "lazy", files: [ "/assets/images/Particles_extracted/textures/spark.png" ] },
 		{
 			name: "game-data",
 			load: "startup",

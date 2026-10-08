@@ -144,7 +144,7 @@ export async function collectAssetPackGroups( {
 	const outdoorRawJson = outdoor.rawJson;
 	const outdoorImages = outdoor.images;
 
-	const gameImages = (
+	const allGameImages = (
 		await listPublicAssetFiles( {
 			publicRoot,
 			roots: [ "/assets" ],
@@ -152,6 +152,31 @@ export async function collectAssetPackGroups( {
 			exclude: [ ...uiImagePreloadPaths, ...missionMinimapTilePaths ]
 		} )
 	).filter( ( publicPath ) => !isOutdoorWorldAsset( publicPath ) );
+	// The boot split (issue #273, game-images lazy): what a fresh client
+	// needs before its first world is the chrome (launcher, interface,
+	// cursors, fonts) and the sky set the title renders. Everything a
+	// screen or a world asks for later - map tiles, UI icons, particle
+	// textures, per-world object textures and lightmaps - joins the lazy
+	// groups beside their existing kin (mission-minimap tiles, game-models)
+	// and loads on first request.
+	const lazyImage = ( publicPath ) =>
+		publicPath.startsWith( "/assets/world/" ) ||
+		publicPath.startsWith( "/assets/images/Map_extracted/tile2d/" ) ||
+		publicPath.startsWith( "/assets/images/Media_extracted/icon/" ) ||
+		publicPath.startsWith( "/assets/images/Particles_extracted/textures/" );
+	const gameImages = allGameImages.filter( ( publicPath ) => !lazyImage( publicPath ) );
+	const worldTextureImages = allGameImages.filter(
+		( publicPath ) => publicPath.startsWith( "/assets/world/" )
+	);
+	const mapTileImages = allGameImages.filter(
+		( publicPath ) => publicPath.startsWith( "/assets/images/Map_extracted/tile2d/" )
+	);
+	const uiIconImages = allGameImages.filter(
+		( publicPath ) => publicPath.startsWith( "/assets/images/Media_extracted/icon/" )
+	);
+	const particleTextureImages = allGameImages.filter(
+		( publicPath ) => publicPath.startsWith( "/assets/images/Particles_extracted/textures/" )
+	);
 
 	const compressedJson = (
 		await listPublicAssetFiles( {
@@ -242,6 +267,10 @@ export async function collectAssetPackGroups( {
 	const groups = [
 		{ name: "native-ui", load: "startup", files: [ ...uiImagePreloadPaths ] },
 		{ name: "game-images", load: "startup", files: gameImages },
+		{ name: "world-textures", load: "lazy", files: worldTextureImages },
+		{ name: "map-tiles", load: "lazy", files: mapTileImages },
+		{ name: "ui-icons", load: "lazy", files: uiIconImages },
+		{ name: "particle-textures", load: "lazy", files: particleTextureImages },
 		{
 			name: "game-data",
 			load: "startup",
@@ -264,6 +293,10 @@ export async function collectAssetPackGroups( {
 
 	return {
 		groups,
+		worldTextureImages,
+		mapTileImages,
+		uiIconImages,
+		particleTextureImages,
 		titleCrowdVat,
 		missionNpcVat,
 		outdoorCompressedJson,

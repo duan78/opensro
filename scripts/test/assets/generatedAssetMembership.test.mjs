@@ -497,6 +497,14 @@ function expectedPackGroup( publicPath, uiPreloadImages ) {
 		return "game-data";
 	}
 	if ( isImageLikeAssetPath( lowerPath ) ) {
+		// The boot split (game-images lazy): the on-demand image families
+		// land in their lazy groups, the boot chrome stays in game-images.
+		if ( lowerPath.startsWith( "/assets/world/" ) ) return "world-textures";
+		if ( lowerPath.startsWith( "/assets/images/map_extracted/tile2d/" ) ) return "map-tiles";
+		if ( lowerPath.startsWith( "/assets/images/media_extracted/icon/" ) ) return "ui-icons";
+		if ( lowerPath.startsWith( "/assets/images/particles_extracted/textures/" ) ) {
+			return "particle-textures";
+		}
 		return "game-images";
 	}
 
