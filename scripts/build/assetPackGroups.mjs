@@ -26,21 +26,15 @@ import { CLIENT_PUBLIC_ROOT } from "../lib/generatedRoot.mjs";
 import { STALL_NETWORK_FILES } from "./data/buildStallNetworkAssets.mjs";
 import path from "node:path";
 import { listPublicAssetFiles } from "./assetPacks.mjs";
-import { collectDedicatedModelGroups } from "./assetPackOwnership.mjs";
+import {
+	collectDedicatedModelGroups,
+	IMAGE_ASSET_EXTENSIONS,
+	imagePackGroup,
+	isImageAsset
+} from "./assetPackOwnership.mjs";
 import { rebuildRoot } from "./world/paths.mjs";
 
-// Native texture containers carry authored mip levels and must survive both
-// full rebuilds and focused outdoor refreshes just like ordinary image files.
-export const IMAGE_ASSET_EXTENSIONS = [ ".png", ".jpg", ".jpeg", ".dds", ".webp", ".cur", ".texture" ];
-
-/*
-================
-isImageAsset
-================
-*/
-export function isImageAsset( publicPath ) {
-	return IMAGE_ASSET_EXTENSIONS.some( ( extension ) => publicPath.toLowerCase().endsWith( extension ) );
-}
+export { IMAGE_ASSET_EXTENSIONS, isImageAsset } from "./assetPackOwnership.mjs";
 
 export const OUTDOOR_WORLD_PACK_TARGET_BYTES = 8 * 1024 * 1024;
 
@@ -152,31 +146,14 @@ export async function collectAssetPackGroups( {
 			exclude: [ ...uiImagePreloadPaths, ...missionMinimapTilePaths ]
 		} )
 	).filter( ( publicPath ) => !isOutdoorWorldAsset( publicPath ) );
-	// The boot split (issue #273, game-images lazy): what a fresh client
-	// needs before its first world is the chrome (launcher, interface,
-	// cursors, fonts) and the sky set the title renders. Everything a
-	// screen or a world asks for later - map tiles, UI icons, particle
-	// textures, per-world object textures and lightmaps - joins the lazy
-	// groups beside their existing kin (mission-minimap tiles, game-models)
-	// and loads on first request.
-	const lazyImage = ( publicPath ) =>
-		publicPath.startsWith( "/assets/world/" ) ||
-		publicPath.startsWith( "/assets/images/Map_extracted/tile2d/" ) ||
-		publicPath.startsWith( "/assets/images/Media_extracted/icon/" ) ||
-		publicPath.startsWith( "/assets/images/Particles_extracted/textures/" );
-	const gameImages = allGameImages.filter( ( publicPath ) => !lazyImage( publicPath ) );
-	const worldTextureImages = allGameImages.filter(
-		( publicPath ) => publicPath.startsWith( "/assets/world/" )
-	);
-	const mapTileImages = allGameImages.filter(
-		( publicPath ) => publicPath.startsWith( "/assets/images/Map_extracted/tile2d/" )
-	);
-	const uiIconImages = allGameImages.filter(
-		( publicPath ) => publicPath.startsWith( "/assets/images/Media_extracted/icon/" )
-	);
-	const particleTextureImages = allGameImages.filter(
-		( publicPath ) => publicPath.startsWith( "/assets/images/Particles_extracted/textures/" )
-	);
+	// These families remain readable on demand, including during title loading.
+	// Their lazy groups make cached entries evictable; group byte totals alone
+	// do not measure startup network traffic (issue #273).
+	const gameImages = allGameImages.filter( file => imagePackGroup( file ) === "game-images" );
+	const worldTextureImages = allGameImages.filter( file => imagePackGroup( file ) === "world-textures" );
+	const mapTileImages = allGameImages.filter( file => imagePackGroup( file ) === "map-tiles" );
+	const uiIconImages = allGameImages.filter( file => imagePackGroup( file ) === "ui-icons" );
+	const particleTextureImages = allGameImages.filter( file => imagePackGroup( file ) === "particle-textures" );
 
 	const compressedJson = (
 		await listPublicAssetFiles( {
