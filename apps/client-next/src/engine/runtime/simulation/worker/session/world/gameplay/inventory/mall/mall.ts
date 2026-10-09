@@ -16,11 +16,6 @@ import { mallPurchasePayload, type MallPurchase } from "@/engine/foundation/game
 const ITEM_MOVE_REQUEST = 0x706d;
 const REQUEST_TIMEOUT_MS = 10000;
 
-/*
-================
-createMall
-================
-*/
 // A wallet field is the server's uint32 (domain.MallBalance).
 const MAX_BALANCE = 0xffffffff;
 
@@ -44,6 +39,11 @@ function mallBalance( payload: Uint8Array ): { silk: number; giftSilk: number; p
 	return { silk: row.silk as number, giftSilk: row.giftSilk as number, points: row.points as number };
 }
 
+/*
+================
+createMall
+================
+*/
 export function createMall() {
 	let state: MallState | undefined;
 	let request: MallPurchase | "catalog" | null = null;
@@ -164,7 +164,9 @@ export function createMall() {
 		balance( payload: Uint8Array ) {
 			const next = mallBalance( payload );
 			if ( !state ) return;
-			state = { ...state, ...next, revision: ++revision };
+			// Revision acknowledges a request to the HUD's purchase queue. A wallet
+			// publication changes the displayed balance without completing that request.
+			state = { ...state, ...next };
 		},
 		/*
   ================
