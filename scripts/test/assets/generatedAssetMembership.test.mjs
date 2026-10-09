@@ -162,6 +162,14 @@ test("generated pack artifacts are not packed as ordinary assets", async () => {
 	assert.deepEqual( forbidden, [] );
 });
 
+test("native texture containers have image-family ownership expectations", () => {
+	assert.equal( expectedPackGroup( "/assets/world/dungeon/wall.texture", new Set() ), "world-textures" );
+	assert.equal(
+		expectedPackGroup( "/assets/images/Particles_extracted/textures/spark.TEXTURE", new Set() ),
+		"particle-textures"
+	);
+});
+
 test("generated asset families land in their expected pack groups", async () => {
 	const { packIndex, packAssetsByPath, uiPreloadImages } = await loadGeneratedAssetMembership();
 	const mismatches = [];
@@ -497,8 +505,8 @@ function expectedPackGroup( publicPath, uiPreloadImages ) {
 		return "game-data";
 	}
 	if ( isImageLikeAssetPath( lowerPath ) ) {
-		// The boot split (game-images lazy): the on-demand image families
-		// land in their lazy groups, the boot chrome stays in game-images.
+		// Image families have distinct owners with the same startup cache
+		// protection; interface chrome remains in game-images.
 		if ( lowerPath.startsWith( "/assets/world/" ) ) return "world-textures";
 		if ( lowerPath.startsWith( "/assets/images/map_extracted/tile2d/" ) ) return "map-tiles";
 		if ( lowerPath.startsWith( "/assets/images/media_extracted/icon/" ) ) return "ui-icons";
@@ -517,7 +525,7 @@ isImageLikeAssetPath
 ================
 */
 function isImageLikeAssetPath( publicPath ) {
-	return /\.(?:png|jpe?g|dds|webp|cur)$/i.test( publicPath );
+	return /\.(?:png|jpe?g|dds|webp|cur|texture)$/i.test( publicPath );
 }
 
 /*

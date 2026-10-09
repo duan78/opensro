@@ -15,6 +15,8 @@ import path from "node:path";
 import test from "node:test";
 import { collectAssetPackGroups } from "../../build/assetPackGroups.mjs";
 import { LOOSE_FAMILIES } from "../../build/families/looseFamilies.mjs";
+import { publicIndex } from "../../../apps/client-next/tools/beta/policy.mjs";
+import { ASSET_PACK_VERSION } from "../../build/shared/packFormat.mjs";
 
 test("focused publishers give new images their full-build group", () => {
 	const particle = "/assets/images/Particles_extracted/textures/new.texture";
@@ -67,6 +69,16 @@ test("image collection folds family paths and preserves explicit owners", async 
 		const entries = groups.flatMap( group => group.files.map( file => [ file, group.name ] ) );
 		assert.equal( entries.length, expected.size, "each file has exactly one owner" );
 		assert.deepEqual( new Map( entries ), expected );
+		const published = publicIndex( {
+			format: "sro-asset-pack-index",
+			version: ASSET_PACK_VERSION,
+			groups,
+			assets: entries.map( ( [file, group] ) => ({ path: file, group }) )
+		} );
+		assert.deepEqual( new Map( published.assets.map( row => [ row.path, row.group ] ) ), expected );
+		for ( const name of [ "world-textures", "map-tiles", "ui-icons", "particle-textures" ] ) {
+			assert.equal( published.groups.find( group => group.name === name )?.load, "startup", name );
+		}
 	} finally {
 		await rm( fixture, { recursive: true, force: true } );
 	}

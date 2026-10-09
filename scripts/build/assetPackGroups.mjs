@@ -147,7 +147,7 @@ export async function collectAssetPackGroups( {
 		} )
 	).filter( ( publicPath ) => !isOutdoorWorldAsset( publicPath ) );
 	// These families remain readable on demand, including during title loading.
-	// Their lazy groups make cached entries evictable; group byte totals alone
+	// Startup membership preserves cached entries; group byte totals alone
 	// do not measure startup network traffic (issue #273).
 	// The collector's outdoor exclusion and the classifier's must agree:
 	// an outdoor-classified file reaching this partition would silently
@@ -251,13 +251,8 @@ export async function collectAssetPackGroups( {
 	const groups = [
 		{ name: "native-ui", load: "startup", files: [ ...uiImagePreloadPaths ] },
 		{ name: "game-images", load: "startup", files: gameImages },
-		// The four image families keep their own groups (one classifier,
-		// one focused-publication owner each) but load "startup" like
-		// game-images: the #380 review measured the lazy modes as no
-		// cold-load gain and a repeat-read regression under cache pressure
-		// (0.29 s -> 22.5 s: unpinned groups evict and re-download), so
-		// eviction pinning - not laziness - is the policy for now. All
-		// groups are read on demand either way.
+		// Preserve game-images' cache protection for every image family.
+		// Startup controls eviction pinning; reads remain on demand.
 		{ name: "world-textures", load: "startup", files: worldTextureImages },
 		{ name: "map-tiles", load: "startup", files: mapTileImages },
 		{ name: "ui-icons", load: "startup", files: uiIconImages },
