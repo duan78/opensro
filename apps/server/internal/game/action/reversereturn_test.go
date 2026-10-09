@@ -16,6 +16,8 @@ import (
 
 	"opensro.online/server/internal/game/enterworld"
 	"opensro.online/server/internal/game/item/wire"
+	"opensro.online/server/internal/game/world/fortress"
+	"opensro.online/server/internal/game/world/instance"
 	"opensro.online/server/internal/game/world/simulation"
 )
 
@@ -251,5 +253,125 @@ func TestRecordedPointsKeepTheirWorld(t *testing.T) {
 		if ok != tc.ok || ok && point.World != tc.world {
 			t.Fatalf("world %08x: %+v %v", tc.packed, point, ok)
 		}
+	}
+}
+
+/*
+================
+useReverseScroll
+
+0x75BD from the bag: the scroll's slot 23, its type word and the choice
+byte (6971B0 -> CIFInventory_ExecuteItemAction).
+================
+*/
+func useReverseScroll(rt *Runtime, c *enterworld.Character, tail ...byte) OpResult {
+	var word uint16
+	for _, row := range c.MissionInventory {
+		if row.Slot == 23 {
+			word = row.TypeFlags
+		}
+	}
+	return rt.HandleItemUse(testDivision, c, append([]byte{23, byte(word), byte(word >> 8)}, tail...))
+}
+
+/*
+================
+TestReverseScrollWorldAdmissionsBeforeConsumption
+
+4A00D6 refuses non-permanent current worlds; 4A02CE refuses job-dressed
+or wartime entry into a siege destination. Both point choices share this.
+================
+*/
+func TestReverseScrollWorldAdmissionsBeforeConsumption(t *testing.T) {
+	for _, choice := range []uint8{reverseReturnLastRecall, reverseReturnLastDeath} {
+		for _, tc := range []struct {
+			name                 string
+			current, destination instance.DefinitionID
+			job, war             bool
+			code                 uint8
+		}{
+			{"quest-world", 10, 1, false, false, 0xf5},
+			{"fortress-job", 1, 2, true, false, 0xe9},
+			{"fortress-war", 1, 2, false, true, 0xf2},
+			{"job-before-war", 1, 2, true, true, 0xe9},
+			{"fortress-peace", 1, 2, false, false, 0},
+			{"field-during-war", 1, 1, false, true, 0},
+		} {
+			t.Run(tc.name+string(rune('0'+choice)), func(t *testing.T) {
+				rt, c, _ := reverseReturnFixture(t)
+				scroll := len(c.MissionInventory) - 1
+				packed := uint32(instance.Pack(tc.current, 1))
+				c.World.PackedInstance = &packed
+				point := &domain.WorldPoint{WorldSpawn: *worldSpawnFromMission(simulation.Spawn{RegionID: 25000, X: 812, Y: 30, Z: 1204}), World: uint16(tc.destination)}
+				c.World.LastRecallPoint, c.World.LastDeathPoint = point, point
+				if tc.job {
+					dressTrader(c)
+				}
+				rt.Fortresses = fortress.New(nil)
+				rt.Fortresses.SetPeriod(testDivision, fortress.PeriodWar, tc.war)
+				out := useReverseScroll(rt, c, choice)
+				if tc.code != 0 {
+					if len(out.Frames) != 1 || !bytes.Equal(out.Frames[0].Payload, wire.EncodeItemUseError(tc.code)) {
+						t.Fatalf("refusal: %+v; want %x", out.Frames, tc.code)
+					}
+					if c.MissionInventory[scroll].StackCount != 2 || c.NativeTeleportMode != 0 {
+						t.Fatal("refused return consumed or cast")
+					}
+				} else if c.MissionInventory[scroll].StackCount != 1 || c.NativeTeleportMode != 1 {
+					t.Fatalf("allowed return did not start: %+v", out.Frames)
+				}
+			})
+		}
+	}
+}
+
+/*
+================
+TestReverseScrollFromTheBagTakesThePlayerToWhereItDied
+
+The bag use runs 4A00C0 as the gate row does: one scroll spent, the cast,
+and the reentry at the recorded death point.
+================
+*/
+func TestReverseScrollFromTheBagTakesThePlayerToWhereItDied(t *testing.T) {
+	rt, c, clock := reverseReturnFixture(t)
+	died := simulation.Spawn{RegionID: 25000, X: 812, Y: 30, Z: 1204, Angle: 0}
+	c.World.LastDeathPoint = &domain.WorldPoint{WorldSpawn: *worldSpawnFromMission(died)}
+	out := useReverseScroll(rt, c, reverseReturnLastDeath)
+	assertOpcodes(t, out.Frames, 0x3122, wire.OpItemUseResponse, wire.OpItemUseVisual)
+	if out.Frames[1].Payload[1] != 23 || c.MissionInventory[len(c.MissionInventory)-1].StackCount != 1 || c.NativeTeleportMode != 1 {
+		t.Fatalf("the bag use did not spend one scroll and start the cast: %+v", out.Frames)
+	}
+	var sent []wire.Frame
+	rt.PushCharacterFrames = func(_, _ string, f []wire.Frame) { sent = append(sent, f...) }
+	clock.Advance(time.Second)
+	rt.TickHook()(clock.NowMs())
+	if len(sent) == 0 || sent[0].Opcode != enterworld.OpcodeResetClient {
+		t.Fatalf("missing native reentry: %+v", sent)
+	}
+	if got := missionSpawnFromWorld(c.World.Spawn, simulation.Spawn{}); got.RegionID != died.RegionID || got.X != died.X || got.Z != died.Z {
+		t.Fatalf("arrived at %+v, not where the player died", got)
+	}
+}
+
+/*
+================
+TestReverseScrollFromTheBagRefusesWithoutAPointOrChoice
+
+A missing recall point answers 0x1885; a missing or unknown choice byte
+(v1.188's saved point 7 has no v1.150 sender) is refused. None spend.
+================
+*/
+func TestReverseScrollFromTheBagRefusesWithoutAPointOrChoice(t *testing.T) {
+	rt, c, _ := reverseReturnFixture(t)
+	out := useReverseScroll(rt, c, reverseReturnLastRecall)
+	if len(out.Frames) != 1 || !bytes.Equal(out.Frames[0].Payload, wire.EncodeItemUseError(errCodeNoRecallPoint)) {
+		t.Fatalf("missing recall point answered %+v", out.Frames)
+	}
+	for _, tail := range [][]byte{nil, {7}, {2, 0}} {
+		useReverseScroll(rt, c, tail...)
+	}
+	if c.MissionInventory[len(c.MissionInventory)-1].StackCount != 2 || c.NativeTeleportMode != 0 {
+		t.Fatal("a refused bag use spent the scroll or started a cast")
 	}
 }

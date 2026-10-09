@@ -18,12 +18,20 @@ a missing point (0x1C21 for one outside any world), and the move. Its
 own 0x1E test (4F36A4) asks the player's service set, which is always
 empty, so it never refuses.
 
-ITEM_MALL_REVERSE_RETURN_SCROLL (3/3/3/3) is never used from the bag in
-v1.150. INFERENCE (v1.188 spends it only from the bag, 4A00C0): a teleport
-gate lists the rows while the player holds a scroll, and the click runs the
-scroll's own rule: the shared return admissions, the recorded point (0x1885
-/ 0x1886 when absent), the timed cast, and the answer on the item-use
-channel (0xB5BD with the scroll's slot, category-1 notice 390).
+ITEM_MALL_REVERSE_RETURN_SCROLL (3/3/3/3) is used from the bag. A right
+click opens a two-row choice box (message box 0x1E); CGInterface_OnMsgBoxResult
+(6971B0) answers it with CIFInventory_ExecuteItemAction, which sends 0x75BD
+[slot][u16 type][u8 choice]: 2 the last recall point, 3 the last death
+point. 755E40 (type 4 = 3) starts the cast as a return scroll's.
+CGItemExpendable_UseReverseReturnScroll (v1.188 4A00C0) reads the byte: the
+shared return admissions, the recorded point (0x1885 / 0x1886 when absent),
+the timed cast, and the answer on the item-use channel (0xB5BD with the
+scroll's slot, category-1 notice 390). The v1.150 dialog sends only 2 and
+3; this path does not encode the saved-point u32 required by v1.188's
+choice 7, which is refused.
+
+INFERENCE: a teleport gate also lists the rows while the player holds a
+scroll, and the click runs the same scroll rule.
 
 ===========================================================================
 */
@@ -62,6 +70,10 @@ const (
 	// The low bytes of 4A00C0's 0x1885 and 0x1886.
 	errCodeNoRecallPoint uint8 = 0x85
 	errCodeNoDeathPoint  uint8 = 0x86
+	// 4A00D6..4A0102 and 4A02CE..4A030C: reverse-scroll world restrictions.
+	errCodeReverseWorld uint8 = 0xf5
+	errCodeReverseJob   uint8 = 0xe9
+	errCodeReverseWar   uint8 = 0xf2
 )
 
 /*
@@ -216,24 +228,56 @@ func (rt *Runtime) scrollReverseReturn(division string, c *enterworld.Character,
 		if !held {
 			return false
 		}
-		duration, ok := returnScrollDuration(ref)
-		if !ok || !rt.returnScrollAdmission(division, c, &result) {
-			return false
-		}
-		destination, refusal := reverseReturnPoint(c, choice)
-		if refusal != 0 {
-			result = itemUseFailure(refusal)
-			return false
-		}
 		used = ref
-		return rt.startReturnCast(returnCast{division: division, character: c, row: row,
-			slot: uint8(c.MissionInventory[row].Slot), typeWord: ref.TypeFlags(), duration: duration,
-			destination: &destination, now: now}, &result)
+		return rt.beginReverseReturnScroll(division, c, ref, row, choice, now, &result)
 	})
 	if committed && used != nil {
 		rt.publishItemUseVisual(c, used, &result)
 	}
 	return result
+}
+
+/*
+================
+beginReverseReturnScroll
+
+4A00C0: the scroll in bag row `row` starts its cast to the chosen point.
+The caller holds the character's update.
+================
+*/
+func (rt *Runtime) beginReverseReturnScroll(division string, c *enterworld.Character, ref *enterworld.ItemRef, row int, choice uint8, now int64, result *OpResult) bool {
+	// 5F85A0 requires the current world's reference type (+0x20) to be zero.
+	if here, ok := instance.Lookup(instance.ID(domain.CharacterWorldInstance(c)).Definition()); !ok || here.NativeType != 0 {
+		*result = itemUseFailure(errCodeReverseWorld)
+		return false
+	}
+	if choice != reverseReturnLastRecall && choice != reverseReturnLastDeath {
+		return false
+	}
+	duration, ok := returnScrollDuration(ref)
+	if !ok || !rt.returnScrollAdmission(division, c, result) {
+		return false
+	}
+	destination, refusal := reverseReturnPoint(c, choice)
+	if refusal != 0 {
+		*result = itemUseFailure(refusal)
+		return false
+	}
+	// Reverse return has its own siege admission, not the gate's guild or
+	// population rules. Job mode is refused before active-war mode (4A02CE).
+	if world, ok := instance.Lookup(destination.world.Definition()); ok && world.Siege() {
+		if rt.jobDressed(c) {
+			*result = itemUseFailure(errCodeReverseJob)
+			return false
+		}
+		if rt.Fortresses != nil && rt.Fortresses.WarActive(division) {
+			*result = itemUseFailure(errCodeReverseWar)
+			return false
+		}
+	}
+	return rt.startReturnCast(returnCast{division: division, character: c, row: row,
+		slot: uint8(c.MissionInventory[row].Slot), typeWord: ref.TypeFlags(), duration: duration,
+		destination: &destination, now: now}, result)
 }
 
 /*
