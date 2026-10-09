@@ -1006,12 +1006,49 @@ enterworld+action+statuseffect verts, check source PASSED, gate
 serveur forcée PASS (le gofmt d'un fichier de test a cassé la première
 passe — corrigé).
 
-## Le reste (carte actualisée après s42)
+## Session 43 — SOULA_STUNLINK livré : la garde réactive à stun (+5, 83,7 %)
 
-1. **SOULA_STUNLINK (5)** : garde réactive à stun — crochet dans le
-   chemin monstre-attaque-joueur (le même site que le redirect s42,
-   côté roll de statuts). **REBIRTHA_SPECIAL (2)** : résurrection
-   mutilée tmur. Une par session, taille s34.
+Les trois inférences tranchées et enregistrées :
+
+1. **Le lien anonyme (groupe 0)** : toléré dans le cas lnks UNIQUEMENT
+   sous le plancher ≥ 91 — le contrat natif (groupe ≠ 0) reste intact
+   pour chaque rangée native.
+2. **abnb{150} = le plafond de niveau de la cible du stun** :
+   « enemies who are WEAK » — l'attaquant au niveau ≤ 150 (tout le
+   game) roll le stun ; le mot est appliqué comme authorisé (la garde
+   sans son plafond refuse — jamais de stun non borné). Capture
+   indépendante de l'ordre (abnb précède st dans le programme :
+   capture en locale, jointe après le walk — première version
+   dépendante de l'ordre corrigée par la mesure).
+3. **Le roll réactif** : `st{durée, chance, niveau}` devient le
+   Link.StunGuard ; une fois la frappe SUR LE MEMBRE COUVERT commise
+   (jamais avant — une conséquence, pas un bouclier), chaque garde
+   vivante vérifie le plafond puis roll sur le flux natif
+   (effectOutcome, clé 0x10000000) et installe le Stun par la
+   transaction de block ordinaire (ApplyStunGuard — publication de la
+   copie détachée + tick vivant, corrigé : la première version
+   mutait la copie sans la rendre).
+
+Les lignes A et B portent des mots différents (A : 5000/35, B :
+3000/50) — le test de plancher les admet comme paires mesurées. Le
+hook : rollStunGuards dans monsterStrikePlayer après le commit, à
+côté du redirect s42 — vide PAR CONSTRUCTION (aucun natif n'épingle
+la garde). Tests : plancher (5 rangées, les deux paires de mots),
+vide natif, roll sous plafond (stun installé), skip au-dessus (151).
+Fixture : nearbyCharacter pour le warlock (le vrai monstre du fixture
+de combat — un template vide crée un monstre à 0 PV, découvert en
+diagnostiquant).
+
+**Couverture : 83,6 → 83,7 %** (2514/3002, +5 exact). Gates : les
+quatre paquets verts, check source PASSED, gate serveur forcée PASS
+(deux corrections en route : un staticcheck S1002 et l'ordre
+abnb/st).
+
+## Le reste (carte actualisée après s43)
+
+1. **REBIRTHA_SPECIAL (2)** : résurrection mutilée tmur (l'état avec
+   chute HP/MP à l'expiration — le clamp d'expiration du lane item est
+   le précédent). Puis la traîne joueur (~245).
 2. **La traîne joueur (~270−15 rangées)** : les familles 2-5 de
    l'histogramme, une à une après les trois lanes.
 3. **Décision owner de périmètre (nouveau s39)** : ~180 rangées

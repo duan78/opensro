@@ -31,6 +31,8 @@ const (
 	tagTimedLinkPerTarget      = 0x6c6b7332
 	tagTimedLinkedDamage       = 0x6c6b6468
 	tagTimedLinkedRedirect     = 0x6c6b6472
+	tagTimedStunOverride       = 0x61626e62
+	tagStunStatus              = 0x7374
 	tagTimedRequireNot         = 0x7265716e
 	tagTimedMaxHP              = 0x687069
 	tagTimedAttack             = 0x61706175
@@ -296,6 +298,26 @@ type SkillEffectLink struct {
 	Redirect        bool
 	RedirectMask    uint32
 	RedirectPercent uint32
+	// StunGuard is the extended reactive stun link past the cap (M8 s43):
+	// while the link holds, an attacker of the covered member below
+	// CeilingLevel rolls the st block. Inferences recorded in the walk.
+	StunGuard SkillStunGuard
+}
+
+/*
+================
+SkillStunGuard
+
+The reactive stun the live SOULA_STUNLINK tiers carry: the st block's
+own words (duration, chance, level) and abnb's ceiling word.
+================
+*/
+type SkillStunGuard struct {
+	Present      bool
+	DurationMs   uint32
+	Chance       uint32
+	Level        uint16
+	CeilingLevel uint32
 }
 
 // The hr, ru and summ instruction tags (big-endian ASCII, as the program
@@ -439,6 +461,8 @@ func parseSkillTimedEffect(fields []string, row *SkillRow) {
 	// checked once every block is read.
 	var linkThreat, linkDamage bool
 	var linkThreatPercent uint32
+	var stunOverride bool
+	var stunCeiling uint32
 	var linkDamageWords [3]uint32
 	for i := 0; i < program.Len(); i++ {
 		op := program.Instruction(i)
@@ -565,7 +589,13 @@ func parseSkillTimedEffect(fields []string, row *SkillRow) {
 				return
 			}
 		case tagTimedLink:
-			if result.Link.Present || op.Count != 4 || !targeted || op.Arguments[0] == 0 {
+			// Extended content (isro-live-2026), port-only, not v1.150-native
+			// (M8 s43): the live SOULA_STUNLINK tiers author an ANONYMOUS
+			// link (group 0) - the native contract demands a group; the
+			// tolerance carries the mastery floor, so no native row rides it.
+			anonymous := op.Count == 4 && op.Arguments[0] == 0 && (textdataNonNegative(fields[skilldataColReqMasteryLv1]) >= extendedPastCapMastery ||
+				textdataNonNegative(fields[skilldataColReqMasteryLv2]) >= extendedPastCapMastery)
+			if result.Link.Present || op.Count != 4 || !targeted || op.Arguments[0] == 0 && !anonymous {
 				return
 			}
 			result.Link = SkillEffectLink{Present: true, Group: op.Arguments[0], MaxDistance: op.Arguments[1], MaxOutgoing: op.Arguments[2], Board: op.Arguments[3]}
@@ -678,6 +708,36 @@ func parseSkillTimedEffect(fields []string, row *SkillRow) {
 				return
 			}
 			result.Real = SkillPassiveReal{Mask: op.Arguments[0], Flat: op.Arguments[1], Grade: op.Arguments[2]}
+		case tagStunStatus:
+			// Extended content (isro-live-2026), port-only, not v1.150-native
+			// (M8 s43): the live SOULA_STUNLINK tiers carry the st block as
+			// the link's REACTIVE stun - rolled on whoever attacks the
+			// covered member ("enemies who are weak lose consciousness").
+			// The v1.150 walk has no reader for a timed link's st - native
+			// rows carrying st beside a timed shape refused before and still
+			// do: the capture demands the link AND the mastery floor.
+			if !result.Link.Present || result.Link.StunGuard.Present || op.Count != 3 || op.Arguments[0] == 0 ||
+				op.Arguments[1] > 100 ||
+				textdataNonNegative(fields[skilldataColReqMasteryLv1]) < extendedPastCapMastery &&
+					textdataNonNegative(fields[skilldataColReqMasteryLv2]) < extendedPastCapMastery {
+				return
+			}
+			result.Link.StunGuard.Present = true
+			result.Link.StunGuard.DurationMs = op.Arguments[0]
+			result.Link.StunGuard.Chance = op.Arguments[1]
+			result.Link.StunGuard.Level = uint16(op.Arguments[2])
+		case tagTimedStunOverride:
+			// abnb's word is the stun guard's level CEILING - "enemies who
+			// are WEAK": an attacker at or below the ceiling (150 spans the
+			// whole monster range) rolls the stun. Inference recorded (M8
+			// s43): the ceiling is enforced as authored. The word may precede
+			// the st block in the program, so it is captured beside the walk
+			// and joined to the guard afterwards.
+			if stunOverride || op.Count != 1 || !result.Link.Present && result.Area.Present {
+				return
+			}
+			stunOverride = true
+			stunCeiling = op.Arguments[0]
 		case tagTimedOverlap: // ovl2: the replacement descriptor's casting-state word
 		case tagNbuf, tagBbuf: // cancellation policy and secondary board, already projected
 		case tagReqi, tagTimedRequireNot: // 58D480 admits, 59F0E0 re-checks on equipment change
@@ -723,6 +783,14 @@ func parseSkillTimedEffect(fields []string, row *SkillRow) {
 			return
 		}
 	}
+	if stunOverride {
+		// The guard without its ceiling word is incomplete: refuse rather
+		// than admit an unbounded stun.
+		if !result.Link.Present || !result.Link.StunGuard.Present {
+			return
+		}
+		result.Link.StunGuard.CeilingLevel = stunCeiling
+	}
 	if linkThreat || linkDamage {
 		if !result.Link.Present {
 			return
@@ -762,7 +830,7 @@ func parseSkillTimedEffect(fields []string, row *SkillRow) {
 	}
 	result.Pinned = duration && (attributes || defense || movement || result.Block.Present || result.Strength.Present ||
 		result.Intellect.Present || result.IncomingReduction || result.HitRate || result.Range || result.Hawk.Present ||
-		result.Link.Present && (result.Link.Threat || result.Link.Mana || result.Link.Redirect) || result.Preemptive.Present ||
+		result.Link.Present && (result.Link.Threat || result.Link.Mana || result.Link.Redirect || result.Link.StunGuard.Present) || result.Preemptive.Present ||
 		result.DamageReturn.Present || result.Evasion.Present || result.Stance.Present ||
 		result.DamageToMP || result.Reat.Mask != 0 || result.Real.Mask != 0)
 	result.Targeted = targeted

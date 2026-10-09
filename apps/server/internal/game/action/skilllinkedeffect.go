@@ -83,6 +83,7 @@ func (rt *Runtime) acceptLinkedTargetEffect(division string, c, snapshot, target
 		Group: d.Link.Group, MaxDistance: d.Link.MaxDistance, MaxOutgoing: d.Link.MaxOutgoing, ThreatPercent: d.Link.ThreatPercent,
 		ManaHPPercent: d.Link.ManaHPPercent, ManaPercent: d.Link.ManaPercent, ManaCap: d.Link.ManaCap,
 		Redirect: d.Link.Redirect, RedirectMask: d.Link.RedirectMask, RedirectPercent: d.Link.RedirectPercent,
+		GuardDurationMs: d.Link.StunGuard.DurationMs, GuardChance: d.Link.StunGuard.Chance, GuardLevel: d.Link.StunGuard.Level, GuardCeilingLevel: d.Link.StunGuard.CeilingLevel,
 		StartedAtMs: now, ExpiresAtMs: now + int64(skill.EffectDurationMs),
 		ClientCancelable: !skill.VoluntaryCancelBlocked, TargetModifiers: modifiers,
 	}

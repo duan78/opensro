@@ -518,6 +518,50 @@ func (s *MonsterState) ApplyRatioDebuff(division string, gid uint32, writes []Ra
 }
 
 /*
+==================
+ApplyStunGuard
+
+Extended content (isro-live-2026), port-only, not v1.150-native (M8
+s43): roll the reactive stun on one monster through the native chance
+stream (the abnormal context's Roll, key 0x10000000 as the stun-bomb
+roll uses), and when it passes install the stun record through the
+ordinary block transaction. The attacker's level ceiling was checked
+by the caller; no native row can ever reach this - the guard link
+carries the admission's mastery floor.
+==================
+*/
+func (s *MonsterState) ApplyStunGuard(division string, gid uint32, sourceGID uint32, sourceName string, durationMs uint32, chance uint32, level uint16, now int64) bool {
+	if s == nil || s.abnormalContext == nil {
+		return false
+	}
+	records := []abnormal.Record{{Status: abnormal.Stun, DurationMs: durationMs, Chance: chance, Level: level,
+		SourceGID: sourceGID, SourceName: sourceName}}
+	sources := s.PrepareAbnormalSources(division, records)
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	state := s.populationForObject(division, gid)
+	instance, ok := state.instances.lookup(gid)
+	if !ok || instance.CurrentHP == 0 {
+		return false
+	}
+	if !s.abnormalContext.Roll(division, gid, 0x10000000, int32(chance)) {
+		return false
+	}
+	effects := s.applyAbnormalLocked(monsterAbnormalInput{division: division, ctx: s.abnormalContext,
+		state: state, instance: &instance, now: now, sources: sources},
+		abnormal.HitContext{}, records)
+	if instance.Abnormal == nil {
+		return false
+	}
+	// The transaction ran on the detached copy: publish it and keep the
+	// abnormal tick alive, exactly as CommitAbnormalUpdate does.
+	state.instances.set(gid, instance)
+	state.trackAbnormal(gid, instance.Abnormal)
+	_ = effects
+	return true
+}
+
+/*
 ================
 trackAbnormal
 ================
