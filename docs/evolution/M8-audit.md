@@ -886,13 +886,23 @@ périmètre PvE.
 
 Les trois tooltips ont nommé les effets (probe effacé) :
 
-1. **GUARDA_PHYSICAL / lkdr{4,72,0}** : « you divert part of physical
-   damage from one member to yourself » — un lien de REDIRECTION DE
-   DÉGÂTS (le guerrier prend une part des dégâts physiques du protégé,
-   30 min, disparaît hors de portée — la description du lnks distance
-   word). lkdr est le frère trois-mots de lkdh (le lien qui PAIE le
-   source) : ici le lien DÉTOURNE vers le source. Lane : intégration
-   au chemin de dégâts quand la cible liée encaisse — taille s34.
+1. **GUARDA_PHYSICAL/MAGIC / lkdr — DÉCODÉ en s40 (probe effacé)** :
+   le mot 0 est le MASQUE DE VOIE (4 = physique, 8 = magique — les
+   bits 0x04/0x08 d'att, confirmé par les deux lignes), le mot 1 la
+   PART DÉTOURNÉE EN POURCENT (33 → 75 % selon le palier, m=30→118),
+   le mot 2 toujours 0. `lkdr = 0x6c6b6472` (piège de constante :
+   chercher l'inversée ne trouve rien). « You divert part of physical
+   damage from one member to yourself » : le guerrier encaisse la
+   part des dégâts masqués du protégé, 30 min, hors-portée = fin
+   (le lnks distance word). Le côté CAST est gratuit : le lane lien
+   (acceptLinkedTargetEffect) installe déjà les paires sans écritures
+   (précédent Protect/lkag) ; il manque le MOT (cas lkdr dans le walk
+   timed, plancher ≥91 — les tiers natifs m=30..88 authorisent la
+   même forme, 9 rangées past-90) et le CROCHET DÉGÂTS SUBIS : quand
+   le personnage lié encaisse un coup de la voie masquée, débiter la
+   part au guerrier — le miroir défensif de commitLinkedMana
+   (linkedmana.go, alimenté côté attaquant). Taille s34 : une session
+   fraîche.
 2. **SOULA_STUNLINK / abnb{150} + st{5000,35,10}** : « covers one
    member with a mask of horror... enemies who are weak lose
    consciousness » — une GARDE RÉACTIVE sur un allié : les attaquants
