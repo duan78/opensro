@@ -169,6 +169,10 @@ func (rt *Runtime) monsterStrikePlayer(in monsterStrikeInput, character, snapsho
 	for _, debit := range redirects {
 		rt.commitLinkedRedirect(divisionID, debit, nowMs)
 	}
+	// Extended content (isro-live-2026), port-only, not v1.150-native
+	// (M8 s43): the reactive stun guard rolls on the attacker once the
+	// strike committed - a consequence, never a shield.
+	rt.rollStunGuards(divisionID, character, instance, nowMs)
 	public, private := rt.playerStruckFrames(divisionID, character, struck, nowMs)
 	// 5A0C2D ran inside the hit outcome, before the hit landed, so a fatal
 	// hit still returns its share; the attacker takes it afterwards.

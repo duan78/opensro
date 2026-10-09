@@ -20,9 +20,16 @@ type Link struct {
 	// (M8 s41): RedirectMask is the lane (4 physical, 8 magical) and
 	// RedirectPercent the share of the recipient's taken damage of that
 	// lane diverted to the source.
-	Redirect                 bool
-	RedirectMask             uint32
-	RedirectPercent          uint32
+	Redirect        bool
+	RedirectMask    uint32
+	RedirectPercent uint32
+	// GuardDurationMs/GuardChance/GuardLevel are the extended reactive
+	// stun link's st block (M8 s43); GuardCeilingLevel is abnb's word -
+	// an attacker of the recipient at or below it rolls the stun.
+	GuardDurationMs          uint32
+	GuardChance              uint32
+	GuardLevel               uint16
+	GuardCeilingLevel        uint32
 	ExpiresAtMs, StartedAtMs int64
 	ClientCancelable         bool
 	// TargetModifiers are the recipient half's parameter writes (594AC0 in
@@ -222,6 +229,38 @@ func (r *Registry) RedirectLinks(division, target string, nowMs int64) (links []
 		held++
 		l, ok := r.links[linkKey(division, e.LinkToken)]
 		if !ok || !l.Redirect || l.sourceRetired || l.targetRetired || (Effect{ExpiresAtMs: l.ExpiresAtMs}).Expired(nowMs) {
+			continue
+		}
+		l.TargetModifiers = Modifiers{}
+		out = append(out, l)
+	}
+	return out, held
+}
+
+/*
+==================
+StunGuards
+
+The logically active links whose recipient is target and that roll a
+reactive stun on whoever attacks target. The third mirror of the same
+query shape (threat, mana, guard).
+==================
+*/
+func (r *Registry) StunGuards(division, target string, nowMs int64) (guards []Link, held int) {
+	if r == nil {
+		return nil, 0
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	key := ownerKey(division, target)
+	var out []Link
+	for _, e := range r.byOwner[key] {
+		if e.LinkToken == 0 || e.Phase != 2 || e.StopRequested {
+			continue
+		}
+		held++
+		l, ok := r.links[linkKey(division, e.LinkToken)]
+		if !ok || l.GuardDurationMs == 0 || l.sourceRetired || l.targetRetired || (Effect{ExpiresAtMs: l.ExpiresAtMs}).Expired(nowMs) {
 			continue
 		}
 		l.TargetModifiers = Modifiers{}
