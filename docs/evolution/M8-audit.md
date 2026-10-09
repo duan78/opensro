@@ -339,7 +339,23 @@ aires offense) dans le parse + le dispatch runtime. Aucun rang
 basculé cette session (le mot admis est nécessaire mais la porte
 d'enveloppe reste).
 
-## Le reste (carte actualisée après s19)
+## Session 20 — WATER_HEAL s'exécute : le soin eshp ciblé admis
+
+Le soin au plus bas ratio CIBLÉ (WATER HEAL : `efr{kind 1, forme 6,
+sélection 7} eshp heal`, l'aire centrée sur la cible primaire) est
+admis dans `parseSkillRecovery` : sa forme possède son ciblage dans
+le mot efr lui-même, il contourne donc l'enveloppe « non ciblé
+seulement » du parse — le prédicat `lowestHealProgram` vérifie chaque
+mot. Inférence enregistrée ; vide natif : 9/9 = WATER_HEAL ; et la
+VÉRIFICATION qui a autorisé l'ouverture : le chemin runtime
+`lowestHeal` **centre déjà la sélection sur la primaire**
+(`secondaryHealTargets` lit `primaryAt`) — le consommateur existait.
+**Couverture 76,7 % → 77,1 %** (+12 rangs 91-140 : les 9 WATER_HEAL
+et 3 apparentées ; les ancêtres natifs D exécutent aussi). Package
+enterworld complet vert, gates source + serveur vertes, aucun test
+natif bougé.
+
+## Le reste (carte actualisée après s20)
 
 1. BINGPAN : la porte duration (preuve du vide natif d'abord).
 2. BINGBYEOK/HWABYEOK : forme timed onff/wp.

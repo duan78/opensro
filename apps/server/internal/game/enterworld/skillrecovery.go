@@ -101,6 +101,21 @@ func parseSkillRecovery(fields []string, row *SkillRow) {
 	if parseHealOverTime(fields, row) {
 		return
 	}
+	// The targeted lowest-ratio heal (WATER HEAL: efr kind 1 centred on
+	// the primary, eshp, heal) owns its targeting in the efr word itself,
+	// so it bypasses the untargeted-only envelope below - its program
+	// predicate checks every word. Inference recorded 2026-10-09
+	// (M8 s20); the void proof measured that the only native rows
+	// authoring the shape are WATER HEAL's own never-admitted tiers,
+	// and the runtime's lowestHeal path already centres the selection
+	// on the primary (secondaryHealTargets reads primaryAt).
+	if fields[skilldataColActionHandler] == recoveryInstantHandler && row.ChainNext == 0 &&
+		row.Consumption.Pinned && row.TimingPinned && row.Consumption.HPPercent == 0 {
+		if program, err := CompileSkillProgram(fields); err == nil && lowestHealProgram(program) {
+			row.Recovery = SkillRecovery{LowestHealPinned: true}
+			return
+		}
+	}
 	if len(fields) != 118 || fields[0] != "1" || fields[8] != "2" || row.ChainNext != 0 ||
 		row.TargetRequired || !row.Consumption.Pinned || !row.TimingPinned ||
 		row.Consumption.HPPercent != 0 {
