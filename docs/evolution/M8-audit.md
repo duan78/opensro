@@ -808,11 +808,57 @@ pas de supposition sur un trade-off de combat. Chemin de livraison :
 cas adps dans le walk timed (plancher), SkillFlatRate-paire, écritures
 dans commitCharacterEffect, le reqi existant fait le reste.
 
-## Le reste (carte actualisée après s35)
+## Session 37 — la tolérance DMIR : +28 rangs d'un coup (80,7 → 81,6 %) ; la carte s38 mesurée
 
-1. SOULA_STUNLINK + RAZEA tiers isolés + STEALTHA_CHANGE/
-   BATTLAA_GUARD/GUARDA_PHYSICAL/REBIRTHA_SPECIAL : à sonder.
-2. La dispersion (~110 rangs sur les petites familles) : une à une.
+Le sondage des six familles nommées a trouvé le gros lot : **RAZEA
+(33 past-90)** — des status-casts `dmsc/tisc/dpsc/rssc` (Weaken /
+Division / Decay / Impotent — les mots du lane livré en s5/s7) +
+`tant` + `getv`. La porte refusante, nommée porte-par-porte : la clé
+getv **0x52494d44 = DMIR** — le rider du rebalance 2026 que le
+producteur périodique tolère déjà depuis s2. La tolérance dans le lane
+status-cast (le même motif, trois lignes) admet **28 rangs past-90**
+(60 au total, tiers ≤90 inclus) : RAZEA et les autres familles
+porteuses de la même combinaison.
+
+**La preuve du vide, corrigée en la mesurant** : le premier probe
+mélangeait les cellules ÉTENDUES avec les rangées natives (les
+codenames se recoupent) et voyait « 134 porteurs natifs refusés
+ailleurs » ; le test natif dédié a cassé sur cette prémisse — et la
+vérité est PLUS FORTE : **aucune rangée native ne porte DMIR** (la
+clé n'existe pas dans les données v1.150, exactement ce que le
+commentaire s2 disait : « measured on the 2026 rows only, never on a
+native row »). TestDMIRToleranceAdmitsNoNativeStatusCast gèle ce
+fait : si la donnée v1.150 portait jamais la clé, il casse.
+
+Tests : bornes d'admission status-cast vertes, test DMIR dédié,
+enterworld+action complets verts. Gates : check source PASSED, gate
+serveur forcée PASS (39,9 s).
+
+### Carte s38 (mesurée par le sondage, probe effacé)
+
+- **BATTLAA_GUARD (6)** : aura de groupe barde — atfe scls onff
+  efr{2,1,700,8,0,5} ovl2 odar{8,44} getv×3 cks reqi{6,14} —
+  handler 3, non ciblé. Proche du lane acceptPartyBuff (efr kind 2,
+  odar) : à sonder contre lui.
+- **GUARDA_PHYSICAL (4)** : lien guerrier 30 min — lnks{1,1500,2,1}
+  dura[1800000] **lkdr{4,72,0}** (mot inconnu) reqi×3, ciblé allié.
+- **REBIRTHA_SPECIAL (2)** : B_02 = résurrection-ish `tmur
+  heal{0,100} resu{120,30}` ciblé allié+DeadBody (tmur inconnu, sinon
+  la forme du lane resu) ; B_BUFF_02 = grosse aura self (hpi odar
+  chrch crmc msch pmdg cks, cast 2834 ms).
+- **STEALTHA_CHANGE (2)** : `nbuf bbuf dura hitm efr{1,2,100,3,0,8}
+  reqi×2 lnks` ciblé **EnemyP** — forced-target sur joueur, saveur
+  PvP : candidat parked-owner.
+- **SOULA_STUNLINK (5)** : `lnks{0,1500,2,1} dura[120000] abnb{150}
+  st{5000,35,10} reqi{6,10}` ciblé allié — un lien avec STUN sur
+  l'attaquant (st = le status Stun !) : à sonder contre le lane link.
+- La dispersion (~110) : une à une après.
+
+## Le reste (carte actualisée après s37)
+
+1. La carte s38 ci-dessus (BATTLAA_GUARD, GUARDA_PHYSICAL,
+   REBIRTHA_SPECIAL, STEALTHA_CHANGE, SOULA_STUNLINK), puis la
+   dispersion (~110).
 4. **Danses de barde** (40 rangs) : le rythme 2026 — décision owner V5,
    jamais reçue ; sans preuve : pas d'implémentation.
 5. **MANADRY (10, parked-owner s31)** : PvP-seul — EnemyP sans EnemyM,

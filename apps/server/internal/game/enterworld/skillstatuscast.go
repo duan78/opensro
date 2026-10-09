@@ -106,7 +106,19 @@ func compileSkillStatusCast(fields []string, row SkillRow) (SkillThreat, bool) {
 		case tagReqi: // row.Reqi; 58D480 admits before dispatch
 		case tagGetv: // caster getv modifiers (WIMD, WIRU, RPDU, RPTU) read at cast
 			if _, known := SkillParameterFromKey(op.Arguments[0]); !known {
-				return SkillThreat{}, false
+				// Extended content (isro-live-2026), port-only, not
+				// v1.150-native (M8 s37): the live status rows carry the
+				// rebalance's DMIR key (0x52494d44), the same rider the
+				// periodic producer already tolerates as its DoT scaling
+				// input (skillperiodic.go, s2 - "measured on the 2026 rows
+				// only, never on a native row"). Void proof measured
+				// 2026-10-09: the key is absent from the v1.150 data
+				// entirely (zero native rows carry it), so the tolerance
+				// can admit only live rows - sixty of them pass every
+				// other status-cast gate.
+				if op.Arguments[0] != extendedDotScalingKey {
+					return SkillThreat{}, false
+				}
 			}
 		case tagEfr:
 			a := op.Arguments
