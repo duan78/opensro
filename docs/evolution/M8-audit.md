@@ -1138,11 +1138,58 @@ comptée). Tests : plancher (l'unique tier past-90 : récupérations
 exclue nommément). Gates : enterworld+action verts, check source
 PASSED, gate serveur forcée PASS.
 
-## Le reste (carte actualisée après s45)
+## Session 46 — la traîne fraîche mesurée ; six familles décodées ; la courbe a aplati
 
-1. **La traîne joueur (~245)** : GUARDA_MAGIC_BLOCK et les familles
-   2-5 de l'histogramme s39, une à une. Les trois lanes nommées sont
-   LIVRÉES.
+L'histogramme s39 était PÉRIMÉ : **GUARDA_MAGIC_BLOCK est déjà admise**
+(`dura defp{0,2251,0} reqi×3` ciblé allié — le walk timed la prend
+telle quelle depuis l'origine ; la carte la comptait à tort). Le
+décompte FRAIS du reste : **436 rangées / 226 familles**, dont ~180
+arène (décision owner), 10 MANADRY (parked PvP) — le vrai reste
+JOUEUR ≈ 246 rangées, mais ÉPARPILLÉ : après les familles nommées
+(~46 rangées), ce sont des familles de 1-2 rangées jusqu'au bout.
+
+### Les six familles nommées, décodées (tooltips + shapes)
+
+- **CONFUSIONA_ILLUSION (5)** : `msch{3,110} dura[300000] cks tant
+  reqi` self — « randomly transforms yourself into a character lower
+  level » : le msch kind 3 = transform en modèle de JOUEUR aléatoire
+  (la machinerie Duplicate msch-2 existe ; le kind 3 + le tirage
+  aléatoire à livrer).
+- **FRENZYA_TOUNT_SPRINT (5)** : `att cm tel3{500,230} st bk tnt2
+  reqi×3` ciblé monstre — « storm into the enemy… faints or knocked
+  back » : une RUÉE (tel3 = téléport au contact) + att + stun/knock-
+  back sur impact. Le offense walk connaît la plupart des mots ; la
+  ruée tel3 et le bk à câbler.
+- **POISONA_FIELD (5)** : `dura puls efr{3,1,120,5,0,24} ps{268,80,
+  1497} getv×2 reqi×2` — « poisoned seeds hidden in the ground » :
+  la variante POISON du trap lane (efr kind 3 = déclencheur), avec un
+  bloc ps au lieu d'att.
+- **TRANSFORMA_MASK (5)** : `mcap{110,10364}` — le système Death
+  Essence du rogue (récolter sur cadavres, se transformer en monstre
+  avec ses skills) : un FEATURE V5 complet, pas un buff.
+- **FIRE_SHIELD (3)** : `dura bgra{63,78} reqi{4,1} heal{25145280,30,
+  11}` — « decreases the power of abnormal state » : un bouclier de
+  résistance aux statuts ; le mot bgra et le heal à 3 mots dérivent
+  (forme inhabituelle à sonder avant d'écrire).
+- **STEALTHA_POINT / TRANSFORMA_DUPLE / HEALSHIELD / MINDP×2 (10) :
+  singles à trier.
+
+### La recommandation
+
+La couverture joueur a aplati : chaque point supplémentaire coûte
+désormais une session par grappe de 2-5 rangées, et ~190 rangées
+restantes sont des singles dont beaucoup seront des rangées
+d'événement/monstre hors joueur (à CLASSIFIER avant d'implémenter).
+Les trois décisions owner valent plus que toute session de code :
+l'arène (~180 au dénominateur), le PvP (12), les danses (40) —
+chacune ouvre ou ferme un bloc entier.
+
+## Le reste (carte actualisée après s46)
+
+1. **La traîne joueur (~246, carte s46 ci-dessus)** : les six
+   familles nommées décodées (~26 rangées livrables en ~5 sessions) ;
+   puis CLASSIFIER les ~190 singles (beaucoup seront hors joueur)
+   avant d'en implémenter quoi que ce soit.
 2. **La traîne joueur (~270−15 rangées)** : les familles 2-5 de
    l'histogramme, une à une après les trois lanes.
 3. **Décision owner de périmètre (nouveau s39)** : ~180 rangées
