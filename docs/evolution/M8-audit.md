@@ -511,10 +511,32 @@ les tiers cap-90 de RECOVERYA_GROUP restent non-admis en natif —
 élargir exige la preuve du binaire (58D8F0/5830B0) que le serveur
 original acceptait les programmes interleavés.
 
-## Le reste (carte actualisée après s28)
+## Session 29 — FIREA_TRAP était DÉJÀ jouable : le lane trap existe, la mesure ne le comptait pas
 
-1. FIREA_TRAP (12) : le trap périodique lié — distinct du lane
-   quest-trap ; preuve du vide natif d'abord.
+Le probe (jetable, effacé) a retourné la surprise en une ligne : chaque
+rangée FIREA_TRAP étendue est `pinned=true` par `compileCombatTrap`
+(dura 120000, lnks[14,300,1,1], trap, efr kind-3 déclencheur rayon 50,
+att, efr kind-1 explosion 70/5/35, hide, getv×3) — le compilateur
+existe depuis le natif (« la forme Fire Trap du Wizard »), la chaîne
+d'exécution existe (projectilecast → p.trap → acceptCombatTrap,
+skillcombtrap.go avec ses tests), le planneur seulement ne nomme jamais
+ce lane. Comme les murs (s17) et la dissimulation (s25) : un écart de
+MESURE, pas un écart moteur. L'union des deux tests compte désormais
+`CombatTrap.Pinned` (bucket « trap »). **+12 rangs, 78,7 → 79,1 %**
+(2376/3002). Zéro code de production touché, zéro rangée native
+modifiée — les tiers cap-90 du Wizard pinnaient déjà aussi (la parité
+native monte d'autant).
+
+Les échantillons de la re-mesure dessinent la carte suivante :
+HEALA_CYCLE_B_03/05/07 (la famille du test licencié ! — ses tiers
+past-90 refusent quelque part, à sonder en premier), RECOVERYA_QUICK,
+BINGBYEOK D/E, JIPJUNG, AGGROLOW, SWORD_SHIELDPD, STEALTHA
+HIDING/DETECT/POINT, SAINTA_INNOCENT.
+
+## Le reste (carte actualisée après s29)
+
+1. HEALA_CYCLE_B tiers past-90 (B_03/05/07+) : la famille même du
+   test licencié natif — sa porte de refus étendue à nommer.
 2. MANADRY (10) : drain de mana ciblé `pmsc tnat getv×2`.
 3. JIPJUNG (9) : buff d'un mot `dura re{…}`.
 4. AGGROLOW (9) / FORGETA_AGGRO (8) : coupes d'aggro de zone
