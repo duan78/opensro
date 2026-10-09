@@ -291,7 +291,38 @@ RECOVERYA_GROUP 8, SWORD_SHIELDPD 8, FORGETA_AGGRO 8, WATER_CANCEL
 7…). La traîne continue grappe par grappe sur le même patron ; les
 danses (40) restent l'arbitrage owner V5.
 
-## Le reste (carte actualisée après s17)
+## Session 18 — la traîne décodée : chaque famille son programme et son drapeau
+
+Le sondage (foldé) a décodé les dix plus grosses familles restantes —
+programmes exacts + drapeaux parsés :
+- **WATER_HEAL (9)** : `efr{1,6,300,2,50,7} eshp heal` — la forme
+  lowestHealProgram d'origine, à UN mot de sélection : le contrat
+  exige 4|5, la rangée authorise **7** (= 4|2|1, parti+personnages+
+  lanceur ?). La lane : la sémantique du bit 1 (SelectCaster) sur un
+  heal eshp + vide natif. La plus proche d'ouvrir.
+- **FIREA_TRAP (12)** : `dura lnks part efr att efr burn hide getv×3`
+  — un piège périodique lié ; la lane trap existe
+  (`skilltrap.go`, questTrapTag) mais cette forme parti+burn+hide est
+  distincte.
+- **RECOVERYA_GROUP (8)** : `atfe(?) dura puls efr eshp heal hhwm getv×2`
+  — HoT parti avec eshp + terme d'arme (heal-over-time parti au
+  plus bas) — extension du contrat HealOverTime existant.
+- **JIPJUNG (9)** : `dura re{…}` — un buff mono-mot ; sémantique de
+  `re` (0x00000065 ?) à identifier.
+- **AGGROLOW (9) / FORGETA (8)** : `efr tntd tdwm [getv]` — baisses
+  d'aggro de zone ; la lane dtnt existe (discordwave) mais pas
+  l'admission hostile de ce patron.
+- **WATER_CANCEL (7)** : `bbuf dura drht tnat` — purge timed (drht ?).
+- **SWORD_SHIELDPD (8)** : `dura adps iqer` — débuff temporaire de
+  parade (adps).
+- **MANADRY (10)** : `pmsc tnat getv×2` — drain de mana ciblé
+  (abnormal=true déjà).
+- **INVISIBLE (10)** : `dura hide getv reqi sk?` — furtivité timed ;
+  la lane concealment existe (`skillconcealment.go`), forme à admettre.
+Chaque famille a maintenant sa lane nommée. Aucun rang basculé cette
+session (contexte) — les cibles s19+ sont prêtes.
+
+## Le reste (carte actualisée après s18)
 
 1. BINGPAN : la porte duration (preuve du vide natif d'abord).
 2. BINGBYEOK/HWABYEOK : forme timed onff/wp.
