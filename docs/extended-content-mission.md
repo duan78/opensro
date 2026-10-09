@@ -31,15 +31,31 @@ mesures du même jour rappelées en §4.
    réellement exécutées avec leur sortie, chiffres mesurés, écarts), commit,
    push sur le fork (`git push fork`), une ligne dans le journal
    `~/.sro-coordination/append_only.txt`.
-4. Environnement :
+4. Environnement — **isolation des données** (décision owner
+   2026-10-09) : le fork ne doit RIEN écrire dans le checkout principal
+   `C:/Users/Arnaud/opensro`. Toute donnée étendue vit dans l'arbre
+   privé `C:/Users/Arnaud/opensro-evolution-data` (extraction, bundle
+   natif copié, projection étendue, caches). Le principal n'est lu
+   qu'en lecture seule (assets client-public construits par sa propre
+   lane).
    - `SRO_GAME_ROOT=C:/Users/Arnaud/Downloads/02 ISRO - Legend 3 (v150)`
      (client natif 1.150) ;
    - `SRO_EXTENDED_GAME_ROOT=C:/Program Files (x86)/Silkroad` (client live
      2026 — **lecture seule, exécutables interdits**) ;
-   - `SRO_GENERATED_ROOT` vers le `.generated` du checkout principal ;
-   - Go doit être sur le PATH (leçon du 2026-10-09 : un build peut « sortir
-     0 » en ayant échoué — vérifier les manifestes produits, pas les exit
-     codes).
+   - Builds (extracteur + builder) :
+     `SRO_GENERATED_ROOT=C:/Users/Arnaud/opensro-evolution-data/generated`
+     et
+     `SRO_EXTENDED_GAME_DATA_ROOT=C:/Users/Arnaud/opensro-evolution-data/server-game-data/extended` ;
+   - Tests/gates Go :
+     `SRO_EXTENDED_GAME_DATA_ROOT=C:/Users/Arnaud/opensro-evolution-data/server-game-data/extended`
+     et
+     `SRO_SERVER_GAME_DATA_ROOT=C:/Users/Arnaud/opensro-evolution-data/server-game-data/1.150/server.srogz`
+     (copie privée du bundle natif : même les caches de matérialisation
+     restent privés ; PAS de `SRO_GENERATED_ROOT` ici, les tests lisent
+     le client-public du principal en lecture seule) ;
+   - Go doit être sur le PATH AVANT `pnpm check source` (leçon vécue
+     2026-10-09 : un build peut « sortir 0 » en ayant échoué — vérifier
+     les manifestes produits, pas les exit codes).
 5. Fork uniquement. Pas de push `origin`, pas de PR amont, pas de merge
    depuis `origin/main` sans demande owner (sync fork déjà faite au
    2026-10-09).
