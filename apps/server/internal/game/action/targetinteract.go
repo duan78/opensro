@@ -324,6 +324,11 @@ func (rt *Runtime) dispatchSkillCommand(divisionID string, character, snapshot *
 			if skill.PositionEffect.Pinned {
 				return rt.acceptPositionSkill(divisionID, character, snapshot, cast, skill)
 			}
+			// Extended (isro-live-2026): the timed hostile ratio cut
+			// of the Water line past 90 (ratiodebuff.go).
+			if skill.RatioDebuff.Pinned {
+				return rt.acceptRatioDebuff(divisionID, character, snapshot, cast, skill)
+			}
 			// Discord Wave: a friendly-targeted hostility cut
 			// (discordwave.go); extended past 90 the Warlock's
 			// caster-centred form shares the lane untargeted.

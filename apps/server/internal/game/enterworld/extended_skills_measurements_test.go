@@ -148,8 +148,10 @@ directly, action/skillwall.go), the planted combat-trap lane
 - measured s29: the live FIREA_TRAP rows already pin there), the
 hostility-cut lane (skill.Threat.Decrease rows run acceptDiscordWave
 and its untargeted sibling, action/discordwave.go - measured s31), the
-offensive periodic path, and the recovery dispatch's shape flags. Keep
-the two tests measuring the same predicate.
+timed hostile ratio cut (RatioDebuff.Pinned rows run acceptRatioDebuff,
+action/ratiodebuff.go - measured s34), the offensive periodic path, and
+the recovery dispatch's shape flags. Keep the two tests measuring the
+same predicate.
 ================
 */
 func rowRuntimeAdmitted(source *TextdataSkills, row SkillRow) bool {
@@ -157,6 +159,7 @@ func rowRuntimeAdmitted(source *TextdataSkills, row SkillRow) bool {
 		row.Wall.Pinned ||
 		row.Concealment.Pinned ||
 		row.CombatTrap.Pinned ||
+		row.RatioDebuff.Pinned ||
 		row.Threat.Decrease ||
 		row.TimedEffect.Periodic.Pinned ||
 		row.Recovery.SelfFlatPinned || row.Recovery.PartyHealPinned ||

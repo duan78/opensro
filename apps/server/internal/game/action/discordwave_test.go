@@ -16,6 +16,7 @@ package action
 import (
 	"testing"
 
+	"opensro.online/server/internal/game/combat"
 	"opensro.online/server/internal/game/enterworld"
 	"opensro.online/server/internal/game/item/wire"
 	"opensro.online/server/internal/game/world/monster"
@@ -248,6 +249,101 @@ func TestUntargetedThreatDecreaseCutsAroundTheCaster(t *testing.T) {
 		}
 		if i == 2 && after != discordLargeHostility {
 			t.Fatalf("the monster beyond the radius was touched: hostility %d", after)
+		}
+	}
+}
+
+/*
+================
+TestRatioDebuffCutsTheTargetAndExpires
+
+Extended content (isro-live-2026), port-only, not v1.150-native (M8
+s34): the timed hostile ratio cast installs the slotless writes on the
+monster target - its hit rate drops to the remaining factor in the
+live combat projection - files tant's aggression, and the abnormal
+tick's own expiry restores the stat. The envelope rides the shipped
+Fire Trap row; the cut words are the measured WATER_CANCEL B shape.
+================
+*/
+func TestRatioDebuffCutsTheTargetAndExpires(t *testing.T) {
+	rt, clock, c, original := newCombatTestRuntime(t, 1000)
+	skill := shippedOffense(t, "SKILL_EU_WIZARD_FIREA_TRAP_A_01")
+	skill.CombatTrap = enterworld.SkillCombatTrap{}
+	skill.RatioDebuff = enterworld.SkillRatioDebuff{Pinned: true, DurationMs: 10000, HitDown: 96, ThreatFlat: 5831}
+	rt.deps.SkillData().(staticSkillSource)[skill.ID] = skill
+	c.RaceIndex = testInt64(enterworld.RaceEurope)
+	c.ModelCodename = "CHAR_EU_MAN_NOBLE"
+	c.Skills = []uint32{skill.ID}
+	c.Intellect = testInt64(2000)
+	c.CurrentMP = testInt64(100000)
+	weapon := rt.deps.ItemReferences().(staticItemSource)[c.MissionInventory[0].Codename]
+	weapon.TypeIDs[3] = int64(skill.RequiredWeaponKinds[0])
+	c.MissionInventory[0].TypeFlags = weapon.TypeFlags()
+	gid := enterworld.ObjectIDForCharacter(c)
+	at := monster.Pose{RegionID: original.Spawn.RegionID, X: original.Spawn.X, Y: original.Spawn.Y, Z: original.Spawn.Z}
+	mob, err := rt.Monsters.DevelopmentCreateLeader(testDivision, original.Ref.RefObjID, at, clock.NowMs()+100000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !rt.Monsters.ArmRetaliation(testDivision, mob.Gid, gid) {
+		t.Fatal("no retaliation")
+	}
+	rt.commitAggression(testDivision, mob.Gid, simulation.HostilityEvent{Attacker: gid, Aggression: 1000}, clock.NowMs())
+	rt.Worlds.Update(simulation.WorldKey(testDivision, c.Name), func() simulation.WorldState { return simulation.SeedWorldState(c) },
+		func(w *simulation.WorldState) {
+			w.Spawn = simulation.Spawn{RegionID: at.RegionID, X: at.X, Y: at.Y, Z: at.Z}
+			w.SpawnSet = true
+		})
+	*c.World.Spawn.X = at.X
+	live, _ := rt.Monsters.Get(testDivision, mob.Gid)
+	before, err := combat.MonsterInstanceStats(live)
+	if err != nil || before.HitRate <= 0 {
+		t.Fatalf("base stats: %+v err %v", before, err)
+	}
+	mp := enterworld.CurrentMP(c)
+	out := rt.HandleTargetInteract(testDivision, c, wire.SkillAction{ActionId: skill.ID, HasTarget: true, TargetGid: mob.Gid}.Encode())
+	if frame, ok := findFrame(out.Frames, wire.OpSkillCastResult); !ok || frame.Payload[0] != 1 {
+		t.Fatalf("the ratio debuff was refused: %q %+v", out.DiagnosticRefusal, out.Frames)
+	}
+	if enterworld.CurrentMP(c) >= mp {
+		t.Fatalf("MP not charged: %d -> %d", mp, enterworld.CurrentMP(c))
+	}
+	cut, _ := rt.Monsters.Get(testDivision, mob.Gid)
+	if cut.Abnormal == nil {
+		t.Fatal("no abnormal block installed")
+	}
+	stats, err := combat.MonsterInstanceStats(cut)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := before.HitRate * 0.04; stats.HitRate > want+0.5 || stats.HitRate < want-0.5 {
+		t.Fatalf("hit rate %v, want ~%v (4%% of %v)", stats.HitRate, want, before.HitRate)
+	}
+	after, _ := rt.Monsters.Get(testDivision, mob.Gid)
+	for _, record := range after.Opponents {
+		if record.GID == gid && record.Aggression != 1000+5831 {
+			t.Fatalf("tant hostility %d, want %d", record.Aggression, 1000+5831)
+		}
+	}
+	// The abnormal tick's own expiry (4A4390) restores the stat.
+	deadline := clock.NowMs() + 15000
+	expired := false
+	for !expired {
+		clock.Advance(temptationTick)
+		rt.advanceMonsterAbnormals(clock.NowMs())
+		restored, _ := rt.Monsters.Get(testDivision, mob.Gid)
+		if restored.Abnormal == nil {
+			final, err := combat.MonsterInstanceStats(restored)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if final.HitRate < before.HitRate-0.5 || final.HitRate > before.HitRate+0.5 {
+				t.Fatalf("hit rate after expiry %v, want ~%v", final.HitRate, before.HitRate)
+			}
+			expired = true
+		}
+		if clock.NowMs() > deadline {
+			t.Fatal("the debuff never expired")
 		}
 	}
 }
