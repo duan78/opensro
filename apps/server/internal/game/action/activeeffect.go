@@ -290,6 +290,18 @@ func (rt *Runtime) commitCharacterEffectWithCheckpoint(divisionID string, charac
 	if row.TimedEffect.Pinned && row.TimedEffect.Block.Present {
 		writes = append(writes, combat.BlockRateWrites(row.TimedEffect.Block.Mask, row.TimedEffect.Block.Value)...)
 	}
+	if row.TimedEffect.Pinned && row.TimedEffect.Stance.Present {
+		// Extended content (isro-live-2026), port-only, not v1.150-native
+		// (M8 s36): the sword-and-shield stance - the attack raise rides
+		// the physical attack pair (13/14) in the percent-sum channel, the
+		// defense cut rides parameter 5 negated, exactly as Bleeding's
+		// native defense cut writes it (callbacks.go).
+		writes = append(writes,
+			paramkeeper.Write{Parameter: 13, Channel: paramkeeper.PercentSum, Value: float32(row.TimedEffect.Stance.AttackPercent)},
+			paramkeeper.Write{Parameter: 14, Channel: paramkeeper.PercentSum, Value: float32(row.TimedEffect.Stance.AttackPercent)},
+			paramkeeper.Write{Parameter: 5, Channel: paramkeeper.PercentSum, Value: -float32(row.TimedEffect.Stance.DefenseCutPercent)},
+		)
+	}
 	if row.TimedEffect.Pinned && row.TimedEffect.Evasion.Present && !row.TimedEffect.ItemProgram {
 		// Extended content (isro-live-2026), port-only, not v1.150-native
 		// (M8 s32): a learned skill's er block rides the same 594AC0 install

@@ -24,6 +24,7 @@ const (
 	// within it (passives 2..10).
 	maxBlockRatePercent        = 100
 	tagTimedStrength           = 0x73747269
+	tagTimedSpda               = 0x73706461
 	tagTimedIntellect          = 0x696e7469
 	tagTimedLink               = 0x6c6e6b73
 	tagTimedLinkedThreat       = 0x6c6b6167
@@ -126,6 +127,24 @@ type SkillTimedEffect struct {
 	// PulseArea is the Warlock's Soul Chaos: the instance strikes the
 	// enemies around its owner every period (skillpulsearea.go).
 	PulseArea SkillPulseArea
+	// Stance is spda, the extended sword-and-shield trade-off past the
+	// cap (M8 s36): physical attack up, defense down, while a shield is
+	// required (the row's reqi).
+	Stance SkillShieldStance
+}
+
+/*
+================
+SkillShieldStance
+
+spda's two coupled percents: the physical attack raise and the defense
+cut (authored past one hundred, stored as the cut alone).
+================
+*/
+type SkillShieldStance struct {
+	Present           bool
+	AttackPercent     uint32
+	DefenseCutPercent uint32
 }
 
 /*
@@ -505,6 +524,31 @@ func parseSkillTimedEffect(fields []string, row *SkillRow) {
 				return
 			}
 			result.Evasion = SkillFlatRate{Present: true, Flat: op.Arguments[0], Percent: op.Arguments[1]}
+		case tagTimedSpda:
+			// Extended content (isro-live-2026), port-only, not v1.150-native
+			// (M8 s36): spda {a, b}, the sword-and-shield stance of the live
+			// SHIELDPD tiers past the cap - "Decreases the physical defense
+			// power of the shield and increases the physical attack power
+			// for a period of time", reqi {4,1} already holding the shield
+			// requirement (58D480). The v1.150 catalogue authors the word on
+			// the family's cap-90 tiers, so admission carries the extended
+			// mastery floor - no v1.150 row reaches it.
+			//
+			// Inferred mapping, recorded deliberately (measured couples
+			// {76,123}..{110,176}, b growing with the tier): a is the
+			// physical attack raise in percent, b the defense cut encoded
+			// past one hundred (cut = b-100, 23..76) - the only reading
+			// whose trade-off worsens monotonically and leaves both words
+			// live at every tier; the reverse order clamps its cut to
+			// nothing and an hr-style {flat, percent} pair leaves the flat
+			// word as noise against a level-100 attack stat.
+			if result.Stance.Present || op.Count != 2 || targeted || result.Area.Present ||
+				op.Arguments[0] == 0 || op.Arguments[0] > 200 || op.Arguments[1] <= 100 || op.Arguments[1] > 200 ||
+				textdataNonNegative(fields[skilldataColReqMasteryLv1]) < extendedPastCapMastery &&
+					textdataNonNegative(fields[skilldataColReqMasteryLv2]) < extendedPastCapMastery {
+				return
+			}
+			result.Stance = SkillShieldStance{Present: true, AttackPercent: op.Arguments[0], DefenseCutPercent: op.Arguments[1] - 100}
 		case tagTimedStrength:
 			if !boost(&result.Strength, op) {
 				return
@@ -689,7 +733,7 @@ func parseSkillTimedEffect(fields []string, row *SkillRow) {
 	result.Pinned = duration && (attributes || defense || movement || result.Block.Present || result.Strength.Present ||
 		result.Intellect.Present || result.IncomingReduction || result.HitRate || result.Range || result.Hawk.Present ||
 		result.Link.Present && (result.Link.Threat || result.Link.Mana) || result.Preemptive.Present ||
-		result.DamageReturn.Present || result.Evasion.Present ||
+		result.DamageReturn.Present || result.Evasion.Present || result.Stance.Present ||
 		result.DamageToMP || result.Reat.Mask != 0 || result.Real.Mask != 0)
 	result.Targeted = targeted
 	row.TimedEffect = result

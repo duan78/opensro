@@ -744,7 +744,37 @@ explicite.
 L'union des deux tests de mesure compte `RatioDebuff.Pinned` (bucket
 « debuff »). **Couverture : 80,0 → 80,3 %** (2410/3002, +8 exact).
 
-## Amorce s35 — SWORD_SHIELDPD sondé (mesures, l'implémentation à faire)
+## Session 36 — SWORD_SHIELDPD livré : la posture bouclier-épée (+13, 80,7 %)
+
+Le mapping a été tranché par INFÉRENCE ENREGISTRÉE (aucune preuve
+binaire disponible — pas de chaîne de format dans textdataname, pas de
+slot documenté) : **a = hausse d'attaque physique en pourcent, b =
+coupe de défense encodée au-delà de cent (coupe = b−100, 23..76 %)**.
+La lecture gagnante est la seule dont le trade-off se dégrade
+monotoni- quement et garde les deux mots vivants à chaque tier :
+l'ordre inverse clampe sa coupe à rien (mots morts aux tiers hauts) et
+une paire hr {flat, percent} laisse le flat comme bruit face à une
+stat d'attaque de niveau 100. Les alternatives sont nommées dans le
+commentaire du code pour le prochain lecteur.
+
+Livré sur le motif JIPJUNG : le cas `tagTimedSpda` dans le walk timed
+(plancher ≥ 91 en cellules brutes — 22 rangées natives cap-90
+authorisent le même mot), le champ `SkillShieldStance` (l'épinglage le
+compte), et l'installation dans commitCharacterEffect — la hausse
+d'attaque sur la paire 13/14 en percent-sum, la coupe de défense sur
+le paramètre 5 en percent-sum NÉGATIF, exactement le canal que la
+saignée native utilise pour sa propre coupe de défense (callbacks.go).
+`reqi{4,1}` (le bouclier requis) est appliqué par 58D480 avant
+dispatch — zéro code. Première mesure : +9 au lieu de +13 — ma borne
+a ≤ 100 rejetait les quatre tiers F (a = 102..110 : une hausse
+d'attaque de +110 % est légitime) ; borne élargie à 200.
+
+Tests : plancher (13 rangs, valeurs par palier 76..110/23..76), vide
+natif (aucune rangée épingle la posture), installation (les trois
+écritures : 13/14 à +90 %, 5 à −45 %). **Couverture : 80,3 → 80,7 %**
+(2423/3002, +13 exact).
+
+## Amorce s35 (résolue par la session 36) — le texte original reste pour la traçabilité du raisonnement
 
 Sondé en ouverture de nuit 35 (probe effacé) ; la carte disait
 « debuff de parade ciblé, 8 rangs » — **les deux étaient faux** :
@@ -780,12 +810,9 @@ dans commitCharacterEffect, le reqi existant fait le reste.
 
 ## Le reste (carte actualisée après s35)
 
-1. **SWORD_SHIELDPD (13 past-90)** : voir l'amorce s35 — le trade-off
-   self adps (22 natives → plancher), reqi bouclier déjà appliqué ;
-   la question de preuve du mapping a/b à trancher (594AC0).
-2. SOULA_STUNLINK + RAZEA tiers isolés + STEALTHA_CHANGE/
+1. SOULA_STUNLINK + RAZEA tiers isolés + STEALTHA_CHANGE/
    BATTLAA_GUARD/GUARDA_PHYSICAL/REBIRTHA_SPECIAL : à sonder.
-3. La dispersion (~110 rangs sur les petites familles) : une à une.
+2. La dispersion (~110 rangs sur les petites familles) : une à une.
 4. **Danses de barde** (40 rangs) : le rythme 2026 — décision owner V5,
    jamais reçue ; sans preuve : pas d'implémentation.
 5. **MANADRY (10, parked-owner s31)** : PvP-seul — EnemyP sans EnemyM,
