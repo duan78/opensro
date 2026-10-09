@@ -744,9 +744,45 @@ explicite.
 L'union des deux tests de mesure compte `RatioDebuff.Pinned` (bucket
 « debuff »). **Couverture : 80,0 → 80,3 %** (2410/3002, +8 exact).
 
-## Le reste (carte actualisée après s34)
+## Amorce s35 — SWORD_SHIELDPD sondé (mesures, l'implémentation à faire)
 
-1. SWORD_SHIELDPD (8) : debuff de parade temporisé `dura adps iqer`.
+Sondé en ouverture de nuit 35 (probe effacé) ; la carte disait
+« debuff de parade ciblé, 8 rangs » — **les deux étaient faux** :
+
+- **13 rangs past-90** (D_05 m=92 .. F_05 m=132), 35 au total dans la
+  famille.
+- **Non ciblé, SELF** : toutes colonnes cibles à zéro, cast PRÉPARÉ
+  1300 ms, durée **120 000 ms** (2 min), handler 3.
+- Programme : `dura[120000] adps{a, b} reqi{4, 1}`. **Le troisième mot
+  n'est PAS « iqer » : c'est reqi** (0x72657169, le word
+  d'exigence d'équipement) — {4, 1} = bouclier requis, DÉJÀ appliqué
+  par 58D480/noteParameterIndex avant dispatch. Aucun travail requis.
+- Tooltip : « Decreases the physical defense power of the shield and
+  increases the physical attack power for a period of time » — un
+  trade-off self : défense du bouclier ↓, attaque physique ↑.
+- **adps = 0x73706461** (constante LE corrigée — la première sonde
+  cherchait l'inversée et trouvait zéro), authorisé par **22 rangs
+  natives cap-90** → plancher maîtrise ≥ 91 obligatoire, motif s28.
+- Les couples mesurés {76,123} {83,133} {90,145} {102,164} {110,176} :
+  **b ≈ 1,6·a** exactement — deux pourcents couplés.
+
+**La question de preuve avant d'écrire** : quel mot va à quel
+paramètre. Lecture naturelle : a → attaque physique +a % (params
+13/14, percent-sum), la défense ↓ par (b−100) % (23..76) — mais le
+graphe de paramètres n'exprime pas « la défense DU bouCLIER »
+spécifiquement (param 5 = toute la défense physique) et la lecture
+inverse (a = défense) contredit le tooltip. Sans preuve binaire du
+mapping, la règle du lane s'applique : inférence à enregistrer ou
+preuve à chercher dans 594AC0 (l'installateur des blocs de buff) —
+pas de supposition sur un trade-off de combat. Chemin de livraison :
+cas adps dans le walk timed (plancher), SkillFlatRate-paire, écritures
+dans commitCharacterEffect, le reqi existant fait le reste.
+
+## Le reste (carte actualisée après s35)
+
+1. **SWORD_SHIELDPD (13 past-90)** : voir l'amorce s35 — le trade-off
+   self adps (22 natives → plancher), reqi bouclier déjà appliqué ;
+   la question de preuve du mapping a/b à trancher (594AC0).
 2. SOULA_STUNLINK + RAZEA tiers isolés + STEALTHA_CHANGE/
    BATTLAA_GUARD/GUARDA_PHYSICAL/REBIRTHA_SPECIAL : à sonder.
 3. La dispersion (~110 rangs sur les petites familles) : une à une.
