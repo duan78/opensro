@@ -36,7 +36,20 @@ TEXTDATA_PREFIX = "server_dep/silkroad/textdata/"
 # leveldata for XP/SP/mob-basis/jobs, levelgold as the gold record,
 # dg.txt as the gold-walk basis the native server reads (CDropGoldData).
 # textdataname/magicoption are single tables the reference loaders read.
-TABLES = ("leveldata.txt", "levelgold.txt", "dg.txt", "textdataname.txt", "magicoption.txt", "npcpos.txt")
+TABLES = (
+	"leveldata.txt",
+	"levelgold.txt",
+	"dg.txt",
+	"textdataname.txt",
+	"magicoption.txt",
+	"npcpos.txt",
+	# The teleport plane the E7 graft reads: buildings (gate NPCs and their
+	# bounds), destinations, links, and the fortress gate ownership column.
+	"teleportbuilding.txt",
+	"teleportdata.txt",
+	"teleportlink.txt",
+	"siegefortress.txt",
+)
 # Loader files whose listed shards are extracted for the item/character
 # and skill censuses (degrees, requirement levels, mob levels, skills).
 LOADERS = {

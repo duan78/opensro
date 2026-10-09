@@ -249,3 +249,93 @@ téléports (E7) et la preuve navigateur de traversée restent (plan en
 - Les coordonnées d'entrée des aires restent y=0 (le résolveur de spawn
   en tire la hauteur réelle, comme en M4p1).
 
+---
+
+# Audit M4 (partie 3) — les téléports (E7)
+
+Même session, suite. La greffe du plan de téléport 2026 derrière le flag :
+les quatre tables extraites du Media.pk2 live dans l'arbre textdata étendu
+(l'extracteur textdata gagne `teleportbuilding/data/link` +
+`siegefortress` ; manifeste données `4c8f534f…`), puis fusionnées côté
+serveur natif-d'abord.
+
+## Livré
+
+- `action/portal_extended.go` — `MergeExtendedPortalDir` : fusion du plan
+  live dans le catalogue configuré. Chaque identité native (id de
+  destination, ref source, paire de lien, codename de bâtiment) garde sa
+  ligne native ; les lignes nommant un monde que le 1.150 ne connaît pas
+  (les mondes de donjons modernes) sont écartées avec compteur — le moteur
+  natif n'a aucun plan où les admettre. **Dérive de schéma mesurée et
+  documentée dans le code** : la table live garde source/cible/frais et
+  les cinq triplets de conditions aux mêmes colonnes, mais la paire
+  scheduling/combination native (r[4]=1/r[5]=0) lit 0/0 et un 1 migre
+  dans la première colonne de queue (preuve : la ligne Jangan→Donwha,
+  frais 5000 identiques, existe dans les deux tables) — la fusion lit
+  les triplets depuis r[6..20], ignore la paire dérivée et tolère la
+  queue de 2 colonnes.
+- `simulation/npcworlddata_extended.go` — `AppendExtendedTeleportGates` :
+  les portes du bâtiment live dont le ref n'existe pas nativement,
+  mêmes ids dans la bande 250000, mêmes formes de ligne (le parseur de
+  ligne est extrait en commun avec le passage natif ; la POLITIQUE de
+  bornes reste au caller — natif : échec strict inchangé, greffe : les
+  lignes marqueurs à bornes nulles — p. ex. `STORE_HUNTER_SPAWN` — sont
+  écartées et comptées).
+- Câblage : le roster NPC greffe les portes quand l'arbre textdata
+  étendu est là ; le catalogue portails fusionne après `ConfigurePortals`
+  avec une ligne de journal chiffrée.
+
+## Mesures réelles (tables live, session)
+
+- Bâtiments : 107 lignes actives → 86 codenames ajoutés, 21 natifs
+  gardés. Destinations : 332 → **61 ajoutées**, 126 natives gardées,
+  145 écartées (mondes inconnus du 1.150). Liens : 337 → **236 ajoutés**,
+  16 natifs gardés, 63 non résolus (vers les mondes écartés), 22 non
+  supportés. Portes NPC : **78 greffées, 21 dans les zones étendues**,
+  8 lignes marqueurs écartées (78+21+8=107).
+- **3 liens atterrissent dans les zones étendues, tous avec leur lien de
+  retour** ; les conditions de niveau vivent (refus 0x15 pour un
+  personnage niveau 20, passage à 140).
+
+## Critères d'acceptation — couverts
+
+- « Téléports (E7) » : `TestExtendedPortalMergeNativeWinsAndAddsZones`
+  (fusion réelle, comptes exacts, natif intact, liens+retours) et
+  **`TestExtendedPortalRoundTripThroughTheGates`** : un personnage à une
+  porte native voyage DANS une zone étendue par `HandlePortal` (opcode
+  d'admission, frais, transfert de monde) puis REVIENT par la porte de
+  la zone — l'aller/retour exigé par la mission, prouvé au niveau
+  action. `TestAppendExtendedTeleportGatesNativeWins` : chaque porte
+  native garde sa ligne exacte, les portes greffées couvrent les zones
+  étendues, sans greffe le roster reste natif.
+- « Flag off » : les tests sautent sans projection ; les tests portails
+  natifs (`TestPortal*`, `TestTeleportGate*`) passent inchangés après le
+  refactor du parseur partagé.
+
+## Tests et gates (sorties de session)
+
+- `go test ./internal/game/action/ ./internal/game/world/simulation/
+  -run "TestExtendedPortal|TestAppendExtendedTeleportGates"` → 4/4 PASS.
+- `go test … -run "TestPortal|TestTeleport"` (natifs) → ok/ok.
+- `pnpm check source` → `check pipeline: PASSED, 14 tasks in 15.5s` (la
+  gate `check:generated-root` a d'abord refusé une construction locale
+  du chemin client-public du principal — corrigé par l'export
+  `MAIN_CHECKOUT_CLIENT_PUBLIC_ROOT` dans le module propriétaire).
+- `pnpm task run check:server` (`SRO_CHECK_FORCE=1`) → `server gates:
+  PASS (16 package workers, test cache on, 106.2s)`.
+- `pnpm --filter @sro/client-next check` → `client check: PASS (11
+  gates, 75.7s)` (avec la surcharge minimap).
+
+## Non couvert (reste)
+
+- La preuve navigateur (traversée + téléport en flag on dans un browser,
+  captures) : M5/E8 couvre le parcours de bout en bout, cette preuve en
+  est le sous-produit naturel.
+- Donjons 0x8000 : verdict — **hors du périmètre M4**. La liste de zones
+  dérivée des données (M4p1) n'en contient pas : chaque bande 91-140 est
+  couverte en extérieur, et la mission définit les zones par cette
+  dérivation. Les mondes de donjons modernes apparaissent dans les
+  tables live (145 destinations écartées) et restent parqués avec les
+  systèmes V5 — un donjon 91+ ne deviendrait du contenu que si M5
+  montrait un trou de trajectoire.
+

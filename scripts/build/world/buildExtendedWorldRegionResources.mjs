@@ -56,11 +56,11 @@ import { REGION_SIZE, OUTDOOR_WORLD_SHARED_RENDER_PUBLIC_PATH } from "./constant
 import { parseJmxMapObjectPlacementO2, readJmxMapObjectInfo, readJmxMapTileCatalog } from "./jmx/index.mjs";
 import { buildJmxWorldRegionBundle } from "./maploader/buildMapLoaderRegionBundle.mjs";
 import { buildTitleSectorObjectResources } from "./objects/buildTitleSectorObjectResources.mjs";
+import { MAIN_CHECKOUT_CLIENT_PUBLIC_ROOT } from "../../lib/generatedRoot.mjs";
 import {
 	extractedRoot,
 	gameRoot,
 	imageSourceRoot,
-	mainCheckoutRoot,
 	normalizeRegionId,
 	publicRoot,
 	resolveExtendedGameDataRoot,
@@ -82,7 +82,6 @@ export const EXTENDED_WORLD_OBJECT_MESH_ROOT_PUBLIC_PATH = "/assets/world/extend
 export const EXTENDED_WORLD_CATALOG_PUBLIC_PATH = "/assets/world/extended/world-region-catalog.json";
 export const EXTENDED_MINIMAP_CATALOG_PUBLIC_PATH = "/assets/data/extended-minimap.json";
 const EXTENDED_WORLD_MANIFEST_NAME = "world-manifest.json";
-const MAIN_PUBLIC_ROOT = path.join( mainCheckoutRoot, ".generated", "client-public" );
 
 /*
 ================
@@ -209,7 +208,7 @@ malformed file is an operator error, not an extended-world fallback.
 */
 async function loadNativeSharedRenderResources( options = {} ) {
 	const sharedRenderPath = path.join(
-		options.mainPublicRoot ?? MAIN_PUBLIC_ROOT,
+		options.mainPublicRoot ?? MAIN_CHECKOUT_CLIENT_PUBLIC_ROOT,
 		OUTDOOR_WORLD_SHARED_RENDER_PUBLIC_PATH.replace( /^\/+/, "" )
 	);
 	const shared = JSON.parse( await readFile( sharedRenderPath, "utf8" ) );
