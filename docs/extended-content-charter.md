@@ -319,15 +319,23 @@ système réellement nouveau.
 
 ## 8. Décisions actées et questions ouvertes pour l'owner
 
-Acté le 2026-10-09 par l'owner : **cap étendu = 140**, le plus haut niveau
-à chaîne officielle complète (règle et preuves en §4.5).
+Acté le 2026-10-09 par l'owner :
 
-Questions restantes :
+- **cap étendu = 140**, le plus haut niveau à chaîne officielle complète
+  (règle et preuves en §4.5) ;
+- **degrés 11–14 d'un bloc** en V3, pas progressivement ;
+- **toutes les zones de la trajectoire 1→140** en V4 (la liste des zones
+  se dérive des données, voir mission M4) — pas une seule zone témoin.
 
-1. Zone prioritaire V4 : **Alexandria** (proposée), Constantinople, autre ?
-2. Degrés 11–14 d'un bloc en V3, ou progressif (11 puis 12…) ?
-3. Skills « rebirth » (`skilldata_r_*`) dans le scope V3 ou reportés ?
-4. Pets seconde génération / fellowship : reportés à V5 ?
+L'ordre d'exécution opérationnel de ces décisions est
+[`docs/extended-content-mission.md`](extended-content-mission.md)
+(jalons M0→M6, théorème d'acceptation E1→E10).
+
+Parkés (aucun travail sans nouvel ordre owner) :
+
+1. Skills « rebirth » (`skilldata_r_*`).
+2. Pets seconde génération / fellowship.
+3. Tout système exigeant du wire nouveau (charte §4.8, mission M5/V5).
 
 ## Annexe A — Faits établis par l'audit du 2026-10-09
 
