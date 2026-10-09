@@ -1101,12 +1101,48 @@ sans nombre dans le tooltip — inférence à enregistrer ; le clamp
 d'expiration du lane item est le précédent). Plancher ≥91 requis
 (les BUFF_01/02 natives ≤90 authorisent la même forme).
 
+## Session 45 — l'aura d'âme mutilée admise (+1, 83,8 %) : la famille REBIRTHA est COMPLÈTE
+
+Livré en suivant la révision : B_02 (résurrection ciblée) était déjà
+admise, le rmut démarre le skill 10276 par la machinerie portée — il
+ne manquait que l'AURA. Quatre cas de mots dans le walk timed, sous
+plancher ≥ 91 :
+
+- **chrch/crmc = les récupérations HP/MP** (50/50) sur la paire
+  Recovery du TimedEffect, installées par le chemin existant du lane
+  item (percent-sum, paramètres 25/26) — la paire est capturée
+  indépendamment de l'ordre (le même bug d'ordre que abnb/st, corrigé
+  par la bissectrice de troncature).
+- **msch{4,0} et cks{0,18,0}** : riders tolérés sous plancher — la
+  machinerie rmut ne lit ni l'un ni l'autre.
+- **hpi/odar/pmdg passaient déjà** (MaxHP +75 %, subis −75 %, attaque
+  −50/50) — l'installation vient du walk existant.
+
+**Le piège d'endianness, QUATRIÈME fois** : chrch = 0x63686372 (le
+display LE « rchc » inverse les octets — deux constantes fausses de
+suite avant la bonne). Le test de vide a aussi corrigé une hypothèse :
+WATER_HARMONY (le lane cgri de s16) épingle déjà des paires de
+récupération natives légitimement — le vide s43+ exclut cette famille
+nommément.
+
+**La chute à l'expiration, livrée à moitié et dite** : la chute des PV
+vient GRATUITE — le +75 % PV max prend fin par le clamp d'expiration
+du registre (le précédent du lane item), qui tire les PV stockés vers
+le bas. La chute des PM (« drastically », sans nombre dans le
+tooltip) reste une INFÉRENCE OUVERTE, non truquée : aucun mot du
+programme ne l'exprime, et nous ne fabriquons pas un nombre.
+
+**Couverture : 83,7 → 83,8 %** (2515/3002, +1 — la B_02 étant déjà
+comptée). Tests : plancher (l'unique tier past-90 : récupérations
+50/50, MaxHP 75 %, pénalités 50/50, réduction), vide natif (HARMONY
+exclue nommément). Gates : enterworld+action verts, check source
+PASSED, gate serveur forcée PASS.
+
 ## Le reste (carte actualisée après s45)
 
-1. **REBIRTHA_SPECIAL — l'aura seule (1 rangée, demi-session)** :
-   voir la révision s45 — B_02 admise, rmut porté ; restent cinq cas
-   de mots (hpi/chrch/crmc/msch/cks) + la chute d'expiration.
-   Puis la traîne joueur (~245).
+1. **La traîne joueur (~245)** : GUARDA_MAGIC_BLOCK et les familles
+   2-5 de l'histogramme s39, une à une. Les trois lanes nommées sont
+   LIVRÉES.
 2. **La traîne joueur (~270−15 rangées)** : les familles 2-5 de
    l'histogramme, une à une après les trois lanes.
 3. **Décision owner de périmètre (nouveau s39)** : ~180 rangées

@@ -32,6 +32,10 @@ const (
 	tagTimedLinkedDamage       = 0x6c6b6468
 	tagTimedLinkedRedirect     = 0x6c6b6472
 	tagTimedStunOverride       = 0x61626e62
+	tagTimedHPRecovery         = 0x63686372
+	tagTimedMPRecovery         = 0x636d6372
+	tagTimedStateChange        = 0x6d736368
+	tagTimedCastKey            = 0x00736b63
 	tagStunStatus              = 0x7374
 	tagTimedRequireNot         = 0x7265716e
 	tagTimedMaxHP              = 0x687069
@@ -738,6 +742,41 @@ func parseSkillTimedEffect(fields []string, row *SkillRow) {
 			}
 			stunOverride = true
 			stunCeiling = op.Arguments[0]
+		case tagTimedHPRecovery, tagTimedMPRecovery:
+			// Extended content (isro-live-2026), port-only, not v1.150-native
+			// (M8 s45): chrch and crmc, the crippled-soul state's recovery
+			// raises (the item lane installs its Recovery words on parameters
+			// 25/26 in the percent-sum channel - the same shape). The floor
+			// keeps every native row out; the skill's Recovery pair joins the
+			// install below.
+			// The two words may arrive in either order: gate each half on
+			// itself, never on the pair's presence.
+			taken := result.Recovery.HP != 0
+			if op.Tag == tagTimedMPRecovery {
+				taken = result.Recovery.MP != 0
+			}
+			if targeted || result.Area.Present || taken || op.Count != 1 || op.Arguments[0] == 0 ||
+				textdataNonNegative(fields[skilldataColReqMasteryLv1]) < extendedPastCapMastery &&
+					textdataNonNegative(fields[skilldataColReqMasteryLv2]) < extendedPastCapMastery {
+				return
+			}
+			if op.Tag == tagTimedHPRecovery {
+				result.Recovery.HP = op.Arguments[0]
+			} else {
+				result.Recovery.MP = op.Arguments[0]
+			}
+			result.Recovery.Present = true
+		case tagTimedStateChange, tagTimedCastKey:
+			// Extended content (isro-live-2026), port-only, not v1.150-native
+			// (M8 s45): msch and cks ride the crippled-soul state row - the
+			// state-change marker and the cast-key word. The v1.150 engine
+			// starts this row through the rmut revival path (resurrection.go),
+			// which reads neither; they ride under the mastery floor exactly
+			// as the 2026 one-word riders do (skillprogram.go).
+			if textdataNonNegative(fields[skilldataColReqMasteryLv1]) < extendedPastCapMastery &&
+				textdataNonNegative(fields[skilldataColReqMasteryLv2]) < extendedPastCapMastery {
+				return
+			}
 		case tagTimedOverlap: // ovl2: the replacement descriptor's casting-state word
 		case tagNbuf, tagBbuf: // cancellation policy and secondary board, already projected
 		case tagReqi, tagTimedRequireNot: // 58D480 admits, 59F0E0 re-checks on equipment change
@@ -831,7 +870,7 @@ func parseSkillTimedEffect(fields []string, row *SkillRow) {
 	result.Pinned = duration && (attributes || defense || movement || result.Block.Present || result.Strength.Present ||
 		result.Intellect.Present || result.IncomingReduction || result.HitRate || result.Range || result.Hawk.Present ||
 		result.Link.Present && (result.Link.Threat || result.Link.Mana || result.Link.Redirect || result.Link.StunGuard.Present) || result.Preemptive.Present ||
-		result.DamageReturn.Present || result.Evasion.Present || result.Stance.Present ||
+		result.DamageReturn.Present || result.Evasion.Present || result.Stance.Present || result.Recovery.Present ||
 		result.DamageToMP || result.Reat.Mask != 0 || result.Real.Mask != 0)
 	result.Targeted = targeted
 	row.TimedEffect = result
