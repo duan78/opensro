@@ -674,12 +674,52 @@ Le sondage par ligne a encore corrigé la carte avant d'écrire :
 **Couverture : 79,7 → 80,0 %** (2402/3002). Gates : enterworld+action
 verts, check source PASSED, gate serveur forcée PASS (97,3 s).
 
-## Le reste (carte actualisée après s32)
+## Session 33 (étape 1, moteur) — le debuff de ratio SANS slot livré côté moteur ; la leçon residentSkill
 
-1. **WATER_CANCEL timed A/B/CANCEL2_A** (~6-8 rangs past-90) :
-   debuff de ratio hostile temporisé SANS bit d'état — modifiers sans
-   slot + expiration + block vivant sans slot ; précédent
-   ElectricShock param-9 (callbacks.go:97). Budget session entière.
+Le lane est livré en deux étapes ; celle-ci est le moteur, autonome et
+inerte (les rangées épinglent, l'union ne les compte pas — pas de faux
+comptage avant l'exécuteur s34).
+
+1. **Block abnormal** : `Modifier.Until` (0 = possédé par un slot,
+   comme avant ; horloge propre sinon), `ApplyRatioDebuff` (facteur
+   restant, canal factor-product, source 5 — l'arithmétique
+   ElectricShock callbacks.go:97 ; une seconde application RAFRAÎCHIT
+   l'entrée, jamais de pile — inférence enregistrée),
+   `HasTimedModifiers`, expiration dans `Update` (même Mask==0), et le
+   block reste vivant sans slot actif (`finish()` de
+   monsterstate_abnormal.go). Test unitaire : vie, refresh, expiration,
+   et les écritures natives (Until 0) jamais touchées.
+2. **MonsterState.ApplyRatioDebuff** : installation sous verrou,
+   trackAbnormal garde le tick vivant.
+3. **Prédicat** `compileSkillRatioDebuff` : bbuf + dura(==enveloppe) +
+   terd/drht (≤100) + tant, ciblé hostile, **plancher lu sur
+   row.Masteries** — l'appel vit à la FIN du parse de rangée (après la
+   ligne Masteries), plus propre que les cellules brutes.
+   **8 rangées épinglées** : A_10..A_12, B_07..B_10, CANCEL2_A_01
+   (m=94..122). Test de plancher + vide natif dédiés.
+
+**La leçon (coûteuse, à retenir)** : `skill_storage.go` projette
+SkillRow champ-par-champ dans `residentSkill` — **un nouveau champ non
+listé aux trois sites (struct, set, projection de relecture) est
+silencieusement jeté au stockage**. Symptôme : le prédicat épingle en
+appel direct, le test synthétique épingle, la rangée chargée relit
+false — trois heures de sondage (doublons d'ID, index de shards,
+cache partagé, ordre de parse) avant l'instrumentation store/readback
+qui a nommé la porte. Tout futur champ de lane DOIT toucher les trois
+sites de residentSkill.
+
+Couverture inchangée : **80,0 %** (2402/3002) — voulu, l'union compte
+RatioDebuff quand l'exécuteur existera (s34 : cast ciblé-monstre par
+intent walk-then-cast, tant hostility à l'installation, expiration
+déjà câblée). Gates : abnormal/enterworld/action/simulation verts,
+check source PASSED, gate serveur forcée PASS (87,5 s).
+
+## Le reste (carte actualisée après s33)
+
+1. **WATER_CANCEL timed** : MOTEUR LIVRÉ s33 (8 rangées épinglées,
+   inertes) ; reste s34 : l'exécuteur ciblé-monstre (intent
+   walk-then-cast, beginSupportApproach est lié aux personnages), tant
+   hostility à l'installation, puis l'union compte les 8 rangées.
 2. SWORD_SHIELDPD (8) : debuff de parade temporisé `dura adps iqer`.
 3. SOULA_STUNLINK + RAZEA tiers isolés + STEALTHA_CHANGE/
    BATTLAA_GUARD/GUARDA_PHYSICAL/REBIRTHA_SPECIAL : à sonder.

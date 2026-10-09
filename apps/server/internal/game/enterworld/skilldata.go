@@ -212,7 +212,10 @@ type SkillRow struct {
 	// life taken, which the caster recovers.
 	LifeSteal SkillLifeSteal
 	// CombatTrap is a planted hostile trap program (skilltrap.go).
-	CombatTrap    SkillCombatTrap
+	CombatTrap SkillCombatTrap
+	// RatioDebuff is the timed hostile ratio cut of the Water line
+	// (skillratiodebuff.go), extended past 90.
+	RatioDebuff   SkillRatioDebuff
 	OffensiveArea SkillOffensiveArea
 	// ActionArea is efr kind 1 (RefSkill +0x28C) on any row, recorded by the
 	// parameter index: a monster's attack reads it although the player
@@ -829,6 +832,15 @@ func (t *TextdataSkills) parse(shards []string) {
 				{ID: textdataU32(fields[skilldataColReqGroup1]), Level: textdataNonNegative(fields[skilldataColReqGroupLv1])},
 				{ID: textdataU32(fields[skilldataColReqGroup2]), Level: textdataNonNegative(fields[skilldataColReqGroupLv2])},
 				{ID: textdataU32(fields[skilldataColReqGroup3]), Level: textdataNonNegative(fields[skilldataColReqGroupLv3])},
+			}
+			// Extended content (isro-live-2026), port-only, not
+			// v1.150-native (M8 s33): the timed hostile ratio cut of the
+			// Water line, tried once the row is complete - the floor reads
+			// Masteries, decoded just above. The pin is engine-side only
+			// until its cast executor ships: the admission union must not
+			// count it executable before that.
+			if debuff, ok := compileSkillRatioDebuff(fields, row); ok {
+				row.RatioDebuff = debuff
 			}
 			t.rows.set(row.ID, row)
 		}
