@@ -191,7 +191,24 @@ complète : 6/5/3/3/4 par bande). Quatrième correction de mesure du
 jalon, même nature que s2 : le moteur exécutait, la mesure ne le
 disait pas.
 
-## Le reste (carte actualisée après s11)
+## Session 12 — HARMONY décodée : pola = la garde préventive, cgri = le taux de récupération
+
+Le décodage des tags referme la fausse piste « aura de régén » : `pola`
+(0x706f6c61) est `tagTimedPreemptive` — la GARDE PRÉVENTIVE de la
+marche timed (« A self-only guard: the protection is the owner's, so
+it never rides a target, an area or a link ») ; `cgri`
+(0x69726763) est `itemEffectRecovery` — le taux de récupération
+{flat, pct} (consommateur : `skillitemeffect.go`). WATER_HARMONY est
+donc une **garde préventive de groupe avec taux de récupération**
+(`dura efr{kind 3} pola{masque, niveau} cgri{flat, pct}`) — et le
+refus est la clause self-only de la case preemptive : la marche refuse
+pola sur une rangée à aire. La lane s13 : relâcher la clause pour
+l'aire de groupe (efr kind 3) avec la preuve du vide natif + le
+consommateur runtime de la garde étendue au groupe. De la vraie
+implémentation, une seule grappe (13 rangs). MANATRANS non touché
+cette session (contexte). Aucun rang basculé.
+
+## Le reste (carte actualisée après s12)
 
 1. BINGPAN : la porte duration (preuve du vide natif d'abord).
 2. BINGBYEOK/HWABYEOK : forme timed onff/wp.
