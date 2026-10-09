@@ -176,6 +176,7 @@ import { createStallNetworkCategories } from "./hud/stall-network-categories";
 import { STALL_CHAT_CHANNEL, STALL_SLOTS, type StallListing } from "@/engine/foundation/gameplay/stall";
 import { textAllowed } from "@/engine/foundation/ui/character-create";
 import { createGrantPowerHud, GRANT_RIGHTS } from "./hud/grant-power-hud";
+import { compositeItemCaption, compositeItemLayout, createCompositeItemHud } from "./hud/composite-item-hud";
 import { allianceButtons, allianceLeader } from "@/engine/foundation/ui/alliance-guild";
 import {
 	fortressWarDates,
@@ -734,6 +735,7 @@ export function createUi(
 	const exchangeHud = createExchangeHud();
 	const stallHud = createStallHud();
 	const grantPowerHud = createGrantPowerHud();
+	const compositeItemHud = createCompositeItemHud();
 	const guildManagerHud = createGuildManagerHud();
 	const magicOptionHud = createMagicOptionHud();
 	const slotEffects = createSlotEffectClock();
@@ -1268,9 +1270,9 @@ export function createUi(
 		if ( shopDialog || shopWarning ) closeShopDialog();
 		guildDialog = "";
 		practice = null;
-		questDetails = false;
+		// 69CDF0 owns QuestInfo independently. 589660 hides main-popup pages,
+		// including Quests, without closing that details window or its prompt.
 		confirmDrop = "";
-		confirmAbandon = false;
 		confirmSocial = "";
 		unionHud.reset();
 		guildWarHud.reset();
@@ -1287,7 +1289,12 @@ export function createUi(
 		if ( panel === "Magic Pop" ) sendGameplay( { kind: "gacha-close" } );
 		if ( panel === GRANT_PANEL ) sendGameplay( { kind: "magic-option-close" } );
 		if ( panel && !next ) sound( "close" );
-		if ( !next ) admittedWindows.clear();
+		if ( !next ) {
+			for ( const owner of admittedWindows.keys() ) {
+				if ( questDetails && (owner === "quest-details" || owner === "quest-abandon") ) continue;
+				admittedWindows.delete( owner );
+			}
+		}
 		const wasOpen = !!panel;
 		panel = next;
 		if ( isMainPopupPage( next ) ) rememberedMainPopup = next;
@@ -1421,6 +1428,7 @@ export function createUi(
 		admittedWindows.clear();
 		practice = null;
 		questDetails = false;
+		confirmAbandon = false;
 		skillTab = 0;
 		selectedMastery = 0;
 		skillScroll = 0;
@@ -3048,7 +3056,26 @@ export function createUi(
 		} else if ( id.startsWith( "premium-reverse:" ) ) {
 			sendGameplay( { kind: "premium-command", command: "reverse-return", choice: Number( id.slice( 16 ) ) } );
 		} else if ( id === "premium-reverse-cancel" ) sendGameplay( { kind: "premium-command-cancel" } );
-		else if ( id === "chat-send" && !view.gameplay?.chat?.pending ) {
+		else if ( id.startsWith( "count-job:" ) ) {
+			// 6E2840: a package slot (kind 5) opens its package window.
+			compositeItemHud.open( Number( id.slice( "count-job:".length ) ) );
+			dirty = true;
+		} else if ( id.startsWith( "composite-item:" ) ) {
+			// 6AFB40: the button runs its row, then the window closes.
+			const packageRefObjId = compositeItemHud.packageId();
+			compositeItemHud.close();
+			dirty = true;
+			if ( packageRefObjId !== null ) {
+				sendGameplay( {
+					kind: "count-job-use",
+					packageRefObjId,
+					itemRefObjId: Number( id.slice( "composite-item:".length ) )
+				} );
+			}
+		} else if ( id === "composite-item-cancel" || id === "composite-item-close" ) {
+			compositeItemHud.close();
+			dirty = true;
+		} else if ( id === "chat-send" && !view.gameplay?.chat?.pending ) {
 			const draft = composeChat(
 				panel === "Chat" ?
 					(chatChannel === 2 ?
@@ -4414,6 +4441,12 @@ export function createUi(
 			}
 			if ( event.kind === "key" && questDetails && event.code === "Escape" ) {
 				questDetails = false;
+				dirty = true;
+				return;
+			}
+			if ( event.kind === "key" && event.code === "Escape" && compositeItemHud.packageId() !== null ) {
+				// 69F450: Escape closes the package window.
+				compositeItemHud.close();
 				dirty = true;
 				return;
 			}
@@ -6160,6 +6193,11 @@ export function createUi(
 					sendGameplay( { kind: "auto-potion-input", blocked, itemMallOpen } );
 				}
 			}
+			const compositePackage = compositeItemHud.packageId();
+			if (
+				compositePackage !== null &&
+				!(phase === "world" && next.gameplay?.countJobs?.some( r => r.packageRefObjId === compositePackage ))
+			) compositeItemHud.close();
 			if ( phase !== "world" ) cosHud.reset();
 			else if (
 				cosHud.reconcile(
@@ -7775,7 +7813,9 @@ export function createUi(
 							label: icon.label,
 							helpText: icon.helpText,
 							helpSource: icon.helpSource,
-							kind: "region",
+							// A package slot is clicked open (6E2840, the board's
+							// vtable +0x70 left-button handler); the rest only hover.
+							kind: icon.id.startsWith( "count-job:" ) ? "button" : "region",
 							rightActivate: !!icon.cancel,
 							rect: r
 						} );
@@ -10916,6 +10956,75 @@ export function createUi(
 					controls.push( ...scroll.controls );
 					endWindow( admission );
 				}
+				if ( questDetails && hudData ) {
+					const q = game?.quests?.find( q => q.refId === selectedQuest ),
+						page = hudData.windows.ifquestreward!,
+						px = questPosition[0],
+						py = questPosition[1],
+						admission = beginWindow();
+					blocks.push( [ px, py, 376, 384 ] );
+					controls.push( {
+						id: "quest-detail-drag",
+						label: "Move quest details",
+						kind: "button",
+						draggable: true,
+						rect: [ px, py, 376, 384 ]
+					} );
+					for ( const node of authoredPaintOrder( page ) ) {
+						if ( node.type !== "CIFButton" && node.type !== "CIFCloseButton" ) {
+							authoredChrome( node, px, py );
+						}
+					}
+					const meta = guideResources.data()?.questPresentation.records[selectedQuest];
+					authoredText( page.GDR_QUESTREWARD_TITLE!, px, py, meta?.rewardTitle ?? "" );
+					if ( q ) {
+						const r = authoredRect( page.GDR_QUESTREWARD_CONTENTS!, px, py );
+						const result = text.guide(
+							guideTokens( meta?.rewardBody ?? "" ),
+							[ r[0], r[1] - questDetailScroll, r[2], r[3] ],
+							r,
+							gold,
+							resources.size
+						);
+						questDetailMax = Math.max( 0, result.height - r[3] );
+						questDetailScroll = Math.min( questDetailScroll, questDetailMax );
+						quads.push( ...result.quads );
+						paths.push( ...result.paths );
+					}
+					const give = page.GDR_QUESTREWARD_GIVEUP!,
+						caption = hudCopy( q?.u10 === 2 ? "UIIT_STT_QUEST_REWARD" : "UIIT_STT_QUEST_GIVEUP" );
+					authoredLabeledButton( give, px, py, q?.u10 === 2 ? "quest-reward" : "quest-abandon", caption );
+					const close = page.GDR_QUESTREWARD_CLOSE!;
+					closeButton( px + close.rect[0], py + close.rect[1], "quest-details-close" );
+					const track = authoredRect( page.GDR_QUESTREWARD_SCROLL!, px, py );
+					for (
+						const [id, skin, yy] of [ [ "quest-detail-up", "up", track[1] - 16 ], [
+							"quest-detail-down",
+							"down",
+							track[1] + 222
+						], [
+							"quest-detail-thumb",
+							"button",
+							track[1] + Math.trunc( questDetailMax ? questDetailScroll * 206 / questDetailMax : 0 )
+						] ] as const
+					) {
+						const path = ROOT + "interface/guide/gd_scroll_" + skin + ".png",
+							r: UiRect = [ track[0], yy, 16, 16 ];
+						image( r, path );
+						controls.push( {
+							id,
+							label: id === "quest-detail-thumb" ?
+								"Scroll quest details" :
+								skin === "up" ?
+								"Scroll up" :
+								"Scroll down",
+							rect: r,
+							kind: "button",
+							draggable: skin === "button"
+						} );
+					}
+					endWindow( admission, "quest-details" );
+				}
 				if ( practice && panel === "Skills" && hudData ) {
 					const mastery = practice.mode === PRACTICE_MASTERY,
 						row = mastery ? undefined : training.skill( practice.id ),
@@ -11051,76 +11160,7 @@ export function createUi(
 					) authoredLabeledButton( node, px, py, id, hudCopy( node.text ) );
 					endWindow( admission, "skill-confirm" );
 				}
-				if ( questDetails && panel === "Quests" && hudData ) {
-					const q = game?.quests?.find( q => q.refId === selectedQuest ),
-						page = hudData.windows.ifquestreward!,
-						px = questPosition[0],
-						py = questPosition[1],
-						admission = beginWindow();
-					blocks.push( [ px, py, 376, 384 ] );
-					controls.push( {
-						id: "quest-detail-drag",
-						label: "Move quest details",
-						kind: "button",
-						draggable: true,
-						rect: [ px, py, 376, 384 ]
-					} );
-					for ( const node of authoredPaintOrder( page ) ) {
-						if ( node.type !== "CIFButton" && node.type !== "CIFCloseButton" ) {
-							authoredChrome( node, px, py );
-						}
-					}
-					const meta = guideResources.data()?.questPresentation.records[selectedQuest];
-					authoredText( page.GDR_QUESTREWARD_TITLE!, px, py, meta?.rewardTitle ?? "" );
-					if ( q ) {
-						const r = authoredRect( page.GDR_QUESTREWARD_CONTENTS!, px, py );
-						const result = text.guide(
-							guideTokens( meta?.rewardBody ?? "" ),
-							[ r[0], r[1] - questDetailScroll, r[2], r[3] ],
-							r,
-							gold,
-							resources.size
-						);
-						questDetailMax = Math.max( 0, result.height - r[3] );
-						questDetailScroll = Math.min( questDetailScroll, questDetailMax );
-						quads.push( ...result.quads );
-						paths.push( ...result.paths );
-					}
-					const give = page.GDR_QUESTREWARD_GIVEUP!,
-						caption = hudCopy( q?.u10 === 2 ? "UIIT_STT_QUEST_REWARD" : "UIIT_STT_QUEST_GIVEUP" );
-					authoredLabeledButton( give, px, py, q?.u10 === 2 ? "quest-reward" : "quest-abandon", caption );
-					const close = page.GDR_QUESTREWARD_CLOSE!;
-					closeButton( px + close.rect[0], py + close.rect[1], "quest-details-close" );
-					const track = authoredRect( page.GDR_QUESTREWARD_SCROLL!, px, py );
-					for (
-						const [id, skin, yy] of [ [ "quest-detail-up", "up", track[1] - 16 ], [
-							"quest-detail-down",
-							"down",
-							track[1] + 222
-						], [
-							"quest-detail-thumb",
-							"button",
-							track[1] + Math.trunc( questDetailMax ? questDetailScroll * 206 / questDetailMax : 0 )
-						] ] as const
-					) {
-						const path = ROOT + "interface/guide/gd_scroll_" + skin + ".png",
-							r: UiRect = [ track[0], yy, 16, 16 ];
-						image( r, path );
-						controls.push( {
-							id,
-							label: id === "quest-detail-thumb" ?
-								"Scroll quest details" :
-								skin === "up" ?
-								"Scroll up" :
-								"Scroll down",
-							rect: r,
-							kind: "button",
-							draggable: skin === "button"
-						} );
-					}
-					endWindow( admission, "quest-details" );
-				}
-				if ( confirmAbandon && questDetails && panel === "Quests" ) {
+				if ( confirmAbandon && questDetails ) {
 					controls = [];
 					const admission = beginWindow(),
 						box = guildProposalLayout( w, h ),
@@ -11161,6 +11201,62 @@ export function createUi(
 						] ] as const
 					) button( id, hudCopy( key ), r[0], r[1], r[2] );
 					endWindow( admission, "quest-abandon" );
+				}
+				const compositePackage = compositeItemHud.packageId(),
+					compositeRoot = hudData?.root.GDR_COMPOSITE_ITEM,
+					compositeNodes = hudData?.windows.ifcompositeitemwnd;
+				if ( compositePackage !== null && game && compositeRoot && compositeNodes ) {
+					// CIFCompositeItemWnd (6AF780): centred (69F0F0), one sys_button
+					// per limited item and a cancel button, grown to their count.
+					const rows = (game.countJobs ?? []).filter( r => r.packageRefObjId === compositePackage ),
+						box = compositeItemLayout( rows.length ),
+						width = compositeRoot.rect[2],
+						px = Math.max( 0, Math.floor( (w - width) / 2 ) ),
+						py = Math.max( 0, Math.floor( (h - box.height) / 2 ) ),
+						tile = compositeNodes.GDR_COMPOSITE_BGTILE!,
+						frame = compositeNodes.GDR_COMPOSITE_FRAME!,
+						admission = beginWindow();
+					windowBox( hudCopy( compositeRoot.text ), px, py, width, box.height );
+					closeButton( px + width - 26, py + 10, "composite-item-close" );
+					authoredChrome(
+						{ ...tile, rect: [ tile.rect[0], tile.rect[1], tile.rect[2], box.tileHeight ] },
+						px,
+						py
+					);
+					authoredChrome(
+						{ ...frame, rect: [ frame.rect[0], frame.rect[1], frame.rect[2], box.frameHeight ] },
+						px,
+						py
+					);
+					const buttonNode = ( r: UiRect ): AuthoredControl => ({
+						...frame,
+						type: "CIFButton",
+						texture: ROOT + "interface/system/sys_button.png",
+						rect: r,
+						client: [ 0, 0, 0, 0 ],
+						text: "",
+						color: white,
+						hAlign: 1,
+						vAlign: 1
+					});
+					rows.forEach( ( row, i ) => {
+						authoredLabeledButton(
+							buttonNode( box.buttons[i]! ),
+							px,
+							py,
+							"composite-item:" + row.itemRefObjId,
+							compositeItemCaption( row.itemName ?? "", row.uses ),
+							row.uses === 0
+						);
+					} );
+					authoredLabeledButton(
+						buttonNode( box.buttons[rows.length]! ),
+						px,
+						py,
+						"composite-item-cancel",
+						hudCopy( "UIIT_CTL_CANCEL" )
+					);
+					endWindow( admission, "composite-item" );
 				}
 				if ( game?.reverseReturnChoice ) {
 					// 6AD990's type 0x24 confirm box: the reverse return's two points.

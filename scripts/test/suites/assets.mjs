@@ -20,6 +20,7 @@ export default {
 		"scripts/test/assets/assetDeliveryOwnership.test.mjs",
 		"scripts/test/assets/nativeUiTexture.test.mjs",
 		"scripts/test/assets/nativeLensResources.test.mjs",
+		"scripts/test/assets/skyImagePublication.test.mjs",
 		"scripts/test/assets/nativeCharacterTextures.test.mjs",
 		"scripts/test/assets/fontAtlasPublication.test.mjs",
 		"scripts/test/assets/buildSharedUtilities.test.mjs",
@@ -49,6 +50,12 @@ export default {
 		"scripts/test/assets/pythonRun.test.mjs",
 		"scripts/test/assets/optionalDataAsset.test.mjs",
 		"scripts/test/assets/nameFilterAsset.test.mjs",
-		"scripts/test/assets/backgroundInstallAsset.test.mjs"
+		"scripts/test/assets/backgroundInstallAsset.test.mjs",
+		"scripts/test/assets/assetPackLayout.test.mjs",
+		"scripts/test/assets/bsrAuthoredBox.test.mjs",
+		"scripts/test/assets/englishCorrections.test.mjs",
+		"scripts/test/assets/memberCompression.test.mjs",
+		"scripts/test/assets/stallNetworkAssets.test.mjs",
+		"scripts/test/assets/terrainBlockTextures.test.mjs"
 	]
 };

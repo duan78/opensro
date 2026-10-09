@@ -76,8 +76,14 @@ On a slow link (a VPN), `--max-batch-mib` makes smaller batches. Each
 upload's time limit grows with its size (at least 32 KiB/s), and a timed-out
 upload is retried like any other transport failure.
 
-It reads the live release from the origin and uploads, in payload batches under
-the upload limit, only the content the live release lacks (keyed by sha256).
+It reads the live release from the origin, asks the host which of the needed
+payloads its store already holds intact (`payload-inventory`: length and sha256
+match; each hit is kept from the 14-day prune), and uploads, in payload batches
+under the upload limit, only the content neither the live release nor the store
+has (keyed by sha256). The host's controls must include `payload-inventory`:
+after a release-controls change, reinstall them (Host installation) before the
+next data release. Older controls refuse the inventory, and `data_release.py`
+stops with that message rather than uploading everything.
 The host verifies and stores each batch, then stages the candidate: every
 served file the live release already has is hard-linked, the rest is written
 from the store, and the sha256 of every served file is recorded. Publication
@@ -129,6 +135,14 @@ neither can be published alone. After approval:
    advances both generations; on failure, `ci.py revert --reason REASON`
    restores the retained client and redeploys the retained server without a
    notice.
+
+A new protocol is any change the live counterpart cannot decode, including
+new bytes in an existing packet: a field added, a length changed, a layout
+version raised. Those need a protocol bump and a coordinated release. A new
+opcode or a new JSON key is not one; the browser client ignores both. Before
+publishing one component alone, diff the other component's decoders between
+its live commit and the candidate, and pair every changed decoder with the
+encoder that forced it.
 
 Open tabs of the old client are refused with HTTP 426 and told to reload. A
 pair is admitted only when the old server can read what the new one writes, so
