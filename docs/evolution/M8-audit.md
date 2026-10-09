@@ -208,7 +208,25 @@ consommateur runtime de la garde étendue au groupe. De la vraie
 implémentation, une seule grappe (13 rangs). MANATRANS non touché
 cette session (contexte). Aucun rang basculé.
 
-## Le reste (carte actualisée après s12)
+## Session 13 — le consommateur de la garde localisé : noise.go, installation self
+
+Le consommateur runtime de la garde préventive est trouvé :
+`action/noise.go` installe `TimedEffect.Preemptive` sur le LANCEUR
+(lane self-effect : « enterworld admits it as
+SkillTimedEffect.Preemptive », mask/level lus et appliqués au
+propriétaire). Étendre la garde au groupe = brancher l'installation
+preemptive dans la marche de sélection de groupe de la lane timed (là
+où le HoT de groupe installe ses soins sur chaque membre — le chemin
+existe), avec la preuve du vide natif (quelles rangées natives portent
+pola sur une aire — attendu : les ancêtres HARMONY seulement ou
+aucune). C'est une lane d'implémentation complète (parse + runtime +
+tests deux réglages), pas une ouverture de porte — le contexte de la
+session ne permet pas de la faire proprement. Reste la lane la mieux
+spécifiée du jalon : case preemptive de `skilltimedeffect.go`
+(relâcher `targeted || result.Area.Present` pour l'efr kind 3),
+installation dans la marche groupe, preuve du vide.
+
+## Le reste (carte actualisée après s13)
 
 1. BINGPAN : la porte duration (preuve du vide natif d'abord).
 2. BINGBYEOK/HWABYEOK : forme timed onff/wp.
