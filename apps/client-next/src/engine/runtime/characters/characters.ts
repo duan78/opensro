@@ -127,7 +127,8 @@ export function createCharacterPresentation(
 		dead( gid: number ): boolean;
 		release( key: string, now: number ): void;
 		finishedCasts(): void;
-	}
+	},
+	soundEnabled?: () => boolean
 ) {
 	let probe: CharacterFrameProbe | undefined;
 	let frameWork: import("@/engine/contracts/runtime").FrameWork | undefined;
@@ -173,7 +174,8 @@ export function createCharacterPresentation(
 	const statusOwner = createStatusOwner();
 	const skillObjects = createSkillObjects( allocateActor );
 	const resources = createCharacterResources( assets, renderer, origin ),
-		sounds = createCharacterSounds( play, random.range );
+		// 8F9280 measures each rule's 600-unit reach from the audio listener.
+		sounds = createCharacterSounds( play, random.range, () => renderer.audioListener()?.position, soundEnabled );
 	const published = createPresentationCatalog( { resources, sounds, referenceAppearances } );
 	const effects = createCharacterEffects(
 		assets,
