@@ -428,7 +428,20 @@ func parseSkillTimedEffect(fields []string, row *SkillRow) {
 			if kind == 3 {
 				continue
 			}
-			if result.Area.Present || targeted || kind != 1 || shape != 1 || radius == 0 || reduction != 0 {
+			// Extended content (isro-live-2026), port-only, not v1.150-native
+			// (M8 s49): the live HEALSHIELD tiers past the cap carry their
+			// party shield as an efr KIND 2 (the persistent-aura kind the
+			// metadata files as row.Aura) with the party select - the same
+			// area-buff path kind 1 rides, under the mastery floor (the
+			// native aura rows reach their lanes through noteParameterIndex,
+			// never through this walk).
+			partyAura := kind == 2 && shape == 1 && radius != 0 && reduction == 0 &&
+				(sel == SelectParty || sel == SelectParty|SelectCaster) &&
+				textdataNonNegative(fields[skilldataColReqMasteryLv1]) >= extendedPastCapMastery ||
+				kind == 2 && shape == 1 && radius != 0 && reduction == 0 &&
+					(sel == SelectParty || sel == SelectParty|SelectCaster) &&
+					textdataNonNegative(fields[skilldataColReqMasteryLv2]) >= extendedPastCapMastery
+			if result.Area.Present || targeted || kind != 1 && !partyAura || kind == 1 && shape != 1 || radius == 0 || reduction != 0 {
 				return
 			}
 			result.Area = SkillRecipientArea{Present: true, Radius: radius, MaxTargets: most, Select: sel}

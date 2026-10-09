@@ -1248,12 +1248,33 @@ RewardParties — les personnages proches ne sont pas un groupe).
 **Couverture : 83,8 → 83,9 %** (2519/3002) ; joueur : 97,5 % (2093/
 2146). Reste livrable : 39 rangées.
 
-## Le reste (carte actualisée après s48)
+## Session 49 — HEALSHIELD livré : l'aire de bouclier kind-2 (+3, 84,0 %) ; le recompte honnête
 
-1. **FAIT (s47+s48)** : classification livrée ; DAMAGE_DIVIDE LIVRÉE
-   (+4). Reste livrable : 39 rangées (FRENZYA, POISONA_FIELD,
-   CONFUSIONA_ILLUSION, FIRE_SHIELD, HEALSHIELD, STEALTHA_POINT,
-   TRANSFORMA_DUPLE, MINDP×2, SPELLP, WATER_CANCEL2 tier).
+Recompte frais d'abord (le « 39 » de s48 était court) : **53 rangées
+joueur restent**, 2093/2146 = 97,5 %. WATER_CANCEL2_B_01 s'est
+révélée DÉJÀ admise (le lane DMIR de s37 la couvrait — le test de
+classification la listait à tort). Livré ensuite la grappe HEALSHIELD
+(3) : `dura[45000] efr{2,1,300,8,0,5} defp{phys,mag} reqi` — le
+bouclier de groupe du Cleric : l'efr KIND 2 (le kind persistent-aura)
+avec select party rejoint le CHEMIN AIRE-DE-BUFF existant du walk
+(kind 1) sous plancher — l'installation defp par destinataire existe
+déjà (commitCharacterEffect). Deux leçons de test : le select 5 est
+party-AVEC-casteur (le test comparait au party nu) ; et mon « vide
+natif large » était une sur-revendication — le kind n'est pas retenu
+post-parse et les aires kind-1 party natives (POISONA_GUARD)
+épinglent depuis toujours — le plancher du test de famille EST le
+vide (les tiers ≤90 de la famille ne pinent pas).
+
+**Couverture : 83,9 → 84,0 %** (2522/3002) ; joueur 2096/2146 (97,6 %).
+Reste livrable : 50 rangées.
+
+## Le reste (carte actualisée après s49)
+
+1. **FAIT (s47-s49)** : classification, DAMAGE_DIVIDE (+4),
+   HEALSHIELD (+3). Reste livrable : 50 rangées (FRENZYA 5,
+   POISONA_FIELD 5, CONFUSIONA_ILLUSION 5, FIRE_SHIELD 3,
+   STEALTHA_POINT 3, TRANSFORMA_DUPLE 3, MINDP 4, SPELLP 2,
+   danses 2, MANADRY 10 parked, singles).
 2. **La traîne joueur (~270−15 rangées)** : les familles 2-5 de
    l'histogramme, une à une après les trois lanes.
 3. **Décision owner de périmètre (nouveau s39)** : ~180 rangées
