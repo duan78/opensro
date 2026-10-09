@@ -368,7 +368,22 @@ furtivité CH/EU et leurs apparentées). Cinquième gap de mesure du
 jalon : à chaque fois le moteur exécutait déjà, la mesure ne le
 disait pas.
 
-## Le reste (carte actualisée après s21)
+## Session 22 — RECOVERYA_GROUP : le mot d'aire kind 2 admis, la dernière porte nommée
+
+Le mot d'aire de la récupération de groupe est élargi : le prédicat
+`partyRecoveryArea` admet l'**efr kind 2** (l'aire persistante que
+`skilloffense.go` documente) à côté du kind 1 natif — même forme
+centrée lanceur, même sélection parti, inférence enregistrée. Mais la
+rangée REFUSE encore : son programme MÈNE avec le mot sans-argument
+`atfe` (0x65667461, le drapeau d'état d'aire — groupe arity-0 de la
+table) AVANT `dura puls efr eshp heal mwhh getv×2`, et les contrats
+HoT parti exigent l'efr en tête. La dernière porte est donc
+POSITIONNELLE : la position du drapeau atfe dans
+`parseHealOverTime`/`partyHealProgram` — le sondage l'a isolée (le
+prédicat d'aire passe maintenant, le parse de tête non). Lane s23.
+Aucun rang basculé (le mot admis est nécessaire, la position reste).
+
+## Le reste (carte actualisée après s22)
 
 1. BINGPAN : la porte duration (preuve du vide natif d'abord).
 2. BINGBYEOK/HWABYEOK : forme timed onff/wp.
