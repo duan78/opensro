@@ -20,6 +20,8 @@ import (
 	"path/filepath"
 
 	log "github.com/sirupsen/logrus"
+
+	"opensro.online/server/internal/domain"
 )
 
 /*
@@ -74,5 +76,42 @@ func AppendExtendedTeleportGates(dir string, roster []NpcDef) ([]NpcDef, int, er
 		added,
 		skippedMarkers,
 	)
+	return result, added, ValidateNpcRoster(result)
+}
+
+/*
+================
+AppendExtendedNpcWorldRoster
+
+The live towns' service NPCs (M7, port-only, not v1.150-native): the
+extended textdata's own roster - its npcpos anchors joined to its
+characterdata NPCs, with store groups from its refmappings - appended to
+an already-native roster. A codename both rosters carry keeps its native
+row (native wins, the same rule as every extended graft); the additions
+are re-identified into a dedicated band of the NPC range (NPCGIDBase +
+10000, far above any shipped roster and below the teleport gates'
+250000 band), so no identity ever collides.
+================
+*/
+func AppendExtendedNpcWorldRoster(dir string, roster []NpcDef) ([]NpcDef, int, error) {
+	extended := LoadNpcWorldRoster(dir)
+	if len(extended) == 0 {
+		return nil, 0, fmt.Errorf("extended NPC roster is empty under %s", dir)
+	}
+	known := make(map[string]bool, len(roster))
+	for _, row := range roster {
+		known[row.Codename] = true
+	}
+	result := append([]NpcDef(nil), roster...)
+	added := 0
+	for _, row := range extended {
+		if known[row.Codename] {
+			continue
+		}
+		known[row.Codename] = true
+		row.ObjectID = domain.NPCGIDBase + 10000 + uint32(added) + 1
+		result = append(result, row)
+		added++
+	}
 	return result, added, ValidateNpcRoster(result)
 }

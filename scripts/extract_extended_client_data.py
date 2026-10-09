@@ -49,6 +49,18 @@ TABLES = (
 	"teleportdata.txt",
 	"teleportlink.txt",
 	"siegefortress.txt",
+	# The commerce plane the M7 shop graft reads: tabs, the NPC-to-shop
+	# mappings, and the goods side (extract_sharded normalizes the three
+	# loader-fragmented tables).
+	"refshoptab.txt",
+	"refshopgoods.txt",
+	"refscrapofpackageitem.txt",
+	"refpricepolicyofitem.txt",
+	"refconditiontosellpackageitem.txt",
+	"refrewardpolicytosellpackageitem.txt",
+	"refshopgroup.txt",
+	"refmappingshopgroup.txt",
+	"refmappingshopwithtab.txt",
 )
 # Loader files whose listed shards are extracted for the item/character
 # and skill censuses (degrees, requirement levels, mob levels, skills).
@@ -58,6 +70,11 @@ LOADERS = {
 	"skilldata": "skilldata.txt",
 }
 DEFAULT_GAME_ROOT = r"C:\Program Files (x86)\Silkroad"
+
+# Live-2026 loader-fragmented tables (the goods side of the commerce
+# plane): the root names its shards; extract_sharded concatenates them
+# into the monolithic form the native readers expect.
+SHARDED_TABLES = ("refshopgoods.txt", "refpricepolicyofitem.txt", "refscrapofpackageitem.txt")
 HASH_CHUNK = 4 * 1024 * 1024
 
 # The live-2026 characterdata rows carry the v1.150 _RefObjChar layout
@@ -181,10 +198,51 @@ def main() -> int:
 					lines.append( "\t".join( reshape_character_cells( line.split( "\t" ) ) ) )
 				return ( "\ufeff" + "\r\n".join( lines ) + "\r\n" ).encode( "utf-16-le" )
 
+			def extract_sharded( name: str ) -> None:
+				# The live client ships the goods-side commerce tables as
+				# loader roots naming their shards (the itemdata pattern).
+				# Concatenate the shards' data rows into the root file so the
+				# monolithic native readers read them unchanged. The price
+				# table additionally inserts a zero column at index 4
+				# (measured 2026-10-09: every live row is 14 cells with
+				# cell[4] == "0"; the native row is 13 cells) - dropped
+				# here, exactly the characterdata-reshape precedent.
+				extract( name )
+				root_text = ( output / sro_pk2.fold_ascii( name ) ).read_bytes().decode( "utf-16-le", errors = "replace" ).lstrip( "\ufeff" )
+				rows = []
+				shard_count = 0
+				for line in root_text.splitlines():
+					shard = line.strip()
+					if not shard or shard.startswith( "//" ):
+						continue
+					entry = by_path.get( sro_pk2.fold_ascii( TEXTDATA_PREFIX + shard ) )
+					if entry is None:
+						raise RuntimeError( f"{name}: the client lists shard {shard} but does not ship it" )
+					shard_text = sro_pk2.payload( memory, entry ).decode( "utf-16-le", errors = "replace" ).lstrip( "\ufeff" )
+					for row in shard_text.splitlines():
+						row = row.rstrip( "\r" )
+						if row.strip() and not row.startswith( "//" ):
+							if name == "refpricepolicyofitem.txt":
+								cells = row.split( "\t" )
+								if len( cells ) == 14 and cells[4].strip() == "0":
+									row = "\t".join( cells[:4] + cells[5:] )
+								else:
+									raise RuntimeError( "refpricepolicyofitem: unexpected live row shape: " + row[:60] )
+							rows.append( row )
+					shard_count += 1
+				payload = ( "\ufeff" + "\r\n".join( rows ) + "\r\n" ).encode( "utf-16-le" )
+				( output / sro_pk2.fold_ascii( name ) ).write_bytes( payload )
+				files[sro_pk2.fold_ascii( name )]["bytes"] = len( payload )
+				files[sro_pk2.fold_ascii( name )]["sha256"] = hashlib.sha256( payload ).hexdigest()
+				print( f"normalized {name}: {shard_count} shards -> {len( rows )} rows" )
+
 			for table in TABLES:
 				if table == "textdataname.txt":
 					continue  # synthesized below from the object-name shards
-				extract( table )
+				if table in SHARDED_TABLES:
+					extract_sharded( table )
+				else:
+					extract( table )
 			shards = {}
 			for label, loader in LOADERS.items():
 				extract( loader )

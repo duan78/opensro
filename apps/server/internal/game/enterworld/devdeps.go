@@ -170,10 +170,21 @@ func NewDevDepsWithRoster(paths DevPaths, textdata *TextdataCatalogs, roster *Ro
 			return nil, gateErr
 		}
 		// Extended content (isro-live-2026), port-only, not v1.150-native:
-		// the live building table's gates whose refs the native pass did
-		// not already place - the teleporters of the post-1.150 zones.
-		// Native rows win every shared ref; empty keeps the roster native.
+		// the live towns' service NPCs (the extended roster over its own
+		// npcpos/characterdata/refmappings), then the live building
+		// table's gates whose refs the native pass did not already place.
+		// Native rows win every shared codename and ref; empty keeps the
+		// roster native.
 		if paths.ExtendedTextdataDir != "" {
+			var npcAdded int
+			npcSpawns.Roster, npcAdded, gateErr = simulation.AppendExtendedNpcWorldRoster(
+				paths.ExtendedTextdataDir,
+				npcSpawns.Roster,
+			)
+			if gateErr != nil {
+				return nil, fmt.Errorf("bootstrap: extended service NPCs: %w", gateErr)
+			}
+			log.Infof("bootstrap: extended content grafted %d live-2026 service NPCs (not v1.150-native)", npcAdded)
 			var added int
 			npcSpawns.Roster, added, gateErr = simulation.AppendExtendedTeleportGates(
 				paths.ExtendedTextdataDir,
