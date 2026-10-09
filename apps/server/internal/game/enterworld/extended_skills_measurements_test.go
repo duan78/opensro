@@ -143,15 +143,18 @@ rowRuntimeAdmitted
 
 The runtime admission union the coverage test measures: compiled plan
 kinds, the wall lane (the cast dispatch admits Wall.Pinned rows
-directly, action/skillwall.go), the offensive periodic path, and the
-recovery dispatch's shape flags. Keep the two tests measuring the same
-predicate.
+directly, action/skillwall.go), the planted combat-trap lane
+(acceptCombatTrap runs skill.CombatTrap rows, action/skillcombattrap.go
+- measured s29: the live FIREA_TRAP rows already pin there), the
+offensive periodic path, and the recovery dispatch's shape flags. Keep
+the two tests measuring the same predicate.
 ================
 */
 func rowRuntimeAdmitted(source *TextdataSkills, row SkillRow) bool {
 	return source.plans[row.ID].kind != SkillExecutionUnsupported ||
 		row.Wall.Pinned ||
 		row.Concealment.Pinned ||
+		row.CombatTrap.Pinned ||
 		row.TimedEffect.Periodic.Pinned ||
 		row.Recovery.SelfFlatPinned || row.Recovery.PartyHealPinned ||
 		row.Recovery.LowestHealPinned || row.Recovery.PartyResurrectPinned ||

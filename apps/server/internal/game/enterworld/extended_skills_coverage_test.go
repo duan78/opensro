@@ -84,6 +84,13 @@ func skillCoveragePast90(t *testing.T, source *TextdataSkills) map[int]map[strin
 		if kind == "unsupported" && row.Concealment.Pinned {
 			kind = "concealment"
 		}
+		if kind == "unsupported" && row.CombatTrap.Pinned {
+			// The planted combat-trap lane (acceptCombatTrap runs
+			// skill.CombatTrap rows, action/skillcombattrap.go): measured
+			// s29 - the live FIREA_TRAP rows already pin there, the plan
+			// compiler just never names the lane.
+			kind = "trap"
+		}
 		if kind == "unsupported" && row.TimedEffect.Periodic.Pinned {
 			kind = "periodic"
 		}
