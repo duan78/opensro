@@ -177,7 +177,21 @@ sonder les portes du parseur sur une rangée 2026, prouver le vide,
 ouvrir. Aucun rang basculé cette session — mais la cible est passée
 de « RE de 4 mots + exécution » à « une porte d'enveloppe ».
 
-## Le reste (carte actualisée après s10)
+## Session 11 — les murs 2026 s'exécutaient déjà : la mesure les comptait pas
+
+La sonde (foldée) a clos la lane en une question : les rangées
+BINGBYEOK/HWABYEOK 2026 passent TOUTES les portes de `parseSkillWall`
+— **`Wall.Pinned = true`**. Elles étaient admises par le runtime
+depuis le début (le dispatch de cast lit `skill.Wall.Pinned`
+directement, `action/skillwall.go:59`) ; c'est le PRÉDICAT DE MESURE
+qui ne comptait pas la lane mur. Corrigé dans le prédicat partagé
+(`rowRuntimeAdmitted` + la liste de kinds du test de couverture).
+**Couverture 75,6 % → 76,3 %** (+21 rangs — la famille mur
+complète : 6/5/3/3/4 par bande). Quatrième correction de mesure du
+jalon, même nature que s2 : le moteur exécutait, la mesure ne le
+disait pas.
+
+## Le reste (carte actualisée après s11)
 
 1. BINGPAN : la porte duration (preuve du vide natif d'abord).
 2. BINGBYEOK/HWABYEOK : forme timed onff/wp.
