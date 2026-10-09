@@ -102,3 +102,82 @@ func compileSkillThreatDecrease(fields []string, row SkillRow) (SkillThreat, boo
 	out.Decrease = true
 	return out, true
 }
+
+//============================================================================
+
+/*
+==================
+compileUntargetedThreatDecrease
+
+The Warlock's caster-centred form of the hostility cut (CONFUSIONA_AGGROLOW,
+whose cap-90 cousins the banner above names Mirage and Phantasma): a
+prepared untargeted cast of one caster-centred efr (kind 1, shape 1,
+radius, max, no reduction, select 16), dtnt's cut and an optional mwdt
+weapon term. The v1.150 catalogue authors the same shape on the family's
+cap-90 tiers and the targeted contract above refuses them; widening the
+native set is the owner's call on binary evidence, so this predicate
+carries the extended mastery floor instead (no v1.150 row reaches it).
+The tooltip: "...the monsters that are around you. Confused monsters
+will reduce their hostility toward the caster." Extended content
+(isro-live-2026), port-only, not v1.150-native. Inference recorded
+2026-10-09 (M8 s31).
+==================
+*/
+func compileUntargetedThreatDecrease(fields []string, row SkillRow) (SkillThreat, bool) {
+	if len(fields) != 118 || fields[0] != "1" || fields[8] != "2" || fields[68] != "0" ||
+		!row.TimingPinned || !row.Consumption.Pinned || row.ChainSub || row.ChainNext != 0 ||
+		row.Attack.Present || row.TargetRequired || row.ActionCastingTimeMs == 0 || row.ActionDurationMs == 0 {
+		return SkillThreat{}, false
+	}
+	// The extended lane's floor, read from the raw cells (row.Masteries is
+	// still zero this early in the row's parse - the s28 lesson).
+	if textdataNonNegative(fields[skilldataColReqMasteryLv1]) < extendedPastCapMastery &&
+		textdataNonNegative(fields[skilldataColReqMasteryLv2]) < extendedPastCapMastery {
+		return SkillThreat{}, false
+	}
+	// No target column at all: the caster is the centre, and no periodic,
+	// action-repeat or ground-target alternative owns the row.
+	for _, column := range []int{15, 16, 17, 19, 20, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 56} {
+		if fields[column] != "0" {
+			return SkillThreat{}, false
+		}
+	}
+	program, err := CompileSkillProgram(fields)
+	if err != nil {
+		return SkillThreat{}, false
+	}
+	var out SkillThreat
+	seen := make(map[uint32]bool)
+	for i := 0; i < program.Len(); i++ {
+		op := program.Instruction(i)
+		if seen[op.Tag] && op.Tag != tagGetv {
+			return SkillThreat{}, false
+		}
+		seen[op.Tag] = true
+		switch op.Tag {
+		case tagEfr:
+			// Shape 1 centres the caster-centred selector on the caster.
+			a := op.Arguments
+			if a[0] != 1 || a[1] != 1 || a[2] == 0 || a[2] > 0xffff ||
+				a[3] == 0 || a[3] > 255 || a[4] != 0 || a[5] != decreaseAreaSelect {
+				return SkillThreat{}, false
+			}
+			out.Area = SkillOffensiveArea{Shape: 1, Radius: a[2], MaxTargets: uint8(a[3]), Select: decreaseAreaSelect}
+		case tagThreatDecrease:
+			out.DecreaseFlat, out.DecreasePercent = op.Arguments[0], op.Arguments[1]
+		case tagMagicalWeaponDecrease:
+			out.DecreaseWeaponPercent = op.Arguments[0]
+		case tagGetv:
+			if _, known := SkillParameterFromKey(op.Arguments[0]); !known {
+				return SkillThreat{}, false
+			}
+		default:
+			return SkillThreat{}, false
+		}
+	}
+	if !seen[tagThreatDecrease] || out.Area.Radius == 0 || out.DecreasePercent > 100 {
+		return SkillThreat{}, false
+	}
+	out.Decrease = true
+	return out, true
+}

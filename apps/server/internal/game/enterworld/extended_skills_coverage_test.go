@@ -91,6 +91,12 @@ func skillCoveragePast90(t *testing.T, source *TextdataSkills) map[int]map[strin
 			// compiler just never names the lane.
 			kind = "trap"
 		}
+		if kind == "unsupported" && row.Threat.Decrease {
+			// The hostility-cut lane (skill.Threat.Decrease rows run
+			// acceptDiscordWave targeted and its untargeted sibling past
+			// 90, action/discordwave.go): measured s31.
+			kind = "threat"
+		}
 		if kind == "unsupported" && row.TimedEffect.Periodic.Pinned {
 			kind = "periodic"
 		}

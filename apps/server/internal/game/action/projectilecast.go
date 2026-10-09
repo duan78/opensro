@@ -38,6 +38,7 @@ type pendingProjectileCast struct {
 	selfEffect                bool        // category-three recipient installation at release
 	trap                      bool        // untargeted; the release plants a combat trap (skillcombattrap.go)
 	statusArea                bool        // untargeted; the release rolls a caster-centred status area
+	mirage                    bool        // untargeted; the release cuts monster hostility around the caster (discordwave.go)
 	divisionID, characterName string
 	characterID               int64
 	cast                      wire.SkillAction
@@ -143,7 +144,7 @@ func (rt *Runtime) advanceProjectileCasts(now int64) []simulation.DivisionFrames
 			snapshot = rt.characterSnapshot(p.divisionID, c)
 		}
 		valid := snapshot != nil && !snapshot.DeletePending && enterworld.CharacterAlive(snapshot)
-		if !p.supportCast && !p.selfEffect && !p.trap && !p.statusArea {
+		if !p.supportCast && !p.selfEffect && !p.trap && !p.statusArea && !p.mirage {
 			_, exists := rt.resolveCombatTarget(p.divisionID, snapshot, p.cast.TargetGid, now)
 			valid = valid && exists
 		}
@@ -189,6 +190,10 @@ func (rt *Runtime) advanceProjectileCasts(now int64) []simulation.DivisionFrames
 			} else if p.trap {
 				if skill, ok := rt.deps.SkillData().SkillByID(p.cast.ActionId); ok {
 					result, decision = rt.acceptCombatTrap(p.divisionID, c, snapshot, p.cast, skill, now, &p)
+				}
+			} else if p.mirage {
+				if skill, ok := rt.deps.SkillData().SkillByID(p.cast.ActionId); ok {
+					result, decision = rt.acceptUntargetedThreatDecrease(p.divisionID, c, snapshot, p.cast, skill, now, &p)
 				}
 			} else if p.supportCast {
 				if skill, ok := rt.deps.SkillData().SkillByID(p.cast.ActionId); ok {

@@ -550,7 +550,50 @@ RAZEA INT/STR/PHYSICAL (certains tiers), STEALTHA_CHANGE,
 BATTLAA_GUARD, GUARDA_PHYSICAL, REBIRTHA_SPECIAL — plus les P2SKILL/
 INNATE (rangées d'arène/innées) et les danses (owner V5).
 
-## Amorce s31 — MANADRY sondé (résultats du probe, l'implémentation reste à faire)
+## Session 31 — la carte corrigée par les preuves client ; AGGROLOW livré (le lane mirage) ; deux écarts de mesure de plus
+
+Les tooltips du client live-2026 (`textdataname.txt`, UTF-16) ont
+corrigé la carte AVANT l'implémentation :
+
+1. **MANADRY est PvP-seulement** — les colonnes disent `EnemyP=1,
+   EnemyM=0`, le tooltip dit mot pour mot « This skill is not effective
+   on monsters », et la bannière du lane status-cast
+   (skillstatuscast.go) le nommait déjà comme la rangée que la porte
+   Enemy_M écarte À DESSEIN. L'inférence de l'amorce (« restitution au
+   lanceur ») était FAUSSE : le vrai effet est le gel de mana (coupe
+   de capacité MP + état de panique, délai de potion +4 s) sur des
+   CIBLES JOUEURS. Un runtime hostile-joueur est du PvP — hors du
+   périmètre « jouable jusqu'à 140 » (PvE). **Reclassé parked-owner**
+   avec les trois preuves (colonnes, tooltip, bannière), comme les
+   danses. Aucun code écrit.
+2. **FORGETA_AGGRO (barde) était déjà épinglé** — tous les tiers
+   jusqu'à A_1_03 (m=138) passent le contrat ciblé ; la carte M7
+   comptait 8 rangs fantômes. QUATRIÈME écart de mesure du lane
+   (murs, dissimulation, pièges, coupes d'hostilité) : l'union ne
+   comptait pas `Threat.Decrease`. Corrigé dans les deux tests.
+3. **AGGROLOW (warlock, 9 rangs B_03–B_11, m=92–140) livré** — le
+   miroir non-ciblé de Discord Wave : `efr[1,1,300,8,0,16] dtnt mwdt`,
+   cast préparé 834 ms, tooltip « the monsters that are around you…
+   will reduce their hostility toward the caster ». Le prédicat dédié
+   `compileUntargetedThreatDecrease` (skillthreatdecrease.go) porte le
+   plancher maîtrise ≥ 91 (les tiers cap-90 Mirage/Phantasma de la
+   même famille authors la même forme — le contrat ciblé les refuse,
+   le plancher les garde dehors : test natif dédié
+   TestUntargetedThreatDecreaseLeavesNativeRowsUnpinned sur TOUT le
+   catalogue livré). L'exécuteur `acceptUntargetedThreatDecrease`
+   (discordwave.go) suit le pattern trap : beginUntargetedCast +
+   drapeau p.mirage, et à la libération coupe l'hostilité des monstres
+   autour du LANCEUR envers le lanceur (l'événement haineux à source
+   lanceur, les mots dtnt plat + terme mwdt), via le même registre que
+   Discord Wave. Test runtime dédié (prepare 834 ms → release → deux
+   monstres proches coupés, le lointain intact).
+
+**Couverture : 79,1 → 79,7 %** (2393/3002 ; +9 admission AGGROLOW,
++8 comptage FORGETA_AGGRO). Gates : enterworld+action verts (avec le
+test licencié en vrai travail), check source PASSED, gate serveur
+forcée PASS (89,0 s).
+
+## Amorce s31 (corrigée par la session) — MANADRY : PARKED-OWNER, PAS un lane
 
 Sondé en fin de nuit 30 (probe effacé) : **les 10 tiers natifs
 (A_01–A_08, B_01–B_02, maîtrises 16–86) sont AUSSI non-admis** —
@@ -569,22 +612,22 @@ budget d'une session entière, pas une queue de nuit.
 
 ## Le reste (carte actualisée après s30)
 
-1. MANADRY (10) : drain de mana ciblé `pmsc tnat getv×2` (bandes
-   101/131 dans les échantillons).
-2. JIPJUNG (9) : buff d'un mot `dura re{…}` (bande 91).
-3. WATER_CANCEL (7+) : purge temporisée (bandes 91/101).
-3b. SOULA_STUNLINK + RAZEA tiers isolés + STEALTHA_CHANGE/
-    BATTLAA_GUARD/GUARDA_PHYSICAL/REBIRTHA_SPECIAL : à sonder.
-4. AGGROLOW (9) / FORGETA_AGGRO (8) : coupes d'aggro de zone
-   `efr tntd tdwm`.
-5. SWORD_SHIELDPD (8) : debuff de parade temporisé `dura adps iqer`.
-6. WATER_CANCEL (7) : purge temporisée `bbuf dura drht tnat`.
-7. La dispersion (~110 rangs sur les petites familles) : une à une.
-8. **Danses de barde** (40 rangs) : le rythme 2026 — décision owner V5,
+1. WATER_CANCEL (7+) : `bbuf dura[10000] drht[86] tant[3185]`,
+   ciblé EnemyM+EnemyP (« Decreases the enemy's dodge ability / hitting
+   ratios »), handler timed — la porte du lane timed à nommer.
+3. SWORD_SHIELDPD (8) : debuff de parade temporisé `dura adps iqer`.
+4. SOULA_STUNLINK + RAZEA tiers isolés + STEALTHA_CHANGE/
+   BATTLAA_GUARD/GUARDA_PHYSICAL/REBIRTHA_SPECIAL : à sonder.
+5. La dispersion (~110 rangs sur les petites familles) : une à une.
+6. **Danses de barde** (40 rangs) : le rythme 2026 — décision owner V5,
    jamais reçue ; sans preuve : pas d'implémentation.
-9. **Ouvert pour l'owner (nouveau s28)** : élargir l'admission HoT
-   native aux tiers cap-90 RECOVERYA_GROUP (interleavé) exige la
-   preuve du binaire (58D8F0/5830B0).
+7. **MANADRY (10, parked-owner nouveau s31)** : PvP-seul — EnemyP sans
+   EnemyM, tooltip « not effective on monsters », bannière status-cast
+   le refusant à dessein. Un runtime hostile-joueur = du PvP, hors
+   périmètre PvE. Sur décision owner uniquement.
+8. **Ouvert pour l'owner (s28)** : élargir l'admission HoT native aux
+   tiers cap-90 RECOVERYA_GROUP (interleavé) exige la preuve du
+   binaire (58D8F0/5830B0).
 
 ## Tests et gates (sorties de session 2)
 
