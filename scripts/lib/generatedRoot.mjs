@@ -113,6 +113,11 @@ export function resolveGeneratedRoot( env = process.env, mainCheckout = MAIN_CHE
 export const GENERATED_ROOT = resolveGeneratedRoot();
 export const CLIENT_PUBLIC_ROOT = path.join( GENERATED_ROOT, "client-public" );
 export const INTERMEDIATE_ROOT = path.join( GENERATED_ROOT, "intermediate" );
+// The main checkout's published client assets: the shared authority every
+// resolver reads (a worktree's own GENERATED_ROOT may point elsewhere - the
+// extended world lane reads the native shared sky/water render file from
+// here, read-only, exactly like the native workflow reads the main tree).
+export const MAIN_CHECKOUT_CLIENT_PUBLIC_ROOT = path.join( MAIN_CHECKOUT_ROOT, ".generated", "client-public" );
 
 /*
 ================

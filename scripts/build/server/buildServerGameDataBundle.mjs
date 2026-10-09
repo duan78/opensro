@@ -223,6 +223,11 @@ async function buildAreaProjection( bundleRoot, worldRoot ) {
 /*
 ================
 buildMovementProjection
+
+Also exports the pure projections (projectRegionBundle,
+buildObjectNavProjection, worldAuthorityPath) for the extended world lane
+(buildExtendedWorldRegionResources.mjs), which mirrors this mirror over the
+live-2026 bundles into the extended projection. Not v1.150-native.
 ================
 */
 async function buildMovementProjection( bundleRoot, worldRoot ) {
@@ -310,7 +315,7 @@ async function buildMovementProjection( bundleRoot, worldRoot ) {
 projectRegionBundle
 ================
 */
-function projectRegionBundle( source, resourceIndexPath ) {
+export function projectRegionBundle( source, resourceIndexPath ) {
 	const projectBlock = ( block ) => ({
 		blockX: block.blockX,
 		blockZ: block.blockZ,
@@ -360,7 +365,7 @@ function projectRegionBundle( source, resourceIndexPath ) {
 buildObjectNavProjection
 ================
 */
-async function buildObjectNavProjection(
+export async function buildObjectNavProjection(
 	authorityRoot,
 	bundlePath,
 	sourceBundle,
@@ -729,7 +734,7 @@ async function isRegularFile( filename ) {
 worldAuthorityPath
 ================
 */
-function worldAuthorityPath( publicPath ) {
+export function worldAuthorityPath( publicPath ) {
 	const prefix = "/assets/world/";
 	if ( typeof publicPath !== "string" || !publicPath.startsWith( prefix ) ) {
 		throw new Error( `World asset is outside ${prefix}: ${JSON.stringify( publicPath )}` );

@@ -62,5 +62,13 @@ func (v *WaterValidator) PreloadOutdoorNavigation() (int, error) {
 			v.objectNavSetForOffset(surface, dx, dz)
 		}
 	}
+	if v.extendedAuthority != nil {
+		// Extended content (port-only, not v1.150-native): warm the 2026
+		// surfaces beside the native ones so a first entry into an extended
+		// zone never stalls on a cold bundle read.
+		if _, err := v.extendedAuthority.PreloadOutdoorNavigation(); err != nil {
+			return 0, fmt.Errorf("extended movement mirror: %w", err)
+		}
+	}
 	return len(regions), nil
 }

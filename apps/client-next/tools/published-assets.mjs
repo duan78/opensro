@@ -30,7 +30,15 @@ export function assetEncoding( header, compress ) {
 }
 // Dev and preview use the same installed public-asset authority. Build output
 // never copies the multi-gigabyte asset tree or starts the legacy application.
+//
+// Extended content (isro-live-2026), port-only, not v1.150-native: when
+// SRO_EXTENDED_ASSETS_ROOT names the extended world's private client-public
+// tree, a path the primary tree does not carry is served from there - the
+// union a client with the extended content row on resolves the 2026 regions
+// through. Without the variable the server is exactly today's single-root
+// authority, so a native run serves byte-identical assets.
 export function publishedAssets( root = CLIENT_PUBLIC_ROOT + "/" ) {
+	const extendedRoot = resolveExtendedAssetsRoot();
 	function install( server ) {
 		const packs = createPublishedPacks();
 		server.httpServer?.once( "close", () => packs.dispose() );
@@ -63,7 +71,8 @@ export function publishedAssets( root = CLIENT_PUBLIC_ROOT + "/" ) {
 				}
 				return next();
 			}
-			const target = path.resolve( root, "." + pathname ), relative = path.relative( root, target );
+			let target = path.resolve( root, "." + pathname );
+			const relative = path.relative( root, target );
 			if ( relative.startsWith( ".." ) || path.isAbsolute( relative ) ) {
 				response.statusCode = 403;
 				response.end();
@@ -82,9 +91,18 @@ export function publishedAssets( root = CLIENT_PUBLIC_ROOT + "/" ) {
 					}
 				}
 				if ( !packed && (error || !stat.isFile()) ) {
-					response.statusCode = 404;
-					response.end( "Published asset absent" );
-					return;
+					// The extended union: only paths the primary authority does
+					// not carry (new 2026 world files) resolve from the private
+					// extended tree; identical names always answer from the
+					// primary first.
+					const extended = extendedTargetFor( pathname );
+					if ( !extended ) {
+						response.statusCode = 404;
+						response.end( "Published asset absent" );
+						return;
+					}
+					target = extended.target;
+					stat = extended.stat;
 				}
 				if ( response.destroyed ) return;
 				const etag = `W/"${stat.size.toString( 16 )}-${stat.mtimeMs.toString( 16 )}-${
@@ -163,4 +181,35 @@ export function publishedAssets( root = CLIENT_PUBLIC_ROOT + "/" ) {
 		} );
 	}
 	return { name: "replacement-published-assets", configureServer: install, configurePreviewServer: install };
+
+	/*
+	================
+	extendedTargetFor / resolveExtendedAssetsRoot
+
+	The extended world's own files under their own root, read only when the
+	 primary authority has nothing at that path.
+	================
+	*/
+	function extendedTargetFor( pathname ) {
+		if ( !extendedRoot ) return null;
+		const target = path.resolve( extendedRoot, "." + pathname );
+		const relative = path.relative( extendedRoot, target );
+		if ( relative.startsWith( ".." ) || path.isAbsolute( relative ) ) return null;
+		try {
+			const stat = fs.statSync( target );
+			if ( stat.isFile() ) return { target, stat };
+		} catch {
+			// fall through: absent in the extended tree too
+		}
+		return null;
+	}
+}
+
+function resolveExtendedAssetsRoot() {
+	const value = process.env.SRO_EXTENDED_ASSETS_ROOT?.trim();
+	if ( !value ) return null;
+	if ( !path.isAbsolute( value ) ) {
+		throw new Error( `SRO_EXTENDED_ASSETS_ROOT must be an absolute path, not ${JSON.stringify( value )}` );
+	}
+	return value;
 }

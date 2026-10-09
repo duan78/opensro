@@ -23,6 +23,7 @@ import type { PresentationRandom } from "@/engine/contracts/presentation-random"
 import type { CameraScript } from "@/engine/contracts/camera-script";
 import { assetFailure, createAssetRecovery } from "@/engine/foundation/assets/asset-recovery";
 import { initialCameraPitch, initialCameraYaw } from "@/engine/foundation/rendering/camera-options";
+import { experimentalOptions } from "@/engine/foundation/ui/experimental-options";
 
 type Transaction =
 	| { phase: "idle"; }
@@ -30,8 +31,13 @@ type Transaction =
 	| { phase: "failed"; region: number; error: string; };
 // An outdoor scene: its centre and the regions whose terrain it composes.
 type Outdoor = { readonly region: number; readonly regions: readonly number[]; };
-type Job = { kind: "catalog" | "world" | "texture"; path: string; outdoor?: Outdoor; };
+type Job = { kind: "catalog" | "catalog-overlay" | "world" | "texture"; path: string; outdoor?: Outdoor; };
 type WorldResult = Extract<AssetResult, { kind: "world"; }>;
+
+// Extended content (isro-live-2026), port-only, not v1.150-native: the
+// overlay catalog the extended world lane publishes beside the native one.
+// A native asset tree serves none and the client stays exactly native.
+const EXTENDED_WORLD_CATALOG_PATH = "/assets/world/extended/world-region-catalog.json";
 
 /*
 ================
@@ -56,6 +62,7 @@ export function createWorldStream(
 	const scripts = createCameraScripts( random );
 	const recovery = createAssetRecovery();
 	let catalog: Record<string, { area?: string; source?: string; bundlePublicPath: string; }[]> | null = null;
+	let overlayMerged = false;
 	/*
 	================
 	missionRegion
@@ -276,7 +283,9 @@ export function createWorldStream(
 			const result = assets.take( id );
 			if ( !result ) continue;
 			jobs.delete( id );
-			if ( result.kind === "error" ) throw assetFailure( `${job.path}: ${result.error}`, result.transient );
+			if ( result.kind === "error" && job.kind !== "catalog-overlay" ) {
+				throw assetFailure( `${job.path}: ${result.error}`, result.transient );
+			}
 			if ( job.kind === "catalog" && result.kind === "bytes" ) {
 				const value = JSON.parse( new TextDecoder( "utf-8", { fatal: true } ).decode( result.buffer ) );
 				if (
@@ -285,6 +294,34 @@ export function createWorldStream(
 					throw new Error( "Invalid region catalog" );
 				}
 				catalog = value.regionsById;
+				if ( overlayMerged || !experimentalOptions().extendedContent ) {
+					transaction = { phase: "idle" };
+				}
+			} else if ( job.kind === "catalog-overlay" ) {
+				// Extended content (port-only, not v1.150-native): the server
+				// announces the extended set by serving this overlay; a native
+				// tree answers nothing and the client keeps the native world -
+				// the charter's "extended client on a native server" fallback.
+				if ( result.kind === "bytes" ) {
+					const value = JSON.parse( new TextDecoder( "utf-8", { fatal: true } ).decode( result.buffer ) );
+					if (
+						!value?.regionsById || typeof value.regionsById !== "object" ||
+						Array.isArray( value.regionsById )
+					) {
+						throw new Error( "Invalid extended region catalog" );
+					}
+					for (
+						const [key, rows] of Object.entries<
+							{ area?: string; source?: string; bundlePublicPath: string; }[]
+						>( value.regionsById )
+					) {
+						if ( !Array.isArray( rows ) ) throw new Error( "Invalid extended region catalog" );
+						if ( catalog ) catalog[key] = [ ...(catalog[key] ?? []), ...rows ];
+					}
+				} else if ( result.kind === "error" ) {
+					console.warn( "extendedContent: no extended region catalog served; the world stays native" );
+				}
+				overlayMerged = true;
 				transaction = { phase: "idle" };
 			} else if ( job.kind === "world" && result.kind === "world" ) {
 				if ( job.outdoor ) waiting = result;
@@ -404,9 +441,10 @@ export function createWorldStream(
 			// A dungeon has its own coordinates; outdoor terrain is not kept meanwhile.
 			terrain.clear();
 			load( `/assets/world/dungeon/regions/0x${pose.regionId.toString( 16 ).padStart( 4, "0" )}.json`, "world" );
-		} else if ( !catalog ) {
+		} else if ( !catalog || (experimentalOptions().extendedContent && !overlayMerged) ) {
 			transaction = { phase: "catalog", region: pose.regionId };
-			load( "/assets/world/world-region-catalog.json", "catalog" );
+			if ( !catalog ) load( "/assets/world/world-region-catalog.json", "catalog" );
+			else load( EXTENDED_WORLD_CATALOG_PATH, "catalog-overlay" );
 		} else {
 			transaction = { phase: "loading", region: pose.regionId };
 			const entry = missionRegion( pose.regionId );

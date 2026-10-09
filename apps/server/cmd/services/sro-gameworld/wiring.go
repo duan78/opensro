@@ -123,6 +123,7 @@ func newGameWorldApplication(
 	var extendedSkills *enterworld.TextdataSkills
 	var extendedAreas *worldarea.Catalog
 	var devPathsExtendedTextdataDir string
+	var extendedMovementDir string
 	if extendedRoot, extendedOk, extendedErr := gamedata.ResolveExtended(); extendedErr != nil {
 		return nil, fmt.Errorf("extended content: %w", extendedErr)
 	} else if extendedOk {
@@ -144,6 +145,18 @@ func newGameWorldApplication(
 			return nil, fmt.Errorf("extended content: %w", loadErr)
 		}
 		extendedAreas, loadErr = worldarea.LoadAuthority(extended.AreasAuthorityDir)
+		// The world lane's movement mirror (M4, port-only, not native): when
+		// the projection carries it, the movement authority chains it for the
+		// live-2026 regions; without it the extended zones stay unwalkable
+		// and the boot says so instead of guessing.
+		if _, statErr := os.Stat(filepath.Join(extendedRoot, "movement", "catalog.json")); statErr == nil {
+			extendedMovementDir = filepath.Join(extendedRoot, "movement")
+		} else {
+			log.Warnf(
+				"extended content: no movement mirror under %q (build it with scripts/build_extended_world_resources.mjs); the extended regions stay unwalkable",
+				extendedRoot,
+			)
+		}
 		if loadErr != nil {
 			return nil, fmt.Errorf("extended content: %w", loadErr)
 		}
@@ -274,6 +287,7 @@ func newGameWorldApplication(
 		devPaths,
 		characterRoster,
 		dataPaths.WorldAuthorityDir,
+		extendedMovementDir,
 		application.readiness,
 		authoredAreas,
 		authority.textdata,

@@ -340,10 +340,15 @@ func readNpcTabbed(path string) [][]string {
 	return rows
 }
 
-// 8762E0/852F80: fixed city structures have independent identities and box
-// picking; their visible architecture is already in the map. Never fabricate
-// a character model or use teleportdata's arrival point as the source position.
-func AppendTeleportGates(dir string, roster []NpcDef) ([]NpcDef, error) {
+/*
+================
+readTeleportNamesAndFortresses
+
+The two side tables the gate rows resolve names and fortress ownership
+through, shared by the native roster pass and the extended graft.
+================
+*/
+func readTeleportNamesAndFortresses(dir string) (map[string]string, map[string]uint32) {
 	names := map[string]string{}
 	for _, c := range readNpcTabbed(filepath.Join(dir, "textdataname.txt")) {
 		if len(c) > 8 {
@@ -359,6 +364,66 @@ func AppendTeleportGates(dir string, roster []NpcDef) ([]NpcDef, error) {
 			}
 		}
 	}
+	return names, fortresses
+}
+
+/*
+================
+parseTeleportBuildingRow
+
+One active teleportbuilding row into its gate NPC definition and ref.
+skip reports the region-zero dynamic instance gates (not static spawns).
+The caller owns row numbering in the error text, the bounds policy and
+the wins policy.
+================
+*/
+func parseTeleportBuildingRow(c []string, names map[string]string, fortresses map[string]uint32) (NpcDef, uint32, bool, error) {
+	if len(c) != 58 {
+		return NpcDef{}, 0, false, fmt.Errorf("shape")
+	}
+	ref, ok := npcUint32(c[1])
+	region, okRegion := npcRegion(c[41])
+	if !ok || !okRegion || ref == 0 {
+		return NpcDef{}, 0, false, fmt.Errorf("identity")
+	}
+	// Region zero denotes an event/instance-created gate, not a static spawn.
+	if region == 0 {
+		return NpcDef{}, 0, true, nil
+	}
+	values := [5]float64{}
+	for j, col := range []int{43, 44, 45, 49, 50} {
+		v, valid := npcFloat(c[col])
+		if !valid || math.IsNaN(v) || math.IsInf(v, 0) {
+			return NpcDef{}, 0, false, fmt.Errorf("coordinate")
+		}
+		values[j] = v
+	}
+	tid := uint16(0)
+	for j, col := range []int{7, 8, 9, 10, 11, 12} {
+		v, valid := npcUint16(c[col])
+		if !valid {
+			return NpcDef{}, 0, false, fmt.Errorf("TID")
+		}
+		shift := []uint{0, 1, 2, 5, 7, 11}[j]
+		tid |= v << shift
+	}
+	if tid&0x1e != 0x10 {
+		return NpcDef{}, 0, false, fmt.Errorf("non-gate building %d", ref)
+	}
+	// Dedicated high portion of the existing static-world band. Ref identities
+	// remain stable when NPC positions or other gate table rows are added.
+	gid := uint32(250000) + ref
+	if gid >= domain.GroundItemGIDBase {
+		return NpcDef{}, 0, false, fmt.Errorf("teleport identity overflow")
+	}
+	return NpcDef{ObjectID: gid, RefObjID: ref, TidWord: tid, Codename: c[2], NameStrID: c[5], Name: names[c[5]], AuthoredSpawn: true, Spawn: Spawn{RegionID: region, X: values[0], Y: values[1], Z: values[2]}, Teleport: &TeleportGateBounds{Radius: values[4], Height: values[3], FortressID: fortresses[c[55]]}}, ref, false, nil
+}
+
+// 8762E0/852F80: fixed city structures have independent identities and box
+// picking; their visible architecture is already in the map. Never fabricate
+// a character model or use teleportdata's arrival point as the source position.
+func AppendTeleportGates(dir string, roster []NpcDef) ([]NpcDef, error) {
+	names, fortresses := readTeleportNamesAndFortresses(dir)
 	rows := readNpcTabbed(filepath.Join(dir, "teleportbuilding.txt"))
 	if len(rows) == 0 {
 		return nil, fmt.Errorf("missing teleportbuilding table")
@@ -368,48 +433,17 @@ func AppendTeleportGates(dir string, roster []NpcDef) ([]NpcDef, error) {
 		if len(c) == 0 || c[0] != "1" {
 			continue
 		}
-		if len(c) != 58 {
-			return nil, fmt.Errorf("teleportbuilding row %d shape", index+1)
+		gate, _, skip, err := parseTeleportBuildingRow(c, names, fortresses)
+		if err != nil {
+			return nil, fmt.Errorf("teleportbuilding row %d %s", index+1, err)
 		}
-		ref, ok := npcUint32(c[1])
-		region, okRegion := npcRegion(c[41])
-		if !ok || !okRegion || ref == 0 {
-			return nil, fmt.Errorf("teleportbuilding row %d identity", index+1)
-		}
-		// Region zero denotes an event/instance-created gate, not a static spawn.
-		if region == 0 {
+		if skip {
 			continue
 		}
-		values := [5]float64{}
-		for j, col := range []int{43, 44, 45, 49, 50} {
-			v, valid := npcFloat(c[col])
-			if !valid || math.IsNaN(v) || math.IsInf(v, 0) {
-				return nil, fmt.Errorf("teleportbuilding row %d coordinate", index+1)
-			}
-			values[j] = v
-		}
-		if values[3] <= 0 || values[4] <= 0 {
+		if gate.Teleport.Height <= 0 || gate.Teleport.Radius <= 0 {
 			return nil, fmt.Errorf("teleportbuilding row %d bounds", index+1)
 		}
-		tid := uint16(0)
-		for j, col := range []int{7, 8, 9, 10, 11, 12} {
-			v, valid := npcUint16(c[col])
-			if !valid {
-				return nil, fmt.Errorf("teleportbuilding TID")
-			}
-			shift := []uint{0, 1, 2, 5, 7, 11}[j]
-			tid |= v << shift
-		}
-		if tid&0x1e != 0x10 {
-			return nil, fmt.Errorf("non-gate building %d", ref)
-		}
-		// Dedicated high portion of the existing static-world band. Ref identities
-		// remain stable when NPC positions or other gate table rows are added.
-		gid := uint32(250000) + ref
-		if gid >= domain.GroundItemGIDBase {
-			return nil, fmt.Errorf("teleport identity overflow")
-		}
-		result = append(result, NpcDef{ObjectID: gid, RefObjID: ref, TidWord: tid, Codename: c[2], NameStrID: c[5], Name: names[c[5]], AuthoredSpawn: true, Spawn: Spawn{RegionID: region, X: values[0], Y: values[1], Z: values[2]}, Teleport: &TeleportGateBounds{Radius: values[4], Height: values[3], FortressID: fortresses[c[55]]}})
+		result = append(result, gate)
 	}
 	return result, ValidateNpcRoster(result)
 }

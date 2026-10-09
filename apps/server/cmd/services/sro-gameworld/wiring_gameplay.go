@@ -84,6 +84,7 @@ func newGameplayPlane(
 	devPaths enterworld.DevPaths,
 	characterRoster *enterworld.Roster,
 	worldAuthorityDir string,
+	extendedMovementDir string,
 	ready *readiness.Gate,
 	authoredAreas *worldarea.Catalog,
 	textdata *enterworld.TextdataCatalogs,
@@ -113,6 +114,21 @@ func newGameplayPlane(
 	}
 	if err := items.ConfigurePortals(devPaths.TextdataDir); err != nil {
 		return nil, fmt.Errorf("portal catalogue: %w", err)
+	}
+	// Extended content (isro-live-2026), port-only, not v1.150-native: the
+	// live teleport plane merged behind the native catalogue - native rows
+	// win every shared identity, the post-1.150 zones' destinations enter.
+	if devPaths.ExtendedTextdataDir != "" {
+		merged, mergeErr := items.MergeExtendedPortalDir(devPaths.ExtendedTextdataDir)
+		if mergeErr != nil {
+			return nil, fmt.Errorf("extended portal catalogue: %w", mergeErr)
+		}
+		log.Infof(
+			"portals: extended plane merged +%d destinations, +%d links, +%d buildings; skipped %d native-won, %d unknown-world, %d unresolved, %d unsupported (not v1.150-native)",
+			merged.DestinationsAdded, merged.LinksAdded, merged.BuildingsAdded,
+			merged.SkippedNativeIdentity, merged.SkippedUnknownWorld,
+			merged.SkippedUnresolvedLink, merged.SkippedUnsupported,
+		)
 	}
 	// One clock for the bootstrap and the tick sweep, read through the runtime
 	// so a swapped clock reaches both; world entry hands re-raised pet-skill
@@ -158,6 +174,15 @@ func newGameplayPlane(
 	appendGroundObjectRows(deps, items)
 
 	water := movement.NewAuthorityValidator(worldAuthorityDir)
+	// Extended content (isro-live-2026, port-only, not v1.150-native): the
+	// projection's movement mirror chains behind the native authority for
+	// the regions the v1.150 world never served. The native answer always
+	// wins; empty keeps the validator exactly native.
+	if extendedMovementDir != "" {
+		if err := water.SetExtendedAuthorityRoot(extendedMovementDir); err != nil {
+			return nil, err
+		}
+	}
 	if err := water.ValidateSecurityAssets(); err != nil {
 		return nil, err
 	}
@@ -167,6 +192,12 @@ func newGameplayPlane(
 		return nil, err
 	}
 	log.Infof("movement: preloaded %d outdoor navigation regions in %s before gameplay readiness", navigationRegions, time.Since(navigationStarted))
+	if extendedRegions := water.ExtendedMovementRegions(); extendedRegions > 0 {
+		log.Infof(
+			"movement: extended authority chained, %d live-2026 outdoor regions (not v1.150-native)",
+			extendedRegions,
+		)
+	}
 	if deps.MonsterState != nil {
 		deps.MonsterState.EnableRegionDormancy()
 		deps.MonsterState.SetSpawnGroundResolver(water.WalkableSpawnHeightAt)

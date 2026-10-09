@@ -47,6 +47,9 @@ mesures du même jour rappelées en §4.
      et
      `SRO_EXTENDED_GAME_DATA_ROOT=C:/Users/Arnaud/opensro-evolution-data/server-game-data/extended` ;
    - Tests/gates Go :
+     `SRO_GAME_ROOT=C:/Users/Arnaud/Downloads/02 ISRO - Legend 3 (v150)`
+     (sans lui, les tests licensed sautent silencieusement — leçon M4
+     partie 2) ;
      `SRO_EXTENDED_GAME_DATA_ROOT=C:/Users/Arnaud/opensro-evolution-data/server-game-data/extended`
      et
      `SRO_SERVER_GAME_DATA_ROOT=C:/Users/Arnaud/opensro-evolution-data/server-game-data/1.150/server.srogz`

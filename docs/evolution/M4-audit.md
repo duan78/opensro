@@ -97,3 +97,245 @@ dont **698 zones extérieures** portant du contenu 91-140.
 - Merge upstream 2942a6a6 résolu (render scale + onglet Lighting de
   #370 coexistent avec l'onglet Content ; tests exhaustifs mis à jour,
   13/13).
+
+---
+
+# Audit M4 (partie 2) — la lane monde : traversabilité, minimaps, chaîne mouvement
+
+Session du 2026-10-09 (suite), worktree `opensro-w-evolution`, branche
+`evolution/extended-content-m4` (base : la lane `evolution/extended-content`
+@ `5390a46f`). Mission : `docs/extended-content-mission.md` §M4. Cette
+livraison couvre la lane monde que la partie 1 avait laissée : les données
+monde 2026 extraites, construites et servies des deux côtés (autorité de
+mouvement serveur + rendu/navigation client), plus les minimaps. Les
+téléports (E7) et la preuve navigateur de traversée restent (plan en
+« non couvert »).
+
+## Livré
+
+- **Extraction** (`scripts/extract_extended_world_data.py`, nouveau) : pour
+  les régions de la liste scellée, le plan de données complet depuis les
+  pk2 2026 en lecture mmap stricte — Map.pk2 (`.m`/`.t`/`.o2` par région,
+  `object.ifo`, `tile2d.ifo`, tout `tile2d/`), Data.pk2 (`nv_*.nvm`,
+  `mapinfo.mfo`, `objectstring.ifo`, fermeture transitive des objets :
+  composé → BSR → BMT/BMS → DDJ), Media.pk2 (tuiles minimap). Sortie sous
+  `<privé>/extended/game/extracted` (contrat game-root/extracted natif,
+  provenance machine-indépendante). Un BSR 2026 dont l'entrée mesh porte un
+  drapeau u32 a dérailé mon premier port du repli `readBsrMeshEntry` : le
+  drapeau se lit à l'offset de DÉBUT d'entrée, corrigé avant tout build.
+- **Lane de build** (`scripts/build/world/buildExtendedWorldRegionResources.mjs`
+  + CLI `scripts/build_extended_world_resources.mjs`, nouveaux) : 687
+  bundles région v5 (même constructeur que le natif), stock d'objets
+  partagé étendu (index + meshes adressés par contenu), index
+  `/assets/world/extended/world-regions.json`, **catalogue overlay client**
+  `/assets/world/extended/world-region-catalog.json` (entrées
+  `area: "outdoor"`, `source: "extended-outdoor-live-2026"`), référence au
+  shared-render ciel/eau NATIF par chemin public (zéro duplication), tuiles
+  minimap publiées au chemin natif + catalogue
+  `/assets/data/extended-minimap.json`, **miroir movement** dans la
+  projection étendue (`movement/`, projections `projectRegionBundle` /
+  object-nav réutilisées du builder natif, exportées pour l'occasion), et
+  **manifeste monde scellé** (`world-manifest.json`, digests de contenu).
+  Le store d'objets partagés couvre TOUJOURS la liste complète des secteurs
+  et se réutilise sinon (un run `--region` partiel ne rétrécit jamais
+  l'index — bug attrapé et corrigé pendant la session).
+- **Serveur** : la chaîne d'autorité de mouvement
+  (`movement/water_extended.go`) — `SetExtendedAuthorityRoot` installe le
+  miroir en repli de `surfaceForRegion`, le natif répond toujours en
+  premier ; le preload de boot chauffe aussi le miroir ; le câblage passe
+  la racine quand la projection porte `movement/catalog.json` (absent :
+  avertissement, jamais un effacement silencieux). Les aires étendues
+  passent `access: "public"` dans le builder de données (catalogue chargé
+  seulement derrière le flag — les grades natifs ne le voient jamais). Le
+  builder de données PORTE `movement/` et `world-manifest.json` à travers
+  son remplacement d'arbre (le rebuild données avait effacé le miroir —
+  attrapé par des tests qui sautaient, corrigé).
+- **Client** : `world.ts` fusionne l'overlay catalogue derrière la ligne
+  `extendedContent` (annonce serveur = l'arbre servi porte l'overlay ; un
+  serveur natif ne le sert pas et le client reste exactement natif — le
+  repli de la charte, sans wire nouveau) ; le worker de navigation consulte
+  l'overlay (+ catalogue natif) seulement quand le bundle demandé vit sous
+  `/assets/world/extended/` ; `hud/minimap.ts` surcharge l'ensemble d'art
+  minimap depuis le catalogue étendu ; le servage (`published-assets.mjs`)
+  fait union : racine principale d'abord, puis l'arbre privé nommé par
+  `SRO_EXTENDED_ASSETS_ROOT` (variable absente = comportement d'aujourd'hui
+  bit pour bit).
+
+## Mesures réelles
+
+- **687/698 régions** ont le plan de données complet dans le client 2026 ;
+  11 régions (bord est, `0x73cb`…`0x7ecc`) n'ont ni terrain ni navmesh —
+  écartées et scellées dans le manifeste ; les bandes restent couvertes
+  (zones par bande : 91→133, 101→311, 111→151, 121→203, 131→86).
+- **59 035 placements** `.o2` parsés ; **866 ids d'objets** → fermeture
+  mesurée `{compound: 69, bsr: 928, bmt: 386, bms: 4269, ddj: 1929}` =
+  7 581 fichiers de ressources ; extraction totale ≈ 670 Mo (dont tile2d
+  132 Mo), client-public privé ≈ 1,4 Go.
+- **Minimaps : 687/687** tuiles extraites (24,7 Mo de DDJ), converties,
+  publiées et scellées au catalogue.
+- Manifeste monde : **691 digests** ; deux runs complets = octets
+  identiques ; `--force --region=0x4939,0x62c9` (reconstruction de zéro de
+  deux régions) reproduit les mêmes digests. Manifeste données :
+  `ca52b0a8…` (le flip `public` des aires remplace le `72ae3aa9` de la
+  partie 1).
+- Preload de boot du miroir complet : **8,3 s** (687 bundles, test réel).
+- Isolation : le checkout principal ne porte **aucun** fichier étendu
+  (vérifié : pas de `assets/world/extended/` ni d'`extended-minimap.json`
+  dans son client-public).
+
+## Critères d'acceptation — couverts par cette partie
+
+- « Traversabilité (E6), moitié serveur » : le test réel
+  `TestExtendedMirrorWalkableThroughTheChain` charge TOUT le miroir au
+  preload et prouve une zone praticable (`SpawnRegionAvailable`) dans
+  CHAQUE bande 91→131 ; la chaîne ne change aucune réponse native
+  (`TestExtendedChainAbsentKeepsNativeAnswers` : sans chaîne, la région
+  2026 reste non couverte ; `TestExtendedChainResolvesLive2026Region` :
+  avec chaîne, le natif gagne les conflits).
+- « Minimap par zone » : 687 tuiles + overlay client (mêmes chemins et
+  même validateur que l'art natif).
+- « Flag off » : gates verts sans la chaîne (tous les tests natifs
+  passent, la ligne client gate tout, la variable de servage est absente
+  par défaut, le principal n'est jamais écrit).
+- « Packaging par le pipeline existant » : publication via le ledger
+  (`writeIntoPublicTree` / `copyIntoPublicTree`), verrou generated-assets,
+  conversion d'images standard.
+
+## Non couvert (reste du jalon M4)
+
+- **Téléports (E7)** : les quatre tables existent dans le Media.pk2 2026
+  (`teleportbuilding/data/link`, `siegefortress` — vérifié) et les
+  chargeurs natifs sont identifiés (`loadPortalCatalog`,
+  `AppendTeleportGates`) ; la greffe derrière le flag (fusion
+  natif-d'abord, mondes inconnus du 1.150 écartés avec compteurs) est la
+  partie 3.
+- **Preuve navigateur** : une traversée réelle d'une zone étendue en flag
+  on (browser, capture) — les composants sont testés séparément ; le
+  parcours E8 de M5 la couvrira de toute façon bout en bout.
+- **Donjons 0x8000** : hors de la liste de zones dérivée (les bandes 91-140
+  sont couvertes en extérieur) — reste parqué sauf besoin M5.
+- 11 régions sans données de carte dans le client 2026 (aucun téléport ne
+  les cible ; documentées au manifeste).
+
+## Tests et gates (sorties de session)
+
+- `go test ./internal/game/world/movement/ ./internal/game/enterworld/
+  -run "Extended" -count=1` (projection réelle + extraction native via
+  `SRO_GAME_ROOT`) → **10/10 PASS, zéro saut** (3 tests de zones M4p1,
+  3 tests de chaîne, 1 test de miroir réel, 3 tests de courbe M2).
+- `pnpm check source` → `check pipeline: PASSED, 14 tasks in 36.7s` (après
+  normalisation CRLF d'un fichier réécrit par un script Python de
+  découpage — leçon : ne jamais réécrire de source via Python en mode
+  texte sur Windows).
+- `pnpm task run check:server` (`SRO_CHECK_FORCE=1`, env privé complet) →
+  `server gates: PASS (16 package workers, test cache on, 98.4s)` (tests
+  98 s, race, govulncheck, release contract).
+- `pnpm --filter @sro/client-next check` → `client check: PASS (11 gates,
+  93.9s)` (avec `SRO_GAME_ROOT` natif et `SRO_SERVER_GAME_DATA_ROOT`
+  pointant la projection 1.150 en fichiers libres matérialisée dans
+  l'arbre privé — le test `item-tooltip-magic` lit la projection en
+  fichiers libres ; le checkout principal ne porte plus que
+  `server.srogz`).
+
+## Écarts connus
+
+- L'env de test Go de la mission §0.4 omettait `SRO_GAME_ROOT` : sans lui,
+  les tests licensed sautent silencieusement (« licensed game data is not
+  available ») — c'est ainsi que le wipe du miroir par le rebuild données
+  a d'abord été manqué. La ligne est ajoutée à la §0.4 par ce commit.
+- Le servage union lit l'arbre étendu APRÈS le miss loose+packs du
+  principal : un nom identique répond toujours depuis le principal (E1),
+  un fichier 2026 nouveau répond depuis le privé.
+- Les coordonnées d'entrée des aires restent y=0 (le résolveur de spawn
+  en tire la hauteur réelle, comme en M4p1).
+
+---
+
+# Audit M4 (partie 3) — les téléports (E7)
+
+Même session, suite. La greffe du plan de téléport 2026 derrière le flag :
+les quatre tables extraites du Media.pk2 live dans l'arbre textdata étendu
+(l'extracteur textdata gagne `teleportbuilding/data/link` +
+`siegefortress` ; manifeste données `4c8f534f…`), puis fusionnées côté
+serveur natif-d'abord.
+
+## Livré
+
+- `action/portal_extended.go` — `MergeExtendedPortalDir` : fusion du plan
+  live dans le catalogue configuré. Chaque identité native (id de
+  destination, ref source, paire de lien, codename de bâtiment) garde sa
+  ligne native ; les lignes nommant un monde que le 1.150 ne connaît pas
+  (les mondes de donjons modernes) sont écartées avec compteur — le moteur
+  natif n'a aucun plan où les admettre. **Dérive de schéma mesurée et
+  documentée dans le code** : la table live garde source/cible/frais et
+  les cinq triplets de conditions aux mêmes colonnes, mais la paire
+  scheduling/combination native (r[4]=1/r[5]=0) lit 0/0 et un 1 migre
+  dans la première colonne de queue (preuve : la ligne Jangan→Donwha,
+  frais 5000 identiques, existe dans les deux tables) — la fusion lit
+  les triplets depuis r[6..20], ignore la paire dérivée et tolère la
+  queue de 2 colonnes.
+- `simulation/npcworlddata_extended.go` — `AppendExtendedTeleportGates` :
+  les portes du bâtiment live dont le ref n'existe pas nativement,
+  mêmes ids dans la bande 250000, mêmes formes de ligne (le parseur de
+  ligne est extrait en commun avec le passage natif ; la POLITIQUE de
+  bornes reste au caller — natif : échec strict inchangé, greffe : les
+  lignes marqueurs à bornes nulles — p. ex. `STORE_HUNTER_SPAWN` — sont
+  écartées et comptées).
+- Câblage : le roster NPC greffe les portes quand l'arbre textdata
+  étendu est là ; le catalogue portails fusionne après `ConfigurePortals`
+  avec une ligne de journal chiffrée.
+
+## Mesures réelles (tables live, session)
+
+- Bâtiments : 107 lignes actives → 86 codenames ajoutés, 21 natifs
+  gardés. Destinations : 332 → **61 ajoutées**, 126 natives gardées,
+  145 écartées (mondes inconnus du 1.150). Liens : 337 → **236 ajoutés**,
+  16 natifs gardés, 63 non résolus (vers les mondes écartés), 22 non
+  supportés. Portes NPC : **78 greffées, 21 dans les zones étendues**,
+  8 lignes marqueurs écartées (78+21+8=107).
+- **3 liens atterrissent dans les zones étendues, tous avec leur lien de
+  retour** ; les conditions de niveau vivent (refus 0x15 pour un
+  personnage niveau 20, passage à 140).
+
+## Critères d'acceptation — couverts
+
+- « Téléports (E7) » : `TestExtendedPortalMergeNativeWinsAndAddsZones`
+  (fusion réelle, comptes exacts, natif intact, liens+retours) et
+  **`TestExtendedPortalRoundTripThroughTheGates`** : un personnage à une
+  porte native voyage DANS une zone étendue par `HandlePortal` (opcode
+  d'admission, frais, transfert de monde) puis REVIENT par la porte de
+  la zone — l'aller/retour exigé par la mission, prouvé au niveau
+  action. `TestAppendExtendedTeleportGatesNativeWins` : chaque porte
+  native garde sa ligne exacte, les portes greffées couvrent les zones
+  étendues, sans greffe le roster reste natif.
+- « Flag off » : les tests sautent sans projection ; les tests portails
+  natifs (`TestPortal*`, `TestTeleportGate*`) passent inchangés après le
+  refactor du parseur partagé.
+
+## Tests et gates (sorties de session)
+
+- `go test ./internal/game/action/ ./internal/game/world/simulation/
+  -run "TestExtendedPortal|TestAppendExtendedTeleportGates"` → 4/4 PASS.
+- `go test … -run "TestPortal|TestTeleport"` (natifs) → ok/ok.
+- `pnpm check source` → `check pipeline: PASSED, 14 tasks in 15.5s` (la
+  gate `check:generated-root` a d'abord refusé une construction locale
+  du chemin client-public du principal — corrigé par l'export
+  `MAIN_CHECKOUT_CLIENT_PUBLIC_ROOT` dans le module propriétaire).
+- `pnpm task run check:server` (`SRO_CHECK_FORCE=1`) → `server gates:
+  PASS (16 package workers, test cache on, 106.2s)`.
+- `pnpm --filter @sro/client-next check` → `client check: PASS (11
+  gates, 75.7s)` (avec la surcharge minimap).
+
+## Non couvert (reste)
+
+- La preuve navigateur (traversée + téléport en flag on dans un browser,
+  captures) : M5/E8 couvre le parcours de bout en bout, cette preuve en
+  est le sous-produit naturel.
+- Donjons 0x8000 : verdict — **hors du périmètre M4**. La liste de zones
+  dérivée des données (M4p1) n'en contient pas : chaque bande 91-140 est
+  couverte en extérieur, et la mission définit les zones par cette
+  dérivation. Les mondes de donjons modernes apparaissent dans les
+  tables live (145 destinations écartées) et restent parqués avec les
+  systèmes V5 — un donjon 91+ ne deviendrait du contenu que si M5
+  montrait un trou de trajectoire.
+
