@@ -48,19 +48,34 @@ offense/timed/periodic/pulse/item. La carte des 120 familles
 (`extended_skills_programs_test.go`). Aucune occurrence native des
 pilotes — flag-off identique par construction.
 
-## Le reste (carte actualisée après s2)
+## Session 3 — livré
 
-Par impact décroissant, chaque grappe une lane d'admission :
-1. **Danses de barde** (~50 rangs, 5 familles) : programme
-   `srpc/atfe/2lvo/urd/vteg×3/cks/cqer/iqer/lper/slcs` — le système de
-   rythme 2026, probablement wire-nouveau (charte V5, décision owner).
-2. **Auras de régénération** (WATER_HARMONY 13, BARD_MANATRANS 15,
-   MPHEAL 10 : `dura efr alop cgri` / `efr laeh hmwm`) : étendre
-   `skillrecovery.go` (formes mana/OT existantes à recouper).
-3. **Froid CH** (BINGPAN 20, BINGBYEOK 12 : `zf bf rfe tnat` /
-   `ffno wp`) : débuffs de stats — la mécanique anormale existe
-   (`skillabnormal.go`), formes à admettre.
-4. Le reste dispersé (INVISIBLE/MANADRY/AGGROLOW/traps…) : une à une.
+- **Le décodeur `defp` tolère les pilotes** (`skillpassive_defense.go`) :
+  les rangées de défense 2026 (`defp {phys,mag,0} reqi psog`) épinglent
+  comme leurs ancêtres natifs → **+37 rangs** (SHIELDP_DEFENSE,
+  FRENZYA_DEFENSE, GLORYP et apparentés). Couverture **75,0 %**.
+- **La carte des familles re-cartographiée avec la mesure union** : le
+  reste réel est **66 familles / 359 rangs** (pas 798 — la carte s2
+  comptait au vieux prédicat plan-seul). Plus grosses familles :
+  BINGPAN 20, WATER_HARMONY 13, BINGBYEOK 12, FIREA_TRAP 12, les quatre
+  danses de barde (40), MANADRY 10, INVISIBLE 10, HWABYEOK 9, JIPJUNG 9.
+- **Sondage régén** (foldé) : la forme `efr laeh mwmh` de MANATRANS
+  PASSE le prédicat `partyHealProgram` — le refus est à la porte
+  lifetime/parse avant la dispatch (lane identifiée, non livrée) ;
+  MPHEAL est déjà un HoT admis par l'union.
+
+## Le reste (carte actualisée après s3)
+
+Par impact décroissant, chaque grappe une lane d'admission + exécution :
+1. **Froid/feu CH** (BINGPAN 20, BINGBYEOK 12, HWABYEOK 9 : `zf bf efr
+   tnat`, `ffno wp`, `ffno wp`) : débuffs anormaux ciblés — la mécanique
+   existe (`skillabnormal.go`, `abnormal.Sources`), formes à admettre
+   dans la marche offense (colonnes ennemi 29/30).
+2. **Auras de régénération** (WATER_HARMONY 13 : `dura efr alop cgri`)
+   et la porte lifetime de MANATRANS (forme déjà valide).
+3. **Danses de barde** (40 rangs, 4 familles) : le système de rythme
+   2026, probablement wire-nouveau (charte V5, décision owner).
+4. INVISIBLE/MANADRY/traps/JIPJUNG et la longue traîne : une à une.
 
 ## Tests et gates (sorties de session 2)
 
