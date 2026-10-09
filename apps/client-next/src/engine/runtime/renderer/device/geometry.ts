@@ -64,7 +64,7 @@ export function createGeometryResources(
 	fail: ( error: unknown ) => void,
 	// The geometry pipeline for state; the rgba16float sibling (the HDR
 	// stage's scene intermediate) resolves through the second argument.
-	pipelines: ( state: GeometryPipelineState, sceneFloat?: boolean ) => GPURenderPipeline,
+	pipelines: ( state: GeometryPipelineState, sceneFloat?: boolean, localPreview?: boolean ) => GPURenderPipeline,
 	// Each draw holds a lease on its images for as long as it binds them.
 	images: ImageLeases,
 	worldSampler: GPUSampler,
@@ -83,7 +83,7 @@ export function createGeometryResources(
 	let filtered = true, detail = 2, anisotropic = false, mixedCpuUploadBytes = 0;
 	// The HDR stage's scene intermediate flips the colour format every
 	// geometry pipeline renders into; sceneBindings swaps every draw over.
-	let floatScene = false;
+	let floatScene = false, shadowEnabled = false;
 	const waterReflection = createWaterReflection( created, format, retire );
 	// 8BA130 fixes water MIN/MAG to linear independently of the video filter.
 	const waterSampler = worldSampler;
@@ -194,7 +194,7 @@ export function createGeometryResources(
 		environmentImage?: ImageDraw,
 		capture = false
 	) => {
-		const cascade = sunShadows?.active() ? sunShadows.cascadeView() : shadowDummyView;
+		const cascade = shadowEnabled ? ensureSunShadow().cascadeView() : shadowDummyView;
 		return current().createBindGroup( {
 			layout: pipeline.getBindGroupLayout( 0 ),
 			entries: [
@@ -229,6 +229,7 @@ export function createGeometryResources(
 	};
 	const metadata = new Map<GeometryDraw, {
 		water: boolean;
+		localPreview: boolean;
 		state: GeometryPipelineState;
 		uniform: GPUBuffer;
 		material: GPUBuffer;
@@ -316,7 +317,7 @@ export function createGeometryResources(
 				if ( !meta || meta.water || draw.deferredParticle ) continue;
 				let cached = reflectedBindings.get( draw );
 				if ( !cached || cached.source !== draw.binding ) {
-					const pipeline = pipelines( meta.state, floatScene );
+					const pipeline = pipelines( meta.state, floatScene, meta.localPreview );
 					const binding = geometryBinding(
 						meta.uniform,
 						geometryBuffers.get( draw )![3]!,
@@ -871,7 +872,9 @@ export function createGeometryResources(
 						0,
 						mat?.environmentReflection ? 1 : 0,
 						mat?.alphaCompare ?? 7,
-						0,
+						// Port-only, not native: reflection.z admits world-space
+						// receivers; portrait/doll coordinates belong to another scene.
+						data.world === true ? 1 : 0,
 						mat?.water && environmentImage ? 1 : 0,
 						0,
 						0,
@@ -891,7 +894,7 @@ export function createGeometryResources(
 						...(mat?.textureFactor ?? [ 1, 1, 1, 1 ])
 					] ),
 					material = buffer( "geometry-material", materialData, GPUBufferUsage.UNIFORM );
-				const selected = pipelines( geometryPipelineState( mat ), floatScene ),
+				const selected = pipelines( geometryPipelineState( mat ), floatScene, data.world !== true ),
 					clampedSampling = !!(mat?.lightmap || mat?.decal) && !mat?.groundDecal;
 				const binding = geometryBinding(
 					data.world ? worldUniform! : uniform,
@@ -931,6 +934,7 @@ export function createGeometryResources(
 				geometryBuffers.set( draw, buffers );
 				metadata.set( draw, {
 					water: !!mat?.water,
+					localPreview: data.world !== true,
 					state: geometryPipelineState( mat ),
 					uniform: data.world ? worldUniform! : uniform,
 					material,
@@ -1106,7 +1110,7 @@ export function createGeometryResources(
 			floatScene = sceneFloat;
 			waterReflection.reformat( sceneFloat ? "rgba16float" : format );
 			for ( const [draw, meta] of metadata ) {
-				const pipeline = pipelines( meta.state, sceneFloat );
+				const pipeline = pipelines( meta.state, sceneFloat, meta.localPreview );
 				DeviceDraw.repipeline(
 					meta.selection,
 					pipeline,
@@ -1132,7 +1136,10 @@ export function createGeometryResources(
 		every draw rebinds against its current pipeline.
 		================
 		*/
-		refreshShadowBindings() {
+		refreshShadowBindings( enabled: boolean ) {
+			if ( shadowEnabled === enabled ) return;
+			// Bind the selected target before prepare() activates the first frame.
+			shadowEnabled = enabled;
 			for ( const [draw, meta] of metadata ) {
 				DeviceDraw.rebind(
 					meta.selection,

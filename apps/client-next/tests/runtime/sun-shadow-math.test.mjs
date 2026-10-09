@@ -37,8 +37,8 @@ test("the eye sits at the cascade centre, mid-depth", () => {
 	const matrix = sunShadowMatrix( [ 10, 20, 30 ], DIAGONAL );
 	const eye = transform( matrix, [ 10, 20, 30 ] );
 	// The centre snaps to whole cascade texels, so the eye holds within
-	// half a texel of the NDC centre (96 m extent, 2048 taps).
-	const halfTexel = (2 * 96 / 2048 / 2) / 96;
+	// half a texel of the NDC centre.
+	const halfTexel = 1 / SHADOW_SIZE;
 	assert.ok( Math.abs( eye[0] ) < halfTexel + 1e-9 && Math.abs( eye[1] ) < halfTexel + 1e-9, "NDC centre" );
 	assert.ok( Math.abs( eye[2] - 0.5 ) < 1e-6, "mid-depth" );
 });
@@ -81,4 +81,30 @@ test("a vertical light tilts its basis instead of throwing", () => {
 	const eye = transform( matrix, [ 5, 5, 5 ] );
 	assert.ok( Math.abs( eye[2] - 0.5 ) < 1e-6 );
 	assert.throws( () => sunShadowMatrix( [ 0, 0, 0 ], [ 0, 0, 0 ] ), "a lightless cascade is invalid" );
+});
+
+test("maximum follow zoom keeps the player and nearby ground inside the unfaded cascade", () => {
+	const target = [ 3200, 120, -1920 ];
+	const cameraDistance = 150, targetLift = 20, nearbyRadius = 100;
+	const fullShadowNdc = 0.9;
+	for ( const light of [ DIAGONAL, [ 0, 1, 0 ], [ 1, 0.1, 0 ] ] ) {
+		for ( const yaw of [ 0, Math.PI / 2, Math.PI, Math.PI * 1.5 ] ) {
+			for ( const pitch of [ 0.19, 0.9 ] ) {
+				const eye = [
+					target[0] + Math.sin( yaw ) * Math.cos( pitch ) * cameraDistance,
+					target[1] + targetLift + Math.sin( pitch ) * cameraDistance,
+					target[2] + Math.cos( yaw ) * Math.cos( pitch ) * cameraDistance
+				];
+				const matrix = sunShadowMatrix( eye, light );
+				for ( const x of [ -nearbyRadius, 0, nearbyRadius ] ) {
+					for ( const z of [ -nearbyRadius, 0, nearbyRadius ] ) {
+						const point = transform( matrix, [ target[0] + x, target[1], target[2] + z ] );
+						assert.ok( Math.abs( point[0] ) < fullShadowNdc, "ground stays within the horizontal fade" );
+						assert.ok( Math.abs( point[1] ) < fullShadowNdc, "ground stays within the vertical fade" );
+						assert.ok( point[2] > 0 && point[2] < 1, "ground stays between depth planes" );
+					}
+				}
+			}
+		}
+	}
 });

@@ -102,8 +102,8 @@ export function createFrame( commands: FrameCommands ): FrameOwner {
 			presentation
 		) {
 			const sceneView = bloom?.view ?? experimental?.hdr?.view ?? view;
-			// The HDR stage renders the scene (the preview pass included) into
-			// its float intermediate; the UI never touches it.
+			// The HDR stage resolves the world before UI. Its float target can
+			// then be reused for an independently composited character preview.
 			const hdrScene = !!experimental?.hdr;
 			if ( ui !== recordedUi ) {
 				/*
@@ -213,9 +213,9 @@ export function createFrame( commands: FrameCommands ): FrameOwner {
 			}
 			const encoder = commands.createEncoder(), timing = commands.beginTiming?.( frameId );
 			commands.prepare?.( encoder, timing );
-			reflection?.encode( encoder );
 			// The sun cascade renders before anything shades its receivers.
 			experimental?.sunShadow?.encode( encoder, experimental.casters ?? [], timing );
+			reflection?.encode( encoder );
 			const portraitPreview = portrait;
 			for ( const portrait of [ portraitPreview, ...partyPortraits, doll ] ) {
 				if ( portrait ) {
@@ -256,7 +256,9 @@ export function createFrame( commands: FrameCommands ): FrameOwner {
 							view: depth,
 							depthClearValue: 1,
 							depthLoadOp: "clear" as const,
-							depthStoreOp: flares || deferred ? "store" as const : "discard" as const
+							depthStoreOp: flares || deferred || (hdrScene && worldUiBundle) ?
+								"store" as const :
+								"discard" as const
 						}
 					} :
 					{}),
@@ -279,20 +281,14 @@ export function createFrame( commands: FrameCommands ): FrameOwner {
 			pass.end();
 			/*
 			================
-			finish
-			================
-			*/
-			/*
-			================
 			previewPass
 
-			The character preview draws over a fresh depth. Under the HDR
-			stage it targets the float scene intermediate (its pipelines
-			followed the flip) ahead of the tone map; natively it composes
-			into the frame as before.
+			The character preview draws over fresh depth after every consumer
+			of the scene depth. HDR uses the float target cleared transparent;
+			natively it composes directly into the frame as before.
 			================
 			*/
-			const previewPass = ( color: GPUTextureView ) => {
+			const previewPass = ( encoder: GPUCommandEncoder, color: GPUTextureView ) => {
 				const overlay = encoder.beginRenderPass( {
 					timestampWrites: timing?.pass( "character-preview" ),
 					label: "character-preview",
@@ -306,7 +302,12 @@ export function createFrame( commands: FrameCommands ): FrameOwner {
 							}
 						} :
 						{}),
-					colorAttachments: [ { view: color, loadOp: "load", storeOp: "store" } ]
+					colorAttachments: [ {
+						view: color,
+						loadOp: hdrScene ? "clear" : "load",
+						clearValue: [ 0, 0, 0, 0 ],
+						storeOp: "store"
+					} ]
 				} );
 				overlay.setBlendConstant( blendFactor );
 				for ( const draw of preview ) {
@@ -320,6 +321,11 @@ export function createFrame( commands: FrameCommands ): FrameOwner {
 				if ( !hdrScene && uiBundle ) overlay.executeBundles( [ uiBundle ] );
 				overlay.end();
 			};
+			/*
+			================
+			finish
+			================
+			*/
 			const finish = ( encoder: GPUCommandEncoder, extra: readonly GeometryDraw[] = [] ) => {
 				if ( deferred ) {
 					commands.prepare?.( encoder, timing );
@@ -332,7 +338,9 @@ export function createFrame( commands: FrameCommands ): FrameOwner {
 								depthStencilAttachment: {
 									view: depth,
 									depthLoadOp: "load" as const,
-									depthStoreOp: flares ? "store" as const : "discard" as const
+									depthStoreOp: flares || (hdrScene && worldUiBundle) ?
+										"store" as const :
+										"discard" as const
 								}
 							} :
 							{})
@@ -346,11 +354,11 @@ export function createFrame( commands: FrameCommands ): FrameOwner {
 						tail.setIndexBuffer( draw.indices, "uint32" );
 						tail.drawIndexed( draw.indexCount, draw.instanceCount );
 					}
-					if ( !bloom && worldUiBundle ) tail.executeBundles( [ worldUiBundle ] );
-					if ( !bloom && !flares && !thunder && backgroundBundle ) {
+					if ( !bloom && !hdrScene && worldUiBundle ) tail.executeBundles( [ worldUiBundle ] );
+					if ( !bloom && !hdrScene && !flares && !thunder && backgroundBundle ) {
 						tail.executeBundles( [ backgroundBundle ] );
 					}
-					if ( !bloom && !flares && !thunder && !preview.length && uiBundle ) {
+					if ( !bloom && !hdrScene && !flares && !thunder && !preview.length && uiBundle ) {
 						tail.executeBundles( [ uiBundle ] );
 					}
 					tail.end();
@@ -367,10 +375,6 @@ export function createFrame( commands: FrameCommands ): FrameOwner {
 					overlay.draw( 6 );
 					overlay.end();
 				}
-				// Under the HDR stage the preview composes into the float
-				// intermediate ahead of the tone map, so its characters roll
-				// off with the frame.
-				if ( preview.length && hdrScene ) previewPass( sceneView );
 				bloom?.encode( encoder, view );
 				if ( bloom ) blendFactor = bloomBlendFactor;
 				// Without bloom the HDR stage owns its tone-map pass; with it,
@@ -394,6 +398,25 @@ export function createFrame( commands: FrameCommands ): FrameOwner {
 					if ( flareBundle ) overlay.executeBundles( [ flareBundle ] );
 					overlay.end();
 				}
+				// Port-only, not native: HDR moves depth-tested labels out of the
+				// float scene, but they still test against that scene's depth.
+				if ( hdrScene && worldUiBundle ) {
+					const labels = encoder.beginRenderPass( {
+						label: "hdr-world-ui",
+						colorAttachments: [ { view, loadOp: "load", storeOp: "store" } ],
+						...(depth ?
+							{
+								depthStencilAttachment: {
+									view: depth,
+									depthLoadOp: "load" as const,
+									depthStoreOp: "discard" as const
+								}
+							} :
+							{})
+					} );
+					labels.executeBundles( [ worldUiBundle ] );
+					labels.end();
+				}
 				if ( flares || thunder || bloom || hdrScene ) {
 					const hud = encoder.beginRenderPass( {
 						timestampWrites: timing?.pass( "hud-after-flares" ),
@@ -410,12 +433,37 @@ export function createFrame( commands: FrameCommands ): FrameOwner {
 							{}),
 						colorAttachments: [ { view, loadOp: "load", storeOp: "store" } ]
 					} );
-					if ( (bloom || hdrScene) && worldUiBundle ) hud.executeBundles( [ worldUiBundle ] );
+					if ( bloom && !hdrScene && worldUiBundle ) hud.executeBundles( [ worldUiBundle ] );
 					if ( backgroundBundle ) hud.executeBundles( [ backgroundBundle ] );
 					if ( !preview.length && uiBundle ) hud.executeBundles( [ uiBundle ] );
 					hud.end();
 				}
-				if ( preview.length && !hdrScene ) previewPass( view );
+				if ( preview.length ) {
+					if ( experimental?.hdr ) {
+						// Port-only, not native: preserve background -> preview ->
+						// foreground without sending authored UI through the curve.
+						previewPass( encoder, experimental.hdr.view );
+						experimental.hdr.encodePreview( encoder, view );
+						if ( uiBundle ) {
+							const foreground = encoder.beginRenderPass( {
+								label: "hdr-preview-ui",
+								colorAttachments: [ { view, loadOp: "load", storeOp: "store" } ],
+								...(depth ?
+									{
+										depthStencilAttachment: {
+											view: depth,
+											depthClearValue: 1,
+											depthLoadOp: "clear" as const,
+											depthStoreOp: "discard" as const
+										}
+									} :
+									{})
+							} );
+							foreground.executeBundles( [ uiBundle ] );
+							foreground.end();
+						}
+					} else previewPass( encoder, view );
+				}
 				// Preserve every pass and depth operation above. Only append the
 				// final presentation here instead of submitting it separately.
 				presentation?.encodePresent( encoder );

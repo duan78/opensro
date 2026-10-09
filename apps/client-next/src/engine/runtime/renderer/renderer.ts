@@ -502,7 +502,8 @@ export function createRenderer(
 					video.records[video.active][12] === 1
 				);
 				scene.environment[83] = video.records[video.active][6] === 1 ? 1 : 0;
-				device.worldView( scene.matrix, scene.environment );
+				const shadowOn = experimental.sunShadow && !preview;
+				device.worldView( scene.matrix, scene.environment, shadowOn );
 				presentationCamera = {
 					regionId: scene.originRegion,
 					x: scene.camera.eye[0],
@@ -691,7 +692,6 @@ export function createRenderer(
 				// and everything blended stays out, and the silhouette
 				// projections stand beside it.
 				const sunShadow = device.sunShadow(),
-					shadowOn = experimental.sunShadow && !preview,
 					shadowLight = experimental.dynamicSun ?
 						[ scene.environment[84]!, scene.environment[85]!, scene.environment[86]! ] :
 						[ 0.70710678, 0.70710678, 0 ];

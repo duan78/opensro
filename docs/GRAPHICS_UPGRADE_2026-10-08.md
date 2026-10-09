@@ -43,9 +43,10 @@ receivers build their float variant on demand. The UI never touches the
 intermediate: with bloom on, the chain's copy-back step becomes the tone
 map (`bloom.ts`'s lazily compiled `original` sibling, so the glow still
 composites after the roll-off); without bloom, `hdr.ts`'s own pass runs
-between the scene and the lens flares. The character preview composes
-into the intermediate ahead of the tone map, so preview characters roll
-off with the frame.
+between the scene and the lens flares. The character preview uses a
+transparent float intermediate after background UI, then tone-maps and
+composites over it before foreground UI. Scene depth remains available to
+world labels and flare visibility before preview clears its own depth.
 
 ## 2. One sun shadow cascade
 
@@ -59,7 +60,8 @@ everything blended stays out - from the shading light's position, and the
 world shader resolves receivers with a 3x3 kernel of hardware comparison
 taps. The cascade follows the same light the shader shades with (the
 pinned retail diagonal, or the packed arc direction under Moving
-sunlight), covers `SHADOW_EXTENT` metres around the eye at `SHADOW_SIZE`
+sunlight), covers 96 metres around the eye (`SHADOW_EXTENT` is 960 native
+world units, ten units per metre) at `SHADOW_SIZE`
 taps, and its centre snaps to whole cascade texels (`sun-shadow-math.ts`)
 so a walking camera does not shimmer the edges. The caster pass carries
 the world shader's D3D9 alpha test (12-bit truncation, compare byte), so
@@ -74,7 +76,10 @@ silhouette projections stand untouched beside it - this complements, it
 does not replace. Every world draw binds the cascade at bindings 13/14;
 while the stage is off those name a 1x1 dummy depth view no gated branch
 ever samples, and the whole owner (shader, pipelines, cascade texture)
-builds only on first enabled use.
+builds only on first enabled use. The selected view is bound independently
+of the last prepared frame, including when an enabled preference is restored
+during device startup or recovery. Local portrait and preview geometry does
+not receive the world cascade.
 
 Known follow-up (this wave's scope): the caster list is the frame's opaque
 draws without distance culling; a city scene pays for every object again
@@ -94,14 +99,19 @@ else changes: the vertex point-light path
 (`NATIVE_CHARACTER_LIGHTING`, a compatibility mode of its own, off) stays
 per-vertex.
 
-## Off-path proof
+## Regression coverage
 
-The full runtime and architecture suites' failure set on this head is
-byte-identical to naked main `2bb8c88b` on this machine (the licensed-data
-set; the retail extraction is absent). In the browser
-(`tests/browser/hdr-stages.test.mjs`), a synthetic lit scene - ground,
-smooth-normal dome, casting box - cycles each stage off-on-off through the
-production renderer: every enabled stage changes the frame, every disabled
-capture restores the native pixels exactly. The shipped stages'
-`environment-stages` A-B-A and the `game-options` Experimental window
-round-trip (new rows, new tab order) pass unchanged.
+`tests/browser/hdr-stages.test.mjs` drives a synthetic ground, smooth-normal
+dome and casting box through the production renderer. It cycles each stage
+and their combination with float bloom, checks exact restoration when
+disabled, and requires both lit and shaded ground. It also destroys the GPU
+device with HDR enabled and compares the recovered frame. The reusable
+fixture lives in `tests/helpers/hdr-gpu.mjs` so the same capture can run
+against a main checkout for native-off comparison.
+
+Runtime regressions cover retained startup flags, binding changes before
+the first cascade preparation, preview receiver suppression, absent and
+live water targets, maximum camera zoom, wrapped alpha-test sampling,
+render-target compatibility, deferred particles, retained label depth and
+pass ordering. The PR review records the exact tested head and results;
+historical results from an older base are not evidence for the current head.

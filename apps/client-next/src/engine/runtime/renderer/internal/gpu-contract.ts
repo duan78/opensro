@@ -87,6 +87,18 @@ export interface BloomDraw {
 }
 /*
 ================
+HdrDraw
+
+After resolving the scene, the frame can reuse view for a transparent
+preview. Preview RGB is premultiplied by coverage alpha; encodePreview
+tone-maps its unassociated color and composites over the presented UI.
+================
+*/
+export interface HdrDraw extends BloomDraw {
+	encodePreview( encoder: GPUCommandEncoder, target: GPUTextureView ): void;
+}
+/*
+================
 SunShadowOwner
 
 The experimental sun cascade (device/sun-shadow.ts). The renderer prepares
@@ -111,7 +123,7 @@ caster list.
 ================
 */
 export interface ExperimentalFrame {
-	readonly hdr?: BloomDraw;
+	readonly hdr?: HdrDraw;
 	readonly sunShadow?: SunShadowOwner;
 	readonly casters?: readonly GeometryDraw[];
 }
@@ -134,13 +146,13 @@ export interface DeviceOwner extends Disposable {
 	textureOptions( filtered: boolean, detail: number ): void;
 	experimentalVideo( value: import("@/engine/foundation/ui/experimental-options").ExperimentalVideo ): void;
 	bloom( width: number, height: number, enabled: boolean ): BloomDraw | undefined;
-	hdr( width: number, height: number, enabled: boolean ): BloomDraw | undefined;
+	hdr( width: number, height: number, enabled: boolean ): HdrDraw | undefined;
 	sunShadow(): SunShadowOwner;
 	gpuTiming(): GpuTimingStats | null;
 	portraitTarget( id?: string, width?: number, height?: number ): GPUTextureView;
 	uiTexture( id: string, image: ImageBitmap | ImageData | null ): void;
 	ui( scene: UiScene | null ): readonly UiDraw[];
-	worldView( transform: Float32Array, environment: Float32Array ): void;
+	worldView( transform: Float32Array, environment: Float32Array, shadowEnabled?: boolean ): void;
 	sky(): ImageDraw | null;
 	thunder( color: readonly number[] ): ImageDraw;
 	flares( input: FlareInput, depth: GPUTextureView ): FlareDraw;

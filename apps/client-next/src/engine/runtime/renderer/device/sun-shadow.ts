@@ -69,6 +69,11 @@ export function createSunShadow(
 		white: GPUTexture | null = null,
 		sampler: GPUSampler | null = null,
 		projection: GPUBuffer | null = null;
+	/*
+	================
+	ensure
+	================
+	*/
 	const ensure = () => {
 		if ( shadowPipeline ) return;
 		const caster = device.createShaderModule( {
@@ -155,7 +160,14 @@ struct Out {@builtin(position) position:vec4f,@location(0) uv:vec2f}
 			{ bytesPerRow: 4 },
 			[ 1, 1 ]
 		);
-		sampler = device.createSampler( { minFilter: "linear", magFilter: "linear" } );
+		// Opaque world objects and characters wrap their authored UVs just
+		// like the visible world pass; clamping repeats an edge's alpha.
+		sampler = device.createSampler( {
+			minFilter: "linear",
+			magFilter: "linear",
+			addressModeU: "repeat",
+			addressModeV: "repeat"
+		} );
 		projection = device.createBuffer( {
 			label: "sun-shadow-projection",
 			size: 64,
@@ -166,6 +178,11 @@ struct Out {@builtin(position) position:vec4f,@location(0) uv:vec2f}
 	// comparison sampler and the always-lit dummy view live in geometry.ts
 	// (every world draw binds them); this owner builds nothing until the
 	// stage is first enabled.
+	/*
+	================
+	cascade
+	================
+	*/
 	const cascade = () => {
 		shadowCascade ??= device.createTexture( {
 			label: "sun-shadow-cascade",

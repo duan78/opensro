@@ -82,7 +82,7 @@ const TERRAIN_RELIEF_MIN_LIGHT = 0.0001;
 // curve of hdr.ts, shared by the bloom owner's float composite.
 const SUN_HDR_GAIN = 4.0; // sun disc radiance multiplier while the HDR stage is on
 
-// Sun shadow - one orthographic cascade covering SHADOW_EXTENT metres
+// Sun shadow - one orthographic cascade covering SHADOW_EXTENT world units
 // around the eye (sun-shadow-math.ts builds the matrix), 2048 taps with a
 // 3x3 hardware PCF, fading to unshadowed at the cascade border so the
 // boundary never shows a hard step.
@@ -349,7 +349,8 @@ fn sunShadowFactor(world:vec3f)->f32{
  // projection: NDC x/y the caster pass rasterizes, [0,1] depth both sides
  // compare. Receivers sample at the centred UV.
  let clip=env.shadowMatrix*vec4f(world,1.0);
- let uv=clip.xy*0.5+vec2f(0.5);
+ // WebGPU rasterization maps positive NDC Y to the top of the texture.
+ let uv=vec2f(clip.x*0.5+0.5,0.5-clip.y*0.5);
  if(uv.x<0.0||uv.x>1.0||uv.y<0.0||uv.y>1.0||clip.z>1.0||clip.z<0.0){return 1.0;}
  var sum=0.0;
  for(var y:i32=-1;y<=1;y++){
@@ -398,6 +399,10 @@ struct Out {@location(11) worldY:f32,@location(12) mirrorPosition:vec4f,@builtin
  let a=instance[0].xyz;let b=instance[1].xyz;let c=instance[2].xyz;
  let cofactors=mat3x3f(cross(b,c),cross(c,a),cross(a,b));let determinant=dot(a,cross(b,c));
  lightingNormal=cofactors*lightingNormal/select(1.0,determinant,determinant!=0.0);
+ // Port-only, not native: interpolate the inverse-transpose normal for
+ // per-pixel object lighting. Multiplying by world skews scaled objects'
+ // normals; leave the original varying untouched when this stage is off.
+ if(env.stages2.z>0.5&&material.lighting.y>0.5){o.normal=lightingNormal;}
  // A91970 replaces BMT diffuse and actor ambient during SCT_MAT.
  let diffuseFactor=select(material.color.rgb,o.materialTint,material.policy.w>0.5);
  let ambientFactor=select(material.ambient.rgb,o.materialTint,material.policy.w>0.5);
@@ -425,7 +430,7 @@ struct Out {@location(11) worldY:f32,@location(12) mirrorPosition:vec4f,@builtin
  }
  return o;
 }
-@fragment fn fs(input:Out)->@location(0) vec4f {
+fn shadeGeometry(input:Out)->vec4f {
  if(waterPass.plane.w>0.5&&material.skin.w==0&&(input.worldY-waterPass.plane.x)*waterPass.plane.y<0){discard;}
  var reflected=vec3f(0);var equipment=vec3f(0);
  if(material.equipmentColor.w>0.0){equipment=textureSample(sphereMap,textureSampler,input.equipmentUV,0).rgb;}
@@ -471,9 +476,10 @@ let mask=mix(mix(input.color.x,input.color.y,input.maskUV.x),mix(input.color.z,i
  }
  // Sun shadows (experimental): the cascade shades the diffuse term and
  // leaves the ambient standing, for the world path and the object path
- // alike. Water (skin.z) and sky elements (skin.w) never receive.
+ // alike. reflection.z admits only world-space draws: portrait and doll
+ // positions cannot sample this scene's cascade. Water and sky never receive.
  var sunShade=1.0;
- if(env.stages2.y>0.5&&material.skin.z==0.0&&material.skin.w==0.0){
+ if(env.stages2.y>0.5&&material.reflection.z>0.5&&material.skin.z==0.0&&material.skin.w==0.0){
   sunShade=mix(1.0,sunShadowFactor(vec3f(input.worldXZ.x,input.worldY,input.worldXZ.y)),${SUN_SHADOW_STRENGTH});
   let ambientTerm=env.ambient.rgb*select(material.ambient.rgb,input.materialTint,material.policy.w>0.5)*material.lighting.x;
   surfaceLight=ambientTerm+(surfaceLight-ambientTerm)*sunShade;
@@ -567,6 +573,12 @@ let mask=mix(mix(input.color.x,input.color.y,input.maskUV.x),mix(input.color.z,i
  }
  if(animated&&waterPass.plane.z>0.5&&waterPass.plane.w<0.5){lit=waterColor;}
  return vec4f(mix(lit*select(vec3f(1),waterShading,animated),select(fogColor,terrainFogColor,material.options.z>0.5),fog),select(select(color.a,clamp(input.color.a,0,1),animated),select(select(1.0,color.a,material.ambient.w>0.5),fadeAlpha,fading),material.lighting.z>0.5));
+}
+@fragment fn fs(input:Out)->@location(0) vec4f {return shadeGeometry(input);}
+// Port-only, not native: an accepted unblended/cutout fragment covers the
+// scratch target fully. Alpha tests still discard inside shadeGeometry.
+@fragment fn fsPreviewOpaque(input:Out)->@location(0) vec4f {
+ let color=shadeGeometry(input);return vec4f(color.rgb,1.0);
 }`
 	} );
 	/*
@@ -579,39 +591,56 @@ let mask=mix(mix(input.color.x,input.color.y,input.maskUV.x),mix(input.color.z,i
 	*/
 	const geometryDescriptor = (
 		state: GeometryPipelineState,
-		target: GPUTextureFormat = format
-	): GPURenderPipelineDescriptor => ({
-		layout: "auto",
-		vertex: {
-			module: geometryShader,
-			entryPoint: "vs",
-			buffers: [ {
-				arrayStride: 56,
-				attributes: [
-					{ shaderLocation: 0, offset: 0, format: "float32x3" },
-					{ shaderLocation: 1, offset: 12, format: "float32x3" },
-					{ shaderLocation: 2, offset: 24, format: "float32x2" },
-					{ shaderLocation: 3, offset: 32, format: "float32x4" },
-					{ shaderLocation: 4, offset: 48, format: "float32x2" }
-				]
-			} ]
-		},
-		fragment: {
-			module: geometryShader,
-			entryPoint: "fs",
-			targets: [ { format: target, ...(state.blend ? { blend: blendState( state.blend ) } : {}) } ]
-		},
-		primitive: {
-			topology: "triangle-list",
-			cullMode: state.cull ? "back" : "none",
-			frontFace: "cw"
-		},
-		depthStencil: {
-			format: "depth24plus",
-			depthWriteEnabled: state.depthWrite,
-			depthCompare: state.depthCompare
+		target: GPUTextureFormat = format,
+		previewCoverage = false
+	): GPURenderPipelineDescriptor => {
+		const blend = state.blend ? blendState( state.blend ) : undefined;
+		const overwrite = blend?.color.srcFactor === "one" && blend.color.dstFactor === "zero";
+		// Port-only, not native: scratch RGB is already premultiplied by
+		// source-over blending. Accumulate coverage instead of squaring alpha.
+		// Additive draws add radiance without occluding the background. Other
+		// authored blends and every world/native target keep their state.
+		if (
+			previewCoverage && blend?.color.srcFactor === "src-alpha" &&
+			blend.color.dstFactor === "one-minus-src-alpha"
+		) {
+			blend.alpha = { srcFactor: "one", dstFactor: "one-minus-src-alpha", operation: "add" };
+		} else if ( previewCoverage && blend?.color.dstFactor === "one" ) {
+			blend.alpha = { srcFactor: "zero", dstFactor: "one", operation: "add" };
 		}
-	});
+		return {
+			layout: "auto",
+			vertex: {
+				module: geometryShader,
+				entryPoint: "vs",
+				buffers: [ {
+					arrayStride: 56,
+					attributes: [
+						{ shaderLocation: 0, offset: 0, format: "float32x3" },
+						{ shaderLocation: 1, offset: 12, format: "float32x3" },
+						{ shaderLocation: 2, offset: 24, format: "float32x2" },
+						{ shaderLocation: 3, offset: 32, format: "float32x4" },
+						{ shaderLocation: 4, offset: 48, format: "float32x2" }
+					]
+				} ]
+			},
+			fragment: {
+				module: geometryShader,
+				entryPoint: previewCoverage && (!blend || overwrite) ? "fsPreviewOpaque" : "fs",
+				targets: [ { format: target, ...(blend ? { blend } : {}) } ]
+			},
+			primitive: {
+				topology: "triangle-list",
+				cullMode: state.cull ? "back" : "none",
+				frontFace: "cw"
+			},
+			depthStencil: {
+				format: "depth24plus",
+				depthWriteEnabled: state.depthWrite,
+				depthCompare: state.depthCompare
+			}
+		};
+	};
 	// Geometry pipelines by state. The states every scene uses are compiled
 	// before the device runs; any other is compiled at its first upload.
 	const geometryPipelines = new Map<string, GPURenderPipeline>();
@@ -712,12 +741,14 @@ The geometry pipeline for state, compiled on first use. The HDR stage's
 rgba16float sibling compiles lazily under the same rule.
 ================
 		*/
-		geometry( state: GeometryPipelineState, sceneFloat = false ) {
-			const key = geometryPipelineKey( state ) + (sceneFloat ? "|hdr" : "");
+		geometry( state: GeometryPipelineState, sceneFloat = false, localPreview = false ) {
+			const previewCoverage = sceneFloat && localPreview;
+			const key = geometryPipelineKey( state ) + (sceneFloat ? "|hdr" : "") +
+				(previewCoverage ? "|preview" : "");
 			let selected = geometryPipelines.get( key );
 			if ( !selected ) {
 				selected = created.createRenderPipeline(
-					geometryDescriptor( state, sceneFloat ? SCENE_FLOAT_FORMAT : format )
+					geometryDescriptor( state, sceneFloat ? SCENE_FLOAT_FORMAT : format, previewCoverage )
 				);
 				geometryPipelines.set( key, selected );
 			}

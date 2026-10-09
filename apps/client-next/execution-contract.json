@@ -2107,7 +2107,8 @@
 			"consumer": "src/engine/runtime/renderer/frame/frame.ts",
 			"provider": "src/engine/runtime/renderer/device/hdr.ts",
 			"functions": [
-				"encode"
+				"encode",
+				"encodePreview"
 			]
 		},
 		{

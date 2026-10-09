@@ -415,6 +415,8 @@ export function createDevice( timingEnabled = false, gpuAnimationEnabled = true 
 					skyFactory = skyDraw;
 					phase = "running";
 					geometry!.textureOptions( textureFiltered, textureDetail, anisotropic );
+					geometry!.sceneBindings( hdrOn );
+					geometry!.refreshShadowBindings( sunShadowOn );
 				}
 			} ).catch( fail );
 		} ).catch( fail );
@@ -540,7 +542,7 @@ export function createDevice( timingEnabled = false, gpuAnimationEnabled = true 
 			// The cascade toggling only changes bindings 13/14's view.
 			const shadowWasOn = sunShadowOn;
 			sunShadowOn = value.sunShadow;
-			if ( shadowWasOn !== sunShadowOn && phase === "running" ) geometry?.refreshShadowBindings();
+			if ( shadowWasOn !== sunShadowOn && phase === "running" ) geometry?.refreshShadowBindings( sunShadowOn );
 			if ( anisotropic === value.anisotropicFiltering ) return;
 			anisotropic = value.anisotropicFiltering;
 			if ( phase === "running" ) geometry?.textureOptions( textureFiltered, textureDetail, anisotropic );
@@ -615,8 +617,10 @@ export function createDevice( timingEnabled = false, gpuAnimationEnabled = true 
 		Publish the frame transform and environment uniforms together.
 		================
 		*/
-		worldView( transform, environment ) {
+		worldView( transform, environment, shadowEnabled = true ) {
 			if ( phase === "running" ) {
+				// Preview scenes have no cascade; keep the saved preference for world re-entry.
+				stages[5] = sunShadowOn && shadowEnabled ? 1 : 0;
 				geometry?.worldView( transform );
 				device!.queue.writeBuffer(
 					environmentBuffer!,

@@ -13,10 +13,12 @@ region-relative world coordinates: NDC x/y the caster pass rasterizes,
 ===========================================================================
 */
 
-// The cascade's whole tuning surface: metres to each border, depth span
-// behind the eye, and taps per axis.
-export const SHADOW_EXTENT = 96; // metres from the cascade centre to each border
-export const SHADOW_DEPTH = 400; // metres of depth the cascade spans behind the eye
+// The matrices consume region-relative world units (ten per metre), not
+// metres. The 96-metre radius must cover the 150-unit follow-camera rail
+// as well as the scene around its target, even when the eye faces away
+// from the light. Depth is a half-span: the eye sits midway between planes.
+export const SHADOW_EXTENT = 960; // 96 metres * 10 world units per metre
+export const SHADOW_DEPTH = 4000; // 400 metres * 10 world units per metre
 export const SHADOW_SIZE = 2048; // cascade taps per axis
 
 /*
@@ -53,6 +55,11 @@ export function sunShadowMatrix(
 		forward[2]! * right[0]! - forward[0]! * right[2]!,
 		forward[0]! * right[1]! - forward[1]! * right[0]!
 	];
+	/*
+	================
+	center
+	================
+	*/
 	const center = ( axis: readonly number[] ): number => {
 		const along = axis[0]! * eye[0]! + axis[1]! * eye[1]! + axis[2]! * eye[2]!;
 		const texel = 2 * extent / SHADOW_SIZE;

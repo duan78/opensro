@@ -95,9 +95,11 @@ export function createWaterReflection( device: GPUDevice, initialFormat: GPUText
 		================
 		*/
 		reformat( next: GPUTextureFormat ) {
-			if ( !color || format === next ) return false;
-			retire( color );
+			if ( format === next ) return false;
 			format = next;
+			// A later first capture must use the current scene format too.
+			if ( !color ) return false;
+			retire( color );
 			color = device.createTexture( {
 				label: "water-reflection",
 				size: [ WATER_REFLECTION_SIZE, WATER_REFLECTION_SIZE ],

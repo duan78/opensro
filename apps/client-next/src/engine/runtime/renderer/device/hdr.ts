@@ -18,7 +18,7 @@ exposure constant is the whole compensation surface.
 
 ===========================================================================
 */
-import type { BloomDraw } from "../internal/gpu-contract";
+import type { HdrDraw } from "../internal/gpu-contract";
 import { destroyNow, type Retire } from "./retirement";
 
 // The shared tone map constants: bloom.ts's float composite carries the
@@ -39,7 +39,13 @@ frame, byte-identical to the native path.
 export function createHdr( device: GPUDevice, format: GPUTextureFormat, retire: Retire = destroyNow ) {
 	// Compilation and validation failures use the device's existing terminal
 	// error path; a device that never enables this stage never compiles it.
-	let pipeline: GPURenderPipeline | null = null;
+	let pipeline: GPURenderPipeline | null = null, previewPipeline: GPURenderPipeline | null = null;
+	let shader: GPUShaderModule | null = null;
+	/*
+	================
+	ensure
+	================
+	*/
 	const ensure = () => {
 		if ( pipeline ) return;
 		const module = device.createShaderModule( {
@@ -54,6 +60,15 @@ export function createHdr( device: GPUDevice, format: GPUTextureFormat, retire: 
  }
  ${TONEMAP_WGSL}
  @fragment fn fs(v:V)->@location(0) vec4f{return vec4f(tonemapColor(textureSampleLevel(source,linear,v.uv,0).rgb),1);}
+ // Preview input is coverage-premultiplied, unlike the native D3D alpha
+ // accumulation. Unassociate before the nonlinear curve, then reassociate
+ // for ONE / ONE_MINUS_SRC_ALPHA. Empty texels preserve the background.
+ @fragment fn preview(v:V)->@location(0) vec4f {
+  let c=textureSampleLevel(source,linear,v.uv,0);
+  let a=clamp(c.a,0.0,1.0);
+  if(a==0.0){return vec4f(tonemapColor(c.rgb),0);}
+  return vec4f(tonemapColor(c.rgb/a)*a,a);
+ }
  `
 		} );
 		pipeline = device.createRenderPipeline( {
@@ -63,6 +78,7 @@ export function createHdr( device: GPUDevice, format: GPUTextureFormat, retire: 
 			fragment: { module, entryPoint: "fs", targets: [ { format } ] },
 			primitive: { topology: "triangle-list" }
 		} );
+		shader = module;
 	};
 	const sampler = device.createSampler( {
 		minFilter: "linear",
@@ -73,6 +89,7 @@ export function createHdr( device: GPUDevice, format: GPUTextureFormat, retire: 
 	let target: GPUTexture | null = null,
 		view: GPUTextureView | null = null,
 		binding: GPUBindGroup | null = null,
+		previewBinding: GPUBindGroup | null = null,
 		width = 0,
 		height = 0,
 		disposed = false;
@@ -86,6 +103,7 @@ export function createHdr( device: GPUDevice, format: GPUTextureFormat, retire: 
 		target = null;
 		view = null;
 		binding = null;
+		previewBinding = null;
 		width = height = 0;
 	}
 	return {
@@ -97,7 +115,7 @@ export function createHdr( device: GPUDevice, format: GPUTextureFormat, retire: 
 		changed; undefined (and no target) while the stage is off.
 		================
 		*/
-		prepare( w: number, h: number, enabled: boolean ): BloomDraw | undefined {
+		prepare( w: number, h: number, enabled: boolean ): HdrDraw | undefined {
 			if ( disposed ) throw Error( "HDR owner disposed" );
 			if ( !enabled ) {
 				clear();
@@ -128,14 +146,56 @@ export function createHdr( device: GPUDevice, format: GPUTextureFormat, retire: 
 				encode
 				================
 				*/
-				encode( encoder, target: GPUTextureView ) {
-					if ( disposed || !epoch || !pipeline || !binding ) throw Error( "Stale HDR target" );
+				encode( encoder, output: GPUTextureView ) {
+					if ( disposed || epoch !== target || !pipeline || !binding ) throw Error( "Stale HDR target" );
 					const pass = encoder.beginRenderPass( {
 						label: "hdr-tonemap",
-						colorAttachments: [ { view: target, loadOp: "clear", storeOp: "store" } ]
+						colorAttachments: [ { view: output, loadOp: "clear", storeOp: "store" } ]
 					} );
 					pass.setPipeline( pipeline );
 					pass.setBindGroup( 0, binding );
+					pass.draw( 3 );
+					pass.end();
+				},
+				/*
+				================
+				encodePreview
+
+				Port-only, not native. The frame has reused the float target for
+				preview geometry after the scene resolve and its depth consumers.
+				The canvas already contains the background UI; preserve it and
+				its alpha while compositing the coverage-premultiplied preview.
+				================
+				*/
+				encodePreview( encoder, output ) {
+					if ( disposed || epoch !== target || !shader || !view ) throw Error( "Stale HDR target" );
+					previewPipeline ??= device.createRenderPipeline( {
+						label: "hdr-preview-tonemap",
+						layout: "auto",
+						vertex: { module: shader, entryPoint: "vs" },
+						fragment: {
+							module: shader,
+							entryPoint: "preview",
+							targets: [ {
+								format,
+								blend: {
+									color: { srcFactor: "one", dstFactor: "one-minus-src-alpha" },
+									alpha: { srcFactor: "one", dstFactor: "one-minus-src-alpha" }
+								}
+							} ]
+						},
+						primitive: { topology: "triangle-list" }
+					} );
+					previewBinding ??= device.createBindGroup( {
+						layout: previewPipeline.getBindGroupLayout( 0 ),
+						entries: [ { binding: 0, resource: view }, { binding: 1, resource: sampler } ]
+					} );
+					const pass = encoder.beginRenderPass( {
+						label: "hdr-preview-tonemap",
+						colorAttachments: [ { view: output, loadOp: "load", storeOp: "store" } ]
+					} );
+					pass.setPipeline( previewPipeline );
+					pass.setBindGroup( 0, previewBinding );
 					pass.draw( 3 );
 					pass.end();
 				}
