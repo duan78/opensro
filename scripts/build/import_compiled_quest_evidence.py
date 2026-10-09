@@ -171,8 +171,25 @@ def parse_initializer(text):
 	quest = {"words": {}, "tables": {}, "lists": {}, "missions": []}
 	last_string = {}
 	mission, mission_vars = None, set()
+	# A table's flag word is set through a pointer copy:
+	# "int32_t* eax_8 = arg3[0xc2]" then "*eax_8 |= 1". The bits are
+	# recorded OR-ed together as the table's "flags", for every table:
+	# the generator reads 0xC2's; 0xC4 (the quest NPCs) sets bit 1 on its
+	# own, which nothing reads yet. An alias is never cleared: each copy
+	# names one table for the rest of the initializer, and a later copy
+	# into the same variable rebinds it.
+	table_aliases = {}
 	for raw in lines:
 		line = raw.strip()
+		m = re.match(r'(?:int32_t\* )?(\w+) = arg\d\[(0x[0-9a-f]+)\]$', line)
+		if m:
+			table_aliases[m.group(1)] = m.group(2)
+			continue
+		m = re.match(r'\*(\w+) \|= (0x[0-9a-f]+|\d+)$', line)
+		if m and m.group(1) in table_aliases:
+			table = quest["tables"].setdefault(table_aliases[m.group(1)], {})
+			table["flags"] = table.get("flags", 0) | literal(m.group(2))
+			continue
 		m = re.match(r'std_string_assign_cstr_n\(&(var_\w+), "([^"]*)"', line)
 		if m:
 			last_string[m.group(1)] = m.group(2)
@@ -180,6 +197,16 @@ def parse_initializer(text):
 		m = re.match(r'QuestStringVector_PushBack\(&arg\d\[(0x[0-9a-f]+)\], &(var_\w+)\)', line)
 		if m:
 			quest["lists"].setdefault(m.group(1), []).append(last_string.get(m.group(2)))
+			continue
+		# A string vector inside a table object: the condition table's
+		# held items (0xC2 +0x28 every one, +0x38 any one; 9262A0 reads
+		# their begin/end at +0x2C/+0x3C). An initializer names the table
+		# as arg3[0xc2] or by its byte offset, *(arg1 + 0x308).
+		m = re.match(r'QuestStringVector_PushBack\((?:arg\d\[(0x[0-9a-f]+)\]|\*\(arg\d \+ (0x[0-9a-f]+)\)) \+ (0x[0-9a-f]+), &(var_\w+)\)', line)
+		if m:
+			table = m.group(1) or hex(literal(m.group(2)) // 4)
+			vector = quest["tables"].setdefault(table, {}).setdefault(hex(literal(m.group(3))), [])
+			vector.append(last_string.get(m.group(4)))
 			continue
 		m = re.match(r'(?:void\* )?(\w+) = CRT_operator_new\((0x[0-9a-f]+|\d+)\)', line)
 		if m:
@@ -203,6 +230,14 @@ def parse_initializer(text):
 		m = re.match(r'arg\d\[(0x[0-9a-f]+)\] = ' + VALUE + r'$', line)
 		if m:
 			quest["words"][m.group(1)] = literal(m.group(2))
+			continue
+		# A byte or word inside a dword slot ("0x106.b": the first
+		# prerequisite's completion count). A value read at run time is
+		# kept as null so the generator cannot mistake it for a default.
+		m = re.match(r'arg\d\[(0x[0-9a-f]+)\]\.([bw]) = (.+)$', line)
+		if m:
+			value = literal(m.group(3)) if re.fullmatch(VALUE, m.group(3)) else None
+			quest["words"][m.group(1) + "." + m.group(2)] = value
 			continue
 		m = re.match(r'\*\(arg\d \+ (0x[0-9a-f]+)\) = ' + VALUE + r'$', line)
 		if m:

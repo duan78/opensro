@@ -213,6 +213,9 @@ func objectiveMet(c *enterworld.Character, def *Definition, record enterworld.Ac
 	case ObjectiveTalk:
 		return true
 	case ObjectiveDelivery:
+		if def.HandOverNpcCodename != "" {
+			return handedOver(record)
+		}
 		return deliveryMet(c, def)
 	case ObjectiveCollect:
 		return heldCollectCount(c, def) >= def.CollectCount
@@ -288,6 +291,7 @@ func (rt *Runtime) StartQuest(character *enterworld.Character, codename string) 
 	if branched != (len(def.OfferBranches) > 0) || branch >= max(1, len(def.OfferBranches)) {
 		return OpResult{}, fmt.Errorf("quest start: %s needs one of its %d offer replies", codename, len(def.OfferBranches))
 	}
+	rt.endOnAccept(character, def, branch, branched)
 	var refusal error
 	var record enterworld.ActiveQuestRecord
 	var inventoryFrames []wire.Frame
@@ -324,7 +328,7 @@ func (rt *Runtime) StartQuest(character *enterworld.Character, codename string) 
 		if character.Level != nil {
 			level = *character.Level
 		}
-		if level < int64(def.Level) || (def.CountryByte != 3 && int(def.CountryByte) != enterworld.NativeCountryByte9C(character)) {
+		if level < admissionLevel(def) || (def.CountryByte != 3 && int(def.CountryByte) != enterworld.NativeCountryByte9C(character)) {
 			refusal = fmt.Errorf("quest start: %s is unavailable for this level/country", codename)
 			return false
 		}
@@ -337,12 +341,15 @@ func (rt *Runtime) StartQuest(character *enterworld.Character, codename string) 
 		if suppliesTraps {
 			acceptanceItems = append(acceptanceItems, inventory.ItemAmount{Codename: supply.item, Count: uint32(supply.count)})
 		}
-		if len(acceptanceItems) > 0 {
+		// 897680 takes what it consumes before it grants the delivery, in the
+		// same inventory transaction here.
+		acceptanceTaken := acceptanceConsumption(character, def)
+		if len(acceptanceItems) > 0 || len(acceptanceTaken) > 0 {
 			if rt.PlanInventory == nil {
 				refusal = fmt.Errorf("quest acceptance inventory owner unavailable")
 				return false
 			}
-			rows, frames, err := rt.PlanInventory(character, nil, acceptanceItems)
+			rows, frames, err := rt.PlanInventory(character, acceptanceTaken, acceptanceItems)
 			if err != nil {
 				refusal = inventoryRefusal(def, err)
 				return false
@@ -382,7 +389,7 @@ func (rt *Runtime) StartQuest(character *enterworld.Character, codename string) 
 		next = append(next, character.ActiveQuests...)
 		next = append(next, record)
 		character.ActiveQuests = next
-		if len(acceptanceItems) > 0 {
+		if len(acceptanceItems) > 0 || len(acceptanceTaken) > 0 {
 			updates, _ := rt.applyInventoryChange(character)
 			inventoryFrames = append(inventoryFrames, updates...)
 		}
@@ -421,6 +428,9 @@ type NpcOption struct {
 	// AdvanceNpcQuest (89FDA0's pending bit).
 	SideTalk bool
 	Complete bool
+	// AcceptRowSymbol, on an offer, is its one reply row, which accepts
+	// (QuestSpec.OfferAcceptRowSymbol).
+	AcceptRowSymbol string
 }
 
 /*
@@ -474,7 +484,17 @@ func (rt *Runtime) OptionsForNpc(character *enterworld.Character, npcCodename st
 			continue
 		}
 
-		if active && questNpcMatches(def, def.EndNpcCodename, npcCodename) && (def.Objective == ObjectiveTalk || objectiveMet(character, def, character.ActiveQuests[activeQuestIndex(character, def.RefID)])) {
+		if active && def.HandOverNpcCodename == npcCodename && !handedOver(character.ActiveQuests[activeQuestIndex(character, def.RefID)]) {
+			// 91CA00 at the mission's own NPC: the hand-over, or its
+			// not-delivered line while the items are missing.
+			if deliveryMet(character, def) {
+				completes = append(completes, NpcOption{Codename: handOverToken(def.Codename), TitleSymbol: def.TitleSymbol, PromptSymbol: def.HandOverSymbol, Complete: true})
+			} else if def.NotAchievedSymbol != "" {
+				completes = append(completes, NpcOption{Codename: def.Codename, TitleSymbol: def.TitleSymbol, PromptSymbol: def.NotAchievedSymbol, Informational: true})
+			}
+			continue
+		}
+		if active && rewardNpcMatches(def, npcCodename) && (def.Objective == ObjectiveTalk || objectiveMet(character, def, character.ActiveQuests[activeQuestIndex(character, def.RefID)])) {
 			if len(def.RewardChoices) > 0 {
 				completes = append(completes, rewardChoiceOptions(def, country)...)
 				continue
@@ -487,7 +507,7 @@ func (rt *Runtime) OptionsForNpc(character *enterworld.Character, npcCodename st
 		}
 		// The level gates taking a quest, never reporting one already taken:
 		// a character that lost a level keeps its turn-in (as MarkerStates).
-		if !active && int64(def.Level) <= level && canAcceptAgain(character, def) && prerequisitesMet(character, def) && rt.calendarAvailable(def, false) && questNpcMatches(def, def.StartNpcCodename, npcCodename) {
+		if !active && admissionLevel(def) <= level && canAcceptAgain(character, def) && prerequisitesMet(character, def) && rt.calendarAvailable(def, false) && questNpcMatches(def, def.StartNpcCodename, npcCodename) {
 			prompt := def.OfferPromptSymbol
 			// Native 9206ec..92073f: DifferentString only selects the
 			// after-one-clear offer when the persisted completion count > 0.
@@ -498,7 +518,7 @@ func (rt *Runtime) OptionsForNpc(character *enterworld.Character, npcCodename st
 				Codename: def.Codename, TitleSymbol: def.TitleSymbol,
 				PromptSymbol:         prompt,
 				AcceptResponseSymbol: def.AcceptResponseSymbol, DenyResponseSymbol: def.DenyResponseSymbol,
-				Pages: def.OfferPages, Branches: offerBranchRows(def),
+				Pages: def.OfferPages, Branches: offerBranchRows(def), AcceptRowSymbol: def.OfferAcceptRowSymbol,
 			})
 		}
 		if active && questNpcMatches(def, def.EndNpcCodename, npcCodename) && def.NotAchievedSymbol != "" {
@@ -769,6 +789,7 @@ func (rt *Runtime) completeRewardChoice(character *enterworld.Character, def *De
 				}
 			}
 			consume = append(consume, captureSupplyCleanup(character, def)...)
+			consume = append(consume, exchangeReturns(character, def)...)
 			consume = append(consume, questToolCleanup(character, def)...)
 			var grants []inventory.ItemAmount
 			for _, r := range rewardItemsWithChoice(def, choice) {
@@ -858,6 +879,10 @@ func (rt *Runtime) completeRewardChoice(character *enterworld.Character, def *De
 	frames = append(inventoryFrames, frames...)
 	frames = append(frames, objectiveFrames...)
 	frames = append(frames, experienceFrames...)
+	// 896360 sends its notice before it completes and pays the quest.
+	if advanced == nil && def.CompleteNoticeSymbol != "" {
+		frames = append([]wire.Frame{questNotification(def.CompleteNoticeSymbol)}, frames...)
+	}
 	return OpResult{
 		Frames:    frames,
 		Broadcast: wire.ProgressionBroadcastFrames(experienceFrames),

@@ -130,6 +130,7 @@ export function createHudResources(
 		"ifguildpointup",
 		"ifguildpositiongrant",
 		"ifguildgrantpower",
+		"ifguildgrantpowerslot",
 		"ifallianceguild",
 		"ifguildrelations",
 		"ifhostileguild",
@@ -207,7 +208,8 @@ export function createHudResources(
 		"ifchattingblocking",
 		"ifwhisperblocking",
 		"ifchattingblockingslot",
-		"ifwhisperblockingslot"
+		"ifwhisperblockingslot",
+		"ifcompositeitemwnd"
 	];
 	const layouts = [
 		"ginterface",

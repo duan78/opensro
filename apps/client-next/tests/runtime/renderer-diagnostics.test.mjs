@@ -34,9 +34,17 @@ const { createRenderer } = await import(
 );
 
 const VIDEO = Object.freeze( {
+	renderScale: 100,
 	postProcessing: true,
 	anisotropicFiltering: true,
-	heightFog: false
+	heightFog: false,
+	dynamicSun: false,
+	terrainRelief: false,
+	texturedHorizon: false,
+	floatBloom: false,
+	hdrToneMap: false,
+	sunShadow: false,
+	perPixelLighting: false
 } );
 
 /*

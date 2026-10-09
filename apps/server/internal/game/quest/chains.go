@@ -22,15 +22,21 @@ import (
 prerequisitesMet
 
 An active requirement cannot be satisfied by an already completed quest.
-Every required quest must be completed; of the any-of list, one.
+Every required quest must be completed, as many times as its count asks;
+every required ended quest must be ended and never completed; of the
+any-of list, one.
 ================
 */
 func prerequisitesMet(c *enterworld.Character, def *Definition) bool {
 	if def.AcceptanceUnavailable != "" {
 		return false
 	}
-	for _, id := range def.RequiredQuestIDs {
-		if !questCompleted(c, id) {
+	for i, id := range def.RequiredQuestIDs {
+		need := uint32(1)
+		if i < len(def.RequiredQuestCompletions) {
+			need = def.RequiredQuestCompletions[i]
+		}
+		if !questCompleted(c, id) || completionCount(c, id) < need {
 			return false
 		}
 	}
@@ -39,9 +45,53 @@ func prerequisitesMet(c *enterworld.Character, def *Definition) bool {
 			return false
 		}
 	}
+	for _, id := range def.RequiredEndedQuestIDs {
+		if !questEnded(c, id) || completionCount(c, id) > 0 {
+			return false
+		}
+	}
+	if !heldItemsMet(c, def) {
+		return false
+	}
 	return len(def.RequiredAnyQuestIDs) == 0 || slices.ContainsFunc(def.RequiredAnyQuestIDs, func(id uint32) bool {
 		return questCompleted(c, id)
 	})
+}
+
+/*
+================
+heldItemsMet
+
+9262A0 under flag 4: every RequiredHeldItems codename held at least once
+(CountItemByCodename > 0), and one of RequiredAnyHeldItems when listed.
+The count's location argument (2) is taken to mean the bag: inference, as
+every item these lists name is a quest item that only the bag holds.
+================
+*/
+func heldItemsMet(c *enterworld.Character, def *Definition) bool {
+	for _, code := range def.RequiredHeldItems {
+		if captureItemCount(c, code) == 0 {
+			return false
+		}
+	}
+	return len(def.RequiredAnyHeldItems) == 0 || slices.ContainsFunc(def.RequiredAnyHeldItems, func(code string) bool {
+		return captureItemCount(c, code) > 0
+	})
+}
+
+/*
+================
+admissionLevel
+
+The lowest level that may take def: its MinLevel when the class sets one,
+else the questdata level.
+================
+*/
+func admissionLevel(def *Definition) int64 {
+	if def.MinLevel > 0 {
+		return int64(def.MinLevel)
+	}
+	return int64(def.Level)
 }
 
 /*

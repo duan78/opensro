@@ -1,6 +1,7 @@
 """
 ===========================================================================
-test_quest_text_evidence.py - multiline quest text and versioned reward precedence
+test_quest_text_evidence.py - multiline quest text, versioned reward precedence
+and delivery mission items
 
 Synthetic text tables exercise the production importer and reward projector.
 The older popup owns advertised counts; newer SQL supplies unspecified values
@@ -15,7 +16,7 @@ import unittest
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "build"))
 from import_quest_text_evidence import advertised_rewards, plain, read_table
-from generate_compiled_quests import Unsupported, rewards
+from generate_compiled_quests import Unsupported, delivery_items, project, rewards
 
 
 # ================
@@ -104,6 +105,90 @@ class QuestTextEvidenceTests(unittest.TestCase):
 				with self.assertRaisesRegex(Unsupported, "reward " + field):
 					rewards("QUEST", {"reward": advertised_rewards("보상 인벤토리 2칸")}, {"QUEST": row})
 
+	# ================
+	# test_delivery_items_pair_each_codename_with_its_quantity
+	#
+	# +0x19 is the number of items, not a quantity: QNO_CA_HORSE_3 hands
+	# over thirty of its one item.
+	# ================
+	def test_delivery_items_pair_each_codename_with_its_quantity(self):
+		text = {"objectives": {}}
+		lone = {"fields": {"0xd": "SN_CON_LONE", "0x19": 1, "0x1a": 30, "0x42": "ITEM_LEATHER"}}
+		self.assertEqual(delivery_items(text, lone), [{"ItemCodename": "ITEM_LEATHER", "Count": 30}])
+		pair = {"fields": {"0x19": 2, "0x1a": 1, "0x1e": 4, "0x42": "ITEM_MEDICINE", "0x46": "ITEM_LETTER"}}
+		self.assertEqual(delivery_items(text, pair), [
+			{"ItemCodename": "ITEM_MEDICINE", "Count": 1}, {"ItemCodename": "ITEM_LETTER", "Count": 4}])
+
+	# ================
+	# test_delivery_line_count_wins_for_a_lone_item
+	# ================
+	def test_delivery_line_count_wins_for_a_lone_item(self):
+		text = {"objectives": {"SN_CON_LONE": {"count": 50}}}
+		lone = {"fields": {"0xd": "SN_CON_LONE", "0x19": 1, "0x1a": 60, "0x42": "ITEM_PADDLE"}}
+		self.assertEqual(delivery_items(text, lone), [{"ItemCodename": "ITEM_PADDLE", "Count": 50}])
+
+	# ================
+	# test_delivery_item_without_a_quantity_is_unsupported
+	# ================
+	def test_delivery_item_without_a_quantity_is_unsupported(self):
+		text = {"objectives": {}}
+		for fields in ({"0x19": 1, "0x42": "ITEM_LEATHER"}, {"0x19": 2, "0x1a": 1, "0x42": "ITEM_LEATHER"}, {"0x1a": 1}):
+			with self.subTest(fields=fields):
+				with self.assertRaises(Unsupported):
+					delivery_items(text, {"fields": fields})
+
+	# ================
+	# test_delivery_keeps_items_only_when_the_mission_clears_0x111
+	#
+	# 91CA00 removes the delivered items while +0x111 is set, the
+	# constructor's default; the importer records only explicit writes.
+	# ================
+	def test_delivery_keeps_items_only_when_the_mission_clears_0x111(self):
+		text = {"objectives": {}, "reward": advertised_rewards("")}
+		sql = {"QUEST": sql_reward() | {"items": [], "inventorySlots": 0}}
+		for written, kept in ((None, False), (1, False), (0, True)):
+			with self.subTest(written=written):
+				fields = {"0x9": 3, "0x15": "NPC_END", "0x19": 1, "0x1a": 1, "0x42": "ITEM_LEATHER", "0xc0": "SN_HAND_OVER", "0x110": 1}
+				if written is not None:
+					fields["0x111"] = written
+				quest = {
+					"words": {"0x130": "SN_OFFER"}, "lists": {}, "overrides": [],
+					"tables": {"0xc2": {"flags": 2}, "0xc4": {"0x8": "NPC_START"}}, "missions": [{"fields": fields}],
+				}
+				spec = project("QUEST", quest, text, sql)
+				self.assertEqual(spec.get("DeliveryKeepsItems", False), kept)
+				self.assertNotIn(None, spec.values())
+
+
+	# ================
+	# test_two_leg_delivery_hands_over_then_reports_to_the_start_npc
+	#
+	# +0x110 clear (the 872040 default): 91CA00 latches at the mission NPC
+	# and gives +0x6A/+0x93/+0x6B back; the quest pays at its start NPC with
+	# the ACHIEVED word. +0x110 set keeps the one-leg turn-in.
+	# ================
+	def test_two_leg_delivery_hands_over_then_reports_to_the_start_npc(self):
+		text = {"objectives": {}, "reward": advertised_rewards("")}
+		sql = {"QUEST": sql_reward() | {"items": [], "inventorySlots": 0}}
+		fields = {
+			"0x9": 3, "0x15": "NPC_HAND_OVER", "0x19": 1, "0x1a": 1, "0x42": "ITEM_FIRECRACKERS",
+			"0xc0": "SN_HAND_OVER", "0x6a": 1, "0x6b": 1, "0x93": "ITEM_RECEIPT", "0xc8": "SN_EXCHANGE_FULL",
+		}
+		quest = {
+			"words": {"0x130": "SN_OFFER", "0x134": "SN_ACHIEVED"}, "lists": {}, "overrides": [],
+			"tables": {"0xc2": {"flags": 2}, "0xc4": {"0x8": "NPC_START"}}, "missions": [{"fields": fields}],
+		}
+		spec = project("QUEST", quest, text, sql)
+		self.assertEqual((spec["HandOverNpcCodename"], spec["HandOverSymbol"]), ("NPC_HAND_OVER", "SN_HAND_OVER"))
+		self.assertEqual((spec["EndNpcCodename"], spec["CompletePromptSymbol"]), ("NPC_START", "SN_ACHIEVED"))
+		self.assertEqual(spec["ExchangeItems"], [{"ItemCodename": "ITEM_RECEIPT", "Count": 1}])
+		self.assertEqual(spec["ExchangeFullSymbol"], "SN_EXCHANGE_FULL")
+		one_leg = project("QUEST", quest | {"missions": [{"fields": fields | {"0x110": 1}}]}, text, sql)
+		self.assertNotIn("HandOverNpcCodename", one_leg)
+		self.assertEqual((one_leg["EndNpcCodename"], one_leg["CompletePromptSymbol"]), ("NPC_HAND_OVER", "SN_HAND_OVER"))
+		quest["words"].pop("0x134")
+		with self.assertRaisesRegex(Unsupported, "achieved line"):
+			project("QUEST", quest, text, sql)
 
 if __name__ == "__main__":
 	unittest.main()

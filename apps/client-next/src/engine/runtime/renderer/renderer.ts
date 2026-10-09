@@ -152,8 +152,15 @@ export function createRenderer(
 		================
 		*/
 		experimentalVideo( value ) {
+			const hdrChanged = value.hdrToneMap !== experimental.hdrToneMap;
 			experimental = value;
 			device.experimentalVideo( value );
+			if ( hdrChanged && draw ) {
+				// The fullscreen image draw carries its pipeline; re-upload
+				// it in the new scene format.
+				device.images()?.release( draw );
+				draw = null;
+			}
 			frame = null;
 		},
 		setFootprints: world.footprints,
@@ -495,7 +502,8 @@ export function createRenderer(
 					video.records[video.active][12] === 1
 				);
 				scene.environment[83] = video.records[video.active][6] === 1 ? 1 : 0;
-				device.worldView( scene.matrix, scene.environment );
+				const shadowOn = experimental.sunShadow && !preview;
+				device.worldView( scene.matrix, scene.environment, shadowOn );
 				presentationCamera = {
 					regionId: scene.originRegion,
 					x: scene.camera.eye[0],
@@ -627,7 +635,17 @@ export function createRenderer(
 							world.night()
 						),
 					targetSurface = surface;
-				const color = surface.acquire( viewport, experimental.postProcessing || !!deferredPlan?.query );
+				// Port-only, not native. Experimental owns the opt-in; 100 keeps
+				// the native surface and pass order. UI keeps its full resolution.
+				const renderScale = experimental.renderScale,
+					scaled = renderScale < 100,
+					sceneWidth = Math.max( 1, Math.round( viewport.width * renderScale / 100 ) ),
+					sceneHeight = Math.max( 1, Math.round( viewport.height * renderScale / 100 ) ),
+					color = surface.acquire(
+						viewport,
+						experimental.postProcessing || !!deferredPlan?.query,
+						renderScale
+					);
 				const finishDeferred = ( results?: readonly boolean[] ) => {
 					if ( disposed ) throw Error( "Renderer disposed during particle query" );
 					characters.completeDeferred( results );
@@ -677,8 +695,19 @@ export function createRenderer(
 					),
 					liveCharacters = staleDraws.live( "characters", characterDraws ),
 					liveShadows = staleDraws.live( "character-shadows", shadowDraws );
+				// Experimental > Lighting > Sun shadows: the cascade follows the
+				// same light the shader shades with (the pinned diagonal, or the
+				// packed arc direction under Moving sunlight), centred on the
+				// eye. Opaque world objects and characters cast; terrain, water
+				// and everything blended stays out, and the silhouette
+				// projections stand beside it.
+				const sunShadow = device.sunShadow(),
+					shadowLight = experimental.dynamicSun ?
+						[ scene.environment[84]!, scene.environment[85]!, scene.environment[86]! ] :
+						[ 0.70710678, 0.70710678, 0 ];
+				sunShadow.prepare( shadowOn, scene.camera.eye, shadowLight );
 				const pending = frame!.draw(
-					color,
+					scaled ? targetSurface.frameView() : color,
 					draw ?? (scene.sky ? device.sky() ?? undefined : undefined),
 					staleDraws.single( "mesh", meshDraw ?? undefined ),
 					surface.depth(),
@@ -694,7 +723,7 @@ export function createRenderer(
 						...(preview ? [] : staleDraws.live( "weather", scene.weatherDraws ?? [] ))
 					],
 					device.ui( projectedUi ),
-					preview ? liveCharacters : [],
+					preview ? device.geometry()!.hdrPreview( liveCharacters ) : [],
 					scene.flares && video.records[video.active][10] === 1 ?
 						device.flares( scene.flares, surface.depth() ) :
 						undefined,
@@ -712,13 +741,34 @@ export function createRenderer(
 					partyDraws,
 					frameId,
 					deferredPass,
-					device.bloom( viewport.width, viewport.height, !preview && video.records[video.active][11] === 1 ),
+					device.bloom( sceneWidth, sceneHeight, !preview && video.records[video.active][11] === 1 ),
 					device.geometry()!.waterReflection( {
 						matrix: scene.reflectionMatrix,
 						height: scene.waterHeight ?? 0,
 						above: scene.camera.eye[1] >= (scene.waterHeight ?? 0),
 						seconds: timeSeconds
 					}, [ ...scene.draws, ...(preview ? [] : liveCharacters) ] ),
+					{
+						hdr: device.hdr( sceneWidth, sceneHeight, experimental.hdrToneMap ),
+						sceneScale: scaled ?
+							{
+								view: color,
+								frameDepth: targetSurface.frameDepth(),
+								resolve: ( encoder, target ) =>
+									device.upscale().encodeUpscale( encoder, color, target ),
+								resolveDepth: encoder =>
+									device.upscale().encodeDepthUpscale(
+										encoder,
+										targetSurface.depth(),
+										targetSurface.frameDepth()
+									)
+							} :
+							undefined,
+						sunShadow,
+						casters: shadowOn ?
+							[ ...opaqueDraws, ...(preview ? [] : liveCharacters.filter( draw => !draw.blended )) ] :
+							[]
+					},
 					targetSurface
 				);
 				probe?.renderMark( "submit" );

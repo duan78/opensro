@@ -19,6 +19,12 @@ Ninety-one v1.150 quests are hand-written C++ classes in the v1.188
 - `sql-rewards-source.json`: the newer server's `refqusetreward` and
   `refquestrewarditems` rows for the same quests.
 
+The HLIL and methods dumps the class snapshot is imported from are kept
+outside the product, in `research/investigations/quest/compiled-dumps/`
+(`compiled_hlil.json`, sha256 `1a23832e...`, the snapshot's `dumpSHA256`, and
+`compiled_methods.json`, with `SHA256SUMS`). Re-importing them must reproduce
+`compiled-quests-source.json` byte for byte.
+
 ```text
 python -B scripts/build/import_compiled_quest_evidence.py --hlil <dump> --methods <dump>
 python -B scripts/build/import_quest_text_evidence.py --textdata <v1.150-textdata> --sql <SR_GameRefData>
@@ -39,8 +45,26 @@ of a quest whose popup advertises none, as they did for the script-backed
 the importer joins them into one record.
 
 Lists: 0xF3 completion NPCs, 0xF7 quest NPCs, 0x102 every quest completed,
-0x10C quests active, 0x114 any one quest completed
-(`CBasicQuest_MeetsPrerequisites` 9262A0). 0x108 and 0x110 are not yet read.
+0x10C quests active, 0x114 any one quest completed, 0x108 quests ended and
+never completed (`CBasicQuest_MeetsPrerequisites` 9262A0; the server's
+`EndedQuestIds`). 0x110 is not yet read.
+A 0x102 entry must be completed as many times as its byte at +0x418 says
+(one byte per entry, 1 by default). The importer records such byte and word
+writes as `"0x106.b"`, keeping a value read at run time as null. The generator
+projects the first entry's count as `RequiredQuestCompletions`, and refuses
+any other field that differs from the constructor's default (91E200), such
+as 0x15B/0x15C, which tie the quest to an instance world.
+The condition table (0xC2) gates the offer through its flag word, which the
+initializer sets through a pointer copy (`*eax |= 1`); the importer records
+it as the table's `flags`. Flag 1 admits from +0x4, projected as `MinLevel`
+(+0x23 is the questdata level, which only picks the marker); flag 2 checks
+the repeat limit and the lists; 0x100 is the country. The generator refuses
+any other flag, a condition the port does not check. Flag 4 requires held
+items: every one of the vector the initializer pushes at +0x28 (begin/end
++0x2C) and, when listed, one of +0x38 (+0x3C), projected as
+`RequiredHeldItems` / `RequiredAnyHeldItems`. The importer records those pushes
+as the table's `"0x28"` / `"0x38"` lists, whether the initializer names the
+table `arg3[0xc2]` or `*(arg1 + 0x308)`.
 
 A class that overrides vtable slots has custom behaviour (NPC talk at +0x58,
 dialogue at +0x90, the capture escort's +0x80/+0x9C/+0xA8 timers and events).
@@ -55,5 +79,7 @@ gather from NPC, 6 dialog, 8 capture, 9 other quest cleared, 10 change item,
 +0x1D monsters (stride 4), +0x14D drop percent (float, one per monster), +0x23D
 count, +0x241 item, +0x249 losing the item regresses the quest
 (QuestBase_RefreshMissionProgressAndCompletion 9259C0). Kill: +0x15 monster
-count, +0x19 monsters, +0x149 count. Deliver: +0x19 item count, +0x42 items,
-+0xC0 the hand-over line. Dialog: +0x1E the line.
+count, +0x19 monsters, +0x149 count. Deliver: +0x19 (byte) the number of
+items, +0x42 their codenames and +0x1A their quantities (stride 4, the pairs
+9208D0 grants), +0xC0 the hand-over line, +0xC4 the not-yet-delivered line.
+Dialog: +0x1E the line.
