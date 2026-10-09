@@ -446,7 +446,22 @@ changer une seule rangée native (répliquer les quatre tests contre la
 nouvelle tête AVANT de rouvrir), ou un prédicat dédié à la forme
 atfe-interleavée à côté du contrat natif intact.
 
-## Le reste (carte actualisée après s26)
+## Session 27 — le prédicat dédié écrit À CÔTÉ du contrat natif ; natif 100 % vert, la rangée ne épingle pas encore
+
+Le prédicat `interleavedPartyHoT` (la forme atfe, dura, puls, efr,
+eshp, heal + queue ordinaire, tolérance de durée s25) est posé AVANT
+le contrat natif dans `parseHealOverTime` — qui reste INTACT mot pour
+mot en dessous. Les quatre tests natifs qui avaient cassé la
+restructuration s26 sont **tous verts** sur cet arbre (TestHealOverTime×2,
+RecoveryDivision×2 + package complet). La rangée n'épingle pas
+encore : une porte DANS le prédicat lui-même refuse (les candidats :
+l'ordre de mes cases — la queue après heal passe par healProgramTail
+depuis l'intérieur du switch, ou partyRecoveryArea kind-2 — à
+instrumenter en tête de s28 avec un print par case). La voie sûre est
+prouvée : prédicat dédié + contrat natif intact = zéro test natif
+cassé, contrairement à la restructuration s26.
+
+## Le reste (carte actualisée après s27)
 
 1. BINGPAN : la porte duration (preuve du vide natif d'abord).
 2. BINGBYEOK/HWABYEOK : forme timed onff/wp.

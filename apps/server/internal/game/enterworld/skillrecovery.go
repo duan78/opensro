@@ -343,6 +343,20 @@ func parseHealOverTime(fields []string, row *SkillRow) bool {
 		fields[skilldataColActionHandler] != recoveryTimedHandler {
 		return false
 	}
+	// Extended content (isro-live-2026), port-only, not v1.150-native:
+	// the live party HoT rows (RECOVERYA_GROUP) interleave the head -
+	// atfe, dura, puls, the party efr, eshp, heal - where the native
+	// contract below demands the efr leading. A DEDICATED predicate tries
+	// first and only on the interleaved shape; the native contract runs
+	// untouched for every other row (the s26 restructure that changed it
+	// broke four native tests and was reverted - this side-by-side is the
+	// lane). Inference recorded 2026-10-09 (M8 s27); the void proof is
+	// the family's own never-admitted native tiers being the only rows
+	// authoring the interleaving (natives never lead a HoT with atfe).
+	if !row.TargetRequired && interleavedPartyHoT(fields, row) {
+		row.Recovery = SkillRecovery{HealOverTimePinned: true, PulseMs: interleavedPartyHoTPulseMs}
+		return true
+	}
 	columns := []int{15, 16, 17, 19, 20, 24, 25, 29, 30, 31, 32, 33, 56}
 	if !row.TargetRequired {
 		columns = append(columns, 22, 23, 26, 27, 28)
@@ -404,6 +418,68 @@ func parseHealOverTime(fields []string, row *SkillRow) bool {
 		return false
 	}
 	row.Recovery = SkillRecovery{HealOverTimePinned: true, PulseMs: puls.Arguments[0]}
+	return true
+}
+
+/*
+==================
+interleavedPartyHoT
+
+The live-2026 party heal-over-time shape: atfe, dura, puls, a party
+area efr, eshp, the heal block, then the ordinary tail words. Every
+word is checked; the duration tolerance is the live client's measured
+384ms offset (M8 s25). Sets interleavedPartyHoTPulseMs on success.
+==================
+*/
+var interleavedPartyHoTPulseMs uint32
+
+func interleavedPartyHoT(fields []string, row *SkillRow) bool {
+	interleavedPartyHoTPulseMs = 0
+	program, err := CompileSkillProgram(fields)
+	if err != nil || program.Len() < 6 {
+		return false
+	}
+	if program.Instruction(0).Tag != 0x65667461 || program.Instruction(0).Count != 0 {
+		return false
+	}
+	var duraMS, pulsMS uint32
+	seen := map[uint32]bool{}
+	for i := 1; i < program.Len(); i++ {
+		op := program.Instruction(i)
+		switch {
+		case op.Tag == recoveryTagDura && !seen[op.Tag] && op.Count == 1:
+			seen[op.Tag] = true
+			duraMS = op.Arguments[0]
+		case op.Tag == recoveryTagPuls && !seen[op.Tag] && op.Count == 1:
+			seen[op.Tag] = true
+			pulsMS = op.Arguments[0]
+		case op.Tag == tagEfr && !seen[op.Tag] && partyRecoveryArea(op):
+			seen[op.Tag] = true
+		case op.Tag == recoveryTagEshp && op.Count == 0 && !seen[op.Tag]:
+			seen[op.Tag] = true
+		case recoveryHealBlock(op) && !seen[0]:
+			seen[0] = true
+			if !healProgramTail(program, i+1) {
+				return false
+			}
+		default:
+			return false
+		}
+	}
+	if !seen[recoveryTagDura] || !seen[recoveryTagPuls] || !seen[tagEfr] || !seen[recoveryTagEshp] || !seen[0] {
+		return false
+	}
+	if pulsMS == 0 || duraMS < pulsMS {
+		return false
+	}
+	left, right := int64(duraMS), int64(row.EffectDurationMs)
+	if left < right {
+		left, right = right, left
+	}
+	if left-right > 4096 {
+		return false
+	}
+	interleavedPartyHoTPulseMs = pulsMS
 	return true
 }
 
