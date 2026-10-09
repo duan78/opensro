@@ -226,7 +226,21 @@ spécifiée du jalon : case preemptive de `skilltimedeffect.go`
 (relâcher `targeted || result.Area.Present` pour l'efr kind 3),
 installation dans la marche groupe, preuve du vide.
 
-## Le reste (carte actualisée après s13)
+## Session 14 — la preuve du vide HARMONY faite : 21/21 rangées natives = la famille elle-même
+
+Mesuré sur le catalogue natif complet : **21 rangées natives portent
+`pola` ET un `efr` — toutes sont WATER_HARMONY** (les paliers A/B/D
+1-90, jamais admis par ce port). Le relâchement de la clause self-only
+de la case preemptive (pour l'efr kind 3) basculerait donc exactement
+les ancêtres jamais-admis de la même famille + les 13 rangs 2026 — le
+même profil « complétion de port » que BINGPAN s5 (aucune rangée admise
+ne change de genre). La preuve est faite et archivée ici ; il reste
+l'implémentation : la relaxation de la case + l'installation de la
+garde dans la marche groupe de la lane timed (le chemin du HoT
+parti) + les tests deux réglages. C'est une session complète de code
+— pas tentée à bout de contexte. Aucun rang basculé.
+
+## Le reste (carte actualisée après s14)
 
 1. BINGPAN : la porte duration (preuve du vide natif d'abord).
 2. BINGBYEOK/HWABYEOK : forme timed onff/wp.
