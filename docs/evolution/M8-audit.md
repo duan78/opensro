@@ -1044,11 +1044,40 @@ quatre paquets verts, check source PASSED, gate serveur forcée PASS
 (deux corrections en route : un staticcheck S1002 et l'ordre
 abnb/st).
 
-## Le reste (carte actualisée après s43)
+## Amorce s44 — REBIRTHA_SPECIAL DÉCODÉ ENTIÈREMENT : rmut = le skill que la résurrection démarre
 
-1. **REBIRTHA_SPECIAL (2)** : résurrection mutilée tmur (l'état avec
-   chute HP/MP à l'expiration — le clamp d'expiration du lane item est
-   le précédent). Puis la traîne joueur (~245).
+La pièce manquante était déjà dans le repo : `skillabnormal.go` décode
+`rmut` (+0x4AC) comme « the skill a revival starts » — et
+**tmur{10276} = l'ID de SKILL_EU_CLERIC_REBIRTHA_SPECIAL_B_BUFF_02,
+vérifié au mot près**. La famille est auto-contenue :
+
+- **B_02 (m=100, ciblé allié+DeadBody)** : `rmut{10276} heal{0,100}
+  resu{120,30}` — résurrection (plafond niveau 120, EXP 30 %,
+  restauration HP 100 %) qui DÉMARRE le skill 10276 sur la cible.
+- **B_BUFF_02 = le skill 10276, l'état d'âme mutilée** (non ciblé,
+  120 s, cast 2834 ms) : `dura hpi{0,75} odar{12,75} chrch{50}
+  crmc{50} msch{4,0} pmdg{120000,50,50,2} cks{0,18,0}` — tout se lit
+  sur le tooltip : **pmdg = l'attaque −50 % phys/mag** (« reduced
+  attack power »), **odar{12,75} = dégâts subis −75 %** (« greatly
+  increased defense »), chrch/crmc = récupérations +50, hpi{0,75} =
+  PV max +75 %, msch{4,0} = le changement d'état, cks = annulation,
+  et « when the state ends, HP and MP drastically decrease » = la
+  chute à l'expiration (précédent : le clamp d'expiration du lane
+  item).
+
+**Le coût honnête** : 2 rangées pour (a) la résurrection ciblée — le
+lane de base reste à vérifier (des familles REBIRTH natives traînent
+encore dans les échantillons non-admis), (b) le mécanisme rmut
+(démarrer un skill sur la cible), (c) l'admission de l'aura d'état
+(cinq mots : hpi sur skill, chrch, crmc, msch, cks), (d) la chute
+d'expiration. Deux sessions de machinerie mort-résurrection pour deux
+rangées — derrière elle ne reste que la traîne (~245).
+
+## Le reste (carte actualisée après s44)
+
+1. **REBIRTHA_SPECIAL (2)** : amorce s44 ci-dessus — entièrement
+   décodée (rmut=10276 vérifié, les cinq mots de l'état nommés) ;
+   deux sessions de machinerie. Puis la traîne joueur (~245).
 2. **La traîne joueur (~270−15 rangées)** : les familles 2-5 de
    l'histogramme, une à une après les trois lanes.
 3. **Décision owner de périmètre (nouveau s39)** : ~180 rangées
