@@ -16,8 +16,15 @@ type Link struct {
 	// ManaPercent and ManaCap are lkdh's MP share of the recipient's dealt
 	// damage and its per-hit ceiling (Mana Switch); zero means no share.
 	ManaHPPercent, ManaPercent, ManaCap uint32
-	ExpiresAtMs, StartedAtMs            int64
-	ClientCancelable                    bool
+	// Redirect is lkdr, the extended damage-redirection link past the cap
+	// (M8 s41): RedirectMask is the lane (4 physical, 8 magical) and
+	// RedirectPercent the share of the recipient's taken damage of that
+	// lane diverted to the source.
+	Redirect                 bool
+	RedirectMask             uint32
+	RedirectPercent          uint32
+	ExpiresAtMs, StartedAtMs int64
+	ClientCancelable         bool
 	// TargetModifiers are the recipient half's parameter writes (594AC0 in
 	// mode 2: stri/inti). 594F53 skips them for the source half, so a link
 	// never carries source modifiers.
@@ -185,6 +192,42 @@ func (r *Registry) Links() []Link {
 		out = append(out, l)
 	}
 	return out
+}
+
+/*
+==================
+RedirectLinks
+
+The logically active links whose recipient is target and that divert a
+share of target's TAKEN damage of a lane to the source (lkdr), and
+held, the number of links target receives of any kind. The defensive
+mirror of ManaLinks (which pays the source from dealt damage); the
+native DistributeSharedDamage division does not apply here - the
+diverted share is computed per link from the struck formulas, and each
+warrior owns its own share. A stop disables the diversion at once.
+==================
+*/
+func (r *Registry) RedirectLinks(division, target string, nowMs int64) (links []Link, held int) {
+	if r == nil {
+		return nil, 0
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	key := ownerKey(division, target)
+	var out []Link
+	for _, e := range r.byOwner[key] {
+		if e.LinkToken == 0 || e.Phase != 2 || e.StopRequested {
+			continue
+		}
+		held++
+		l, ok := r.links[linkKey(division, e.LinkToken)]
+		if !ok || !l.Redirect || l.sourceRetired || l.targetRetired || (Effect{ExpiresAtMs: l.ExpiresAtMs}).Expired(nowMs) {
+			continue
+		}
+		l.TargetModifiers = Modifiers{}
+		out = append(out, l)
+	}
+	return out, held
 }
 
 // ThreatLink is the installed, logically active target effect. A stop disables

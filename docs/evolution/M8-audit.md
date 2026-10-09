@@ -966,11 +966,52 @@ les recopie), `RedirectLinks`, et le crochet dans
 monsterStrikePlayer : diversion avant le commit, débit guerrier dans
 sa porte, trames vitals des deux côtés.
 
-## Le reste (carte actualisée après s39)
+## Session 42 — GUARDA livré : le lien de redirection de dégâts (+9, 83,6 %)
 
-1. **Les trois amorces s39 ci-dessus** (lkdr redirection, garde
-   réactive à stun, résurrection mutilée) : une par session, taille
-   s34 chacune.
+Écrit selon l'amorce s41 complète, pièce par pièce :
+
+1. **Parseur** : `tagTimedLinkedRedirect = 0x6c6b6472` dans le walk
+   timed — Link.Present requis (lnks lu en premier), masque ∈ {4, 8},
+   part 1..100, mot 2 = 0, plancher maîtrise ≥ 91 en cellules brutes ;
+   l'épinglage compte `Link.Redirect`. Neuf rangées past-90 épinglées
+   (PHYSICAL A_12..A_15, MAGIC A_10..A_14), les tiers natifs m=30..88
+   épargnés (tests dédiés). Découverte en passant : la variante
+   GUARDA_MAGIC_BLOCK est une AUTRE famille (la traîne).
+2. **Les deux structs de lien** : Redirect/RedirectMask/RedirectPercent
+   sur SkillEffectLink et statuseffect.Link ; l'install les recopie ;
+   `RedirectLinks(division, victime, now)` mirror de ManaLinks (byOwner
+   du RECIPIENT, phase 2, non stoppé, non expiré).
+3. **Le crochet** (action/linkedredirect.go, intégré à
+   monsterStrikePlayer) : `scaleLinkedRedirect` réduit CHAQUE formule
+   résolue de la voie masquée (MagicalDamage != 0 = voie magique) de
+   sa part AVANT le commit — une frappe qui n'atterrit pas détourne
+   rien ; `commitLinkedRedirect` débite le guerrier dans SA porte une
+   fois la frappe commise, avec trames vitales privées. **Borne v1
+   enregistrée** : la diversion blesse mais ne tue jamais le
+   protecteur (débit tenu à 1 PV) — la mort du protecteur appartient
+   à la machinerie complète du chemin de frappe, qu'un débit latéral
+   ne doit pas singer. Preuve du vide PAR CONSTRUCTION : aucun natif
+   n'épingle lkdr → aucun lien redirect n'existe en natif → le crochet
+   est inopérant pour chaque frappe native.
+
+Test runtime : le lien installé par le ApplyLink EXPORTÉ du registre
+(pas de cast nécessaire), trois formules (physique masquée 1000,
+magique non masquée 500, physique bloquée 100) → le guerrier prend
+440, la victime 600/500/60 ; la borne 1 PV tenue. Tests natifs :
+plancher (9 rangées, masques 4|8, parts 33..75) et vide (aucune
+rangée épingle le lien).
+
+**Couverture : 83,3 → 83,6 %** (2509/3002, +9 exact). Gates :
+enterworld+action+statuseffect verts, check source PASSED, gate
+serveur forcée PASS (le gofmt d'un fichier de test a cassé la première
+passe — corrigé).
+
+## Le reste (carte actualisée après s42)
+
+1. **SOULA_STUNLINK (5)** : garde réactive à stun — crochet dans le
+   chemin monstre-attaque-joueur (le même site que le redirect s42,
+   côté roll de statuts). **REBIRTHA_SPECIAL (2)** : résurrection
+   mutilée tmur. Une par session, taille s34.
 2. **La traîne joueur (~270−15 rangées)** : les familles 2-5 de
    l'histogramme, une à une après les trois lanes.
 3. **Décision owner de périmètre (nouveau s39)** : ~180 rangées

@@ -30,6 +30,7 @@ const (
 	tagTimedLinkedThreat       = 0x6c6b6167
 	tagTimedLinkPerTarget      = 0x6c6b7332
 	tagTimedLinkedDamage       = 0x6c6b6468
+	tagTimedLinkedRedirect     = 0x6c6b6472
 	tagTimedRequireNot         = 0x7265716e
 	tagTimedMaxHP              = 0x687069
 	tagTimedAttack             = 0x61706175
@@ -289,6 +290,12 @@ type SkillEffectLink struct {
 	PerTarget                           bool
 	Mana                                bool
 	ManaHPPercent, ManaPercent, ManaCap uint32
+	// Redirect is lkdr, the extended damage-redirection link past the cap
+	// (M8 s41): RedirectMask is the lane (4 physical, 8 magical - att's own
+	// bits), RedirectPercent the share diverted to the source (33..75).
+	Redirect        bool
+	RedirectMask    uint32
+	RedirectPercent uint32
 }
 
 // The hr, ru and summ instruction tags (big-endian ASCII, as the program
@@ -586,6 +593,29 @@ func parseSkillTimedEffect(fields []string, row *SkillRow) {
 			}
 			linkDamage = true
 			linkDamageWords = [3]uint32{op.Arguments[0], op.Arguments[1], op.Arguments[2]}
+		case tagTimedLinkedRedirect:
+			// Extended content (isro-live-2026), port-only, not v1.150-native
+			// (M8 s41): lkdr {laneMask, sharePercent, 0} - the live GUARDA
+			// tiers past the cap divert a share of the protected member's
+			// damage of the masked lane to the warrior ("you divert part of
+			// physical damage from one member to yourself"). Word 0 is the
+			// lane mask (4 physical, 8 magical - att's own bits, confirmed by
+			// the two lines' groups), word 1 the share (33..75 by tier), word
+			// 2 always zero. The v1.150 catalogue authors the same shape on
+			// the family's cap-90 tiers, so admission carries the extended
+			// mastery floor - no v1.150 row reaches it, which also makes the
+			// runtime hook void-safe by construction: no native row can ever
+			// hold a redirect link.
+			if !result.Link.Present || result.Link.Redirect || op.Count != 3 ||
+				op.Arguments[0] != 4 && op.Arguments[0] != 8 ||
+				op.Arguments[1] == 0 || op.Arguments[1] > 100 || op.Arguments[2] != 0 ||
+				textdataNonNegative(fields[skilldataColReqMasteryLv1]) < extendedPastCapMastery &&
+					textdataNonNegative(fields[skilldataColReqMasteryLv2]) < extendedPastCapMastery {
+				return
+			}
+			result.Link.Redirect = true
+			result.Link.RedirectMask = op.Arguments[0]
+			result.Link.RedirectPercent = op.Arguments[1]
 		case tagTimedDamageToMP:
 			if result.DamageToMP || op.Count != 1 || op.Arguments[0] > maxDamageToMPPercent {
 				return
@@ -732,7 +762,7 @@ func parseSkillTimedEffect(fields []string, row *SkillRow) {
 	}
 	result.Pinned = duration && (attributes || defense || movement || result.Block.Present || result.Strength.Present ||
 		result.Intellect.Present || result.IncomingReduction || result.HitRate || result.Range || result.Hawk.Present ||
-		result.Link.Present && (result.Link.Threat || result.Link.Mana) || result.Preemptive.Present ||
+		result.Link.Present && (result.Link.Threat || result.Link.Mana || result.Link.Redirect) || result.Preemptive.Present ||
 		result.DamageReturn.Present || result.Evasion.Present || result.Stance.Present ||
 		result.DamageToMP || result.Reat.Mask != 0 || result.Real.Mask != 0)
 	result.Targeted = targeted

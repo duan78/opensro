@@ -137,6 +137,11 @@ func (rt *Runtime) monsterStrikePlayer(in monsterStrikeInput, character, snapsho
 	if err := rt.planStrikeDisplacement(&strike, actor, in.origin(), pose); err != nil {
 		return out
 	}
+	// Extended content (isro-live-2026), port-only, not v1.150-native
+	// (M8 s42): scale the victim's resolved damage down by each live
+	// redirect link's share BEFORE the commit; a strike that never lands
+	// diverts nothing (the debits wait for the commit).
+	redirects := rt.scaleLinkedRedirect(divisionID, character, &strike, nowMs)
 	var struck playerStruck
 	committed := rt.deps.Update(character, "monster-basic-attack", func() bool {
 		// The detached admission snapshot can predate a status transition.
@@ -160,6 +165,9 @@ func (rt *Runtime) monsterStrikePlayer(in monsterStrikeInput, character, snapsho
 	}
 	if struck.fatal {
 		rt.bindResidentRegion(simulation.WorldKey(divisionID, character.Name), nowMs)
+	}
+	for _, debit := range redirects {
+		rt.commitLinkedRedirect(divisionID, debit, nowMs)
 	}
 	public, private := rt.playerStruckFrames(divisionID, character, struck, nowMs)
 	// 5A0C2D ran inside the hit outcome, before the hit landed, so a fatal
