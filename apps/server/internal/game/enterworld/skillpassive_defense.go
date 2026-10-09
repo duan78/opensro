@@ -31,6 +31,11 @@ func encodedPassiveDefense(fields []string) SkillPassiveDefense {
 			out.Physical = op.Arguments[0]
 			out.Magical = op.Arguments[1]
 		case 0x72657169, 0x7265716e: // reqi/reqn: row.Reqi, evaluated by combat.ReqiRefusal
+		case 0x70736f67, 0x7265706c, 0x72706373:
+			// Extended content (isro-live-2026), port-only, not v1.150-native:
+			// the live client's one-word riders (psog rides every 2026
+			// attack/defense row). The v1.150 engine has no reader for them;
+			// tolerated so the defp block pins exactly as its native ancestor.
 		default:
 			return SkillPassiveDefense{}
 		}

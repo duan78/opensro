@@ -100,7 +100,7 @@ func TestSkillProbeUnsupportedPlayerFamilies(t *testing.T) {
 		if row.Masteries[1].Level > mastery {
 			mastery = row.Masteries[1].Level
 		}
-		if mastery < 91 || live.plans[row.ID].kind != SkillExecutionUnsupported {
+		if mastery < 91 || rowRuntimeAdmitted(live, row) {
 			continue
 		}
 		// SKILL_EU_CLERIC_HEALA_TARGET_B_11 -> CLERIC_HEALA_TARGET
