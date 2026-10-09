@@ -1,3 +1,14 @@
+/*
+===========================================================================
+
+delivery_items.go - items a delivery quest grants, holds and takes
+
+Acceptance grants the delivery items in the same transaction that opens the
+journal record; the hand-over takes them unless the mission keeps them, and
+abandonment removes every held stack.
+
+===========================================================================
+*/
 package quest
 
 import (
@@ -7,9 +18,15 @@ import (
 	"opensro.online/server/internal/game/item/inventory"
 )
 
-// Native 86ab00 -> 92a64c stores quantity/codename pairs, independently of
-// dialogue text. 9208d0 preflights and grants them before 92040e accepts.
-// This owner keeps inventory and journal admission in the same transaction.
+/*
+================
+loadDelivery
+
+Native 86ab00 -> 92a64c stores quantity/codename pairs, independently of
+dialogue text. 9208d0 preflights and grants them before 92040e accepts.
+This owner keeps inventory and journal admission in the same transaction.
+================
+*/
 func loadDelivery(def *Definition, items enterworld.ItemRefSource) error {
 	if def.Objective != ObjectiveDelivery {
 		if len(def.DeliveryItems) != 0 {
@@ -33,6 +50,11 @@ func loadDelivery(def *Definition, items enterworld.ItemRefSource) error {
 	return nil
 }
 
+/*
+================
+deliveryHeld
+================
+*/
 func deliveryHeld(c *enterworld.Character, ref uint32) uint32 {
 	var total uint64
 	for _, row := range c.MissionInventory {
@@ -50,6 +72,11 @@ func deliveryHeld(c *enterworld.Character, ref uint32) uint32 {
 	return uint32(total)
 }
 
+/*
+================
+deliveryMet
+================
+*/
 func deliveryMet(c *enterworld.Character, def *Definition) bool {
 	if len(def.deliveryRefs) == 0 || len(def.deliveryRefs) != len(def.DeliveryItems) {
 		return false
@@ -62,8 +89,14 @@ func deliveryMet(c *enterworld.Character, def *Definition) bool {
 	return true
 }
 
-// 923c31..923cdf removes all held stacks for each delivery codename on
-// abandonment, not merely the originally granted quantity.
+/*
+================
+deliveryCleanup
+
+923c31..923cdf removes all held stacks for each delivery codename on
+abandonment, not merely the originally granted quantity.
+================
+*/
 func deliveryCleanup(c *enterworld.Character, def *Definition) []inventory.ItemAmount {
 	var amounts []inventory.ItemAmount
 	for i, ref := range def.deliveryRefs {
@@ -71,13 +104,121 @@ func deliveryCleanup(c *enterworld.Character, def *Definition) []inventory.ItemA
 			amounts = append(amounts, inventory.ItemAmount{Codename: def.DeliveryItems[i].ItemCodename, Count: count})
 		}
 	}
-	return amounts
+	return append(amounts, exchangeReturns(c, def)...)
 }
 
+/*
+================
+deliveryAmounts
+================
+*/
 func deliveryAmounts(def *Definition) []inventory.ItemAmount {
 	amounts := make([]inventory.ItemAmount, 0, len(def.DeliveryItems))
 	for _, item := range def.DeliveryItems {
 		amounts = append(amounts, inventory.ItemAmount{Codename: item.ItemCodename, Count: item.Count})
 	}
 	return amounts
+}
+
+/*
+================
+validateDeliveryExtras
+
+Kept deliveries, hand-overs and their exchange are delivery contracts. An
+acceptance or exchange item must resolve, appear once and fit the native
+u16 count.
+================
+*/
+func validateDeliveryExtras(spec QuestSpec, items enterworld.ItemRefSource) error {
+	delivery := spec.Objective == ObjectiveDelivery
+	if !delivery && (spec.DeliveryKeepsItems || spec.HandOverNpcCodename != "") {
+		return fmt.Errorf("quest %s delivery behaviour without a delivery", spec.Codename)
+	}
+	if spec.HandOverNpcCodename != "" && spec.HandOverSymbol == "" {
+		return fmt.Errorf("quest %s hand-over without its line", spec.Codename)
+	}
+	if (len(spec.ExchangeItems) > 0 || spec.ExchangeFullSymbol != "") && spec.HandOverNpcCodename == "" {
+		return fmt.Errorf("quest %s exchange without a hand-over", spec.Codename)
+	}
+	for _, code := range append(append([]string(nil), spec.RequiredHeldItems...), spec.RequiredAnyHeldItems...) {
+		if items == nil {
+			return fmt.Errorf("quest %s needs the item catalog for its held items", spec.Codename)
+		}
+		if ref, ok := items.ItemRefByCodename(code); !ok || ref == nil {
+			return fmt.Errorf("quest %s unresolved held item %s", spec.Codename, code)
+		}
+	}
+	for _, list := range [][]RewardItemLead{spec.AcceptanceConsumes, spec.ExchangeItems} {
+		seen := map[string]bool{}
+		for _, item := range list {
+			if items == nil || item.Count == 0 || item.Count > 65535 || seen[item.ItemCodename] {
+				return fmt.Errorf("quest %s invalid delivery item %s", spec.Codename, item.ItemCodename)
+			}
+			if ref, ok := items.ItemRefByCodename(item.ItemCodename); !ok || ref == nil {
+				return fmt.Errorf("quest %s unresolved delivery item %s", spec.Codename, item.ItemCodename)
+			}
+			seen[item.ItemCodename] = true
+		}
+	}
+	return nil
+}
+
+/*
+================
+handedOver
+
+A two-leg delivery's mission latch, set by the hand-over (91CA00 writes
+quest-user +3) and persisted as the node's CompletionReached.
+================
+*/
+func handedOver(record enterworld.ActiveQuestRecord) bool {
+	return len(record.Contents) == 1 && missionCompletionReached(record.Contents[0])
+}
+
+/*
+================
+heldAmounts
+
+Each item up to its count, as many as are held.
+================
+*/
+func heldAmounts(c *enterworld.Character, list []RewardItemLead) []inventory.ItemAmount {
+	var amounts []inventory.ItemAmount
+	for _, item := range list {
+		count := min(captureItemCount(c, item.ItemCodename), item.Count)
+		if count > 0 {
+			amounts = append(amounts, inventory.ItemAmount{Codename: item.ItemCodename, Count: count})
+		}
+	}
+	return amounts
+}
+
+/*
+================
+exchangeReturns
+
+What the reward takes back of a hand-over's exchange: CBasicQuest_vfF8
+removes a delivery mission's items as the quest completes (inference: its
+kind-3 case names one item group, and every achieved-now line sends the
+exchange to the reporting NPC). Only held items leave, as removal there
+never refuses.
+================
+*/
+func exchangeReturns(c *enterworld.Character, def *Definition) []inventory.ItemAmount {
+	if def.HandOverNpcCodename == "" {
+		return nil
+	}
+	return heldAmounts(c, def.ExchangeItems)
+}
+
+/*
+================
+acceptanceConsumption
+
+What 897680 takes at acceptance: each item up to its count, as many as are
+held. A missing item only raised a minidump natively; acceptance goes on.
+================
+*/
+func acceptanceConsumption(c *enterworld.Character, def *Definition) []inventory.ItemAmount {
+	return heldAmounts(c, def.AcceptanceConsumes)
 }

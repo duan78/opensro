@@ -96,6 +96,8 @@ func TestEveryLoadedQuestSurvivesRestartAndCompletesOnce(t *testing.T) {
 				model = "CHAR_EU_MAN_NOBLE"
 			}
 			character = &enterworld.Character{Name: "questmatrix", ModelCodename: model, Level: &level, Gold: &gold, Experience: &experience, CompletedQuestIds: completedPrerequisites(def)}
+			character.QuestCompletionCounts = prerequisiteCounts(def)
+			character.EndedQuestIds = slices.Clone(def.RequiredEndedQuestIDs)
 			for _, id := range def.RequiredActiveQuestIDs {
 				parent, exists := defs.ByRefID(id)
 				if !exists {
@@ -175,9 +177,10 @@ func TestEveryLoadedQuestSurvivesRestartAndCompletesOnce(t *testing.T) {
 					}
 				}
 			}
-			if def.Level > 1 {
+			// The lowest admitted level: the class's MinLevel, else questdata's.
+			if admissionLevel(def) > 1 {
 				authority.UpdateCharacter(character, "test-low-level", func() bool {
-					low := int64(def.Level) - 1
+					low := admissionLevel(def) - 1
 					character.Level = &low
 					return true
 				})
@@ -210,8 +213,28 @@ func TestEveryLoadedQuestSurvivesRestartAndCompletesOnce(t *testing.T) {
 					character.ActiveQuests = append(character.ActiveQuests, BuildActiveQuestRecord(def, 0))
 					return true
 				})
-			} else if _, err := rt.StartQuest(character, acceptToken(def)); err != nil {
-				t.Fatal(err)
+			} else {
+				// A held-item condition (9262A0 flag 4) refuses the offer
+				// until the character carries every item it names.
+				if len(def.RequiredHeldItems) > 0 || len(def.RequiredAnyHeldItems) > 0 {
+					assertIneligible("missing held items")
+					authority.UpdateCharacter(character, "test-held-items", func() bool {
+						held := append(append([]string(nil), def.RequiredHeldItems...), def.RequiredAnyHeldItems...)
+						var amounts []inventory.ItemAmount
+						for _, code := range held {
+							amounts = append(amounts, inventory.ItemAmount{Codename: code, Count: 1})
+						}
+						rows, _, err := rt.PlanInventory(character, nil, amounts)
+						if err != nil {
+							t.Fatal(err)
+						}
+						character.MissionInventory = rows
+						return true
+					})
+				}
+				if _, err := rt.StartQuest(character, acceptToken(def)); err != nil {
+					t.Fatal(err)
+				}
 			}
 			restart()
 			before := snapshot()
@@ -291,6 +314,16 @@ func TestEveryLoadedQuestSurvivesRestartAndCompletesOnce(t *testing.T) {
 					return true
 				})
 				restart()
+				if def.HandOverNpcCodename != "" {
+					// A two-leg delivery pays only once its items are handed over.
+					if _, err := complete(); err == nil {
+						t.Fatal("two-leg delivery paid before its hand-over")
+					}
+					if _, err := rt.AdvanceNpcQuest(character, handOverToken(def.Codename), def.HandOverNpcCodename); err != nil {
+						t.Fatal(err)
+					}
+					restart()
+				}
 			case ObjectiveParallel:
 				for i := range def.Objectives {
 					if _, err := complete(); err == nil {
@@ -594,4 +627,16 @@ func completedPrerequisites(def *Definition) []uint32 {
 		completed = append(completed, def.RequiredAnyQuestIDs[0])
 	}
 	return completed
+}
+
+// prerequisiteCounts completes each prerequisite as often as its count asks.
+func prerequisiteCounts(def *Definition) map[uint32]uint32 {
+	if len(def.RequiredQuestCompletions) == 0 {
+		return nil
+	}
+	counts := map[uint32]uint32{}
+	for i, count := range def.RequiredQuestCompletions {
+		counts[def.RequiredQuestIDs[i]] = count
+	}
+	return counts
 }

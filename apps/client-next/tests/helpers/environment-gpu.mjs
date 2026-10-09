@@ -78,14 +78,19 @@ export async function captureEnvironment( { bundle, camera, features = false } )
 	const renderer = createRenderer( canvas, createPresentationRandom( 1 ) );
 	const textures = new Map();
 	const rows = [];
+	/** @type {import("../../src/engine/foundation/ui/experimental-options.ts").ExperimentalVideo} */
 	const options = {
+		renderScale: 100,
 		postProcessing: false,
 		anisotropicFiltering: false,
 		heightFog: false,
 		dynamicSun: false,
 		terrainRelief: false,
 		texturedHorizon: false,
-		floatBloom: false
+		floatBloom: false,
+		hdrToneMap: false,
+		sunShadow: false,
+		perPixelLighting: false
 	};
 	try {
 		const startupDeadline = performance.now() + 15000;
@@ -218,13 +223,17 @@ export async function captureFlatRelief() {
 		const result = [];
 		for ( const terrainRelief of [ false, true ] ) {
 			renderer.experimentalVideo( {
+				renderScale: 100,
 				postProcessing: false,
 				anisotropicFiltering: false,
 				heightFog: false,
 				dynamicSun: false,
 				terrainRelief,
 				texturedHorizon: false,
-				floatBloom: false
+				floatBloom: false,
+				hdrToneMap: false,
+				sunShadow: false,
+				perPixelLighting: false
 			} );
 			for ( let frame = 0; frame < 4; frame++ ) await renderer.frame( { width: 64, height: 64 }, .16 );
 			if ( renderer.error() ) throw Error( renderer.error() );

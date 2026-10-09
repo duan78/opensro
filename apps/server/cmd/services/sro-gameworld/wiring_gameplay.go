@@ -476,9 +476,10 @@ func (game *gameplayPlane) register(hub *transport.Hub, loadQuests questDefiniti
 	// zero keeps the native 90 walk.
 	stats.LevelCap = game.deps.LevelCap
 	if stats.Growth.Enabled {
-		log.Infof("progression: beta growth ON (%s): every level at the level-%d kill pace, skill EXP at that pace x%d, drop passes x%d, gold x%d", progression.EnvBetaGrowth, progression.BetaReferenceLevel, stats.Growth.SkillExpRate, stats.Growth.DropRate, stats.Growth.GoldRate)
+		log.Infof("progression: beta growth ON (%s): every level at the level-%d kill pace, skill EXP at that pace x%d, drop passes x%d, gold x%d, rare (SoX) x%d", progression.EnvBetaGrowth, progression.BetaReferenceLevel, stats.Growth.SkillExpRate, stats.Growth.DropRate, stats.Growth.GoldRate, stats.Growth.RareRate)
 		game.items.DropPassRate = stats.Growth.DropRate
 		game.items.GoldRate = stats.Growth.GoldRate
+		game.items.RareRate = stats.Growth.RareRate
 		game.items.PartyShareFloor = true
 	}
 	stats.Withdrawal = game.items.WithdrawalHooks()
@@ -528,7 +529,8 @@ func (game *gameplayPlane) register(hub *transport.Hub, loadQuests questDefiniti
 			for _, row := range rows {
 				pages := make([]action.NpcDialogPage, 0, len(row.Pages))
 				for _, page := range row.Pages {
-					pages = append(pages, action.NpcDialogPage{PromptSymbol: page.PromptSymbol, ReplySymbol: page.ReplySymbol})
+					pages = append(pages, action.NpcDialogPage{PromptSymbol: page.PromptSymbol, ReplySymbol: page.ReplySymbol,
+						RefuseSymbol: page.RefuseSymbol, RefuseResponseSymbol: page.RefuseResponseSymbol})
 				}
 				branches := make([]action.NpcDialogBranch, 0, len(row.Branches))
 				for _, branch := range row.Branches {
@@ -540,6 +542,7 @@ func (game *gameplayPlane) register(hub *transport.Hub, loadQuests questDefiniti
 					PromptSymbol: row.PromptSymbol, Complete: row.Complete,
 					AcceptResponseSymbol: row.AcceptResponseSymbol, DenyResponseSymbol: row.DenyResponseSymbol,
 					Pages: pages, Branches: branches, Informational: row.Informational, SideTalk: row.SideTalk,
+					AcceptRowSymbol: row.AcceptRowSymbol,
 				})
 			}
 			if resuscitation {
@@ -560,6 +563,10 @@ func (game *gameplayPlane) register(hub *transport.Hub, loadQuests questDefiniti
 				return result.Frames, err
 			}
 			result, err := quests.AdvanceNpcQuest(character, codename, npcCodename)
+			return result.Frames, err
+		},
+		Refuse: func(character *enterworld.Character, codename string) ([]wire.Frame, error) {
+			result, err := quests.RefuseQuestOffer(character, codename)
 			return result.Frames, err
 		},
 	}

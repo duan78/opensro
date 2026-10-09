@@ -2,6 +2,11 @@
 	"version": 1,
 	"capabilities": [
 		{
+			"consumer": "src/engine/foundation/ui/layout.ts",
+			"provider": "src/engine/runtime/ui/hud/compact-hud.ts",
+			"functions": [ "compactWindowDrag" ]
+		},
+		{
 			"consumer": "src/engine/foundation/gameplay/walking-history.ts",
 			"provider": "src/engine/runtime/simulation/worker/session/world/entities/motion/motion.ts",
 			"functions": [
@@ -491,7 +496,8 @@
 				"updateTransform",
 				"updateInstances",
 				"releasedDraw",
-				"waterReflection"
+				"waterReflection",
+				"hdrPreview"
 			],
 			"provider": "src/engine/runtime/renderer/device/geometry.ts",
 			"consumer": "src/engine/runtime/renderer/renderer.ts"
@@ -1325,7 +1331,8 @@
 		},
 		{
 			"functions": [
-				"callback:systemMessageLayout:6"
+				"callback:systemMessageLayout:6",
+				"callback:systemMessageLayout:10"
 			],
 			"provider": "src/engine/runtime/ui/ui.ts",
 			"consumer": "src/engine/foundation/ui/system-message-layout.ts"
@@ -1390,7 +1397,6 @@
 				"callback:textLines:2",
 				"callback:textBoardLines:2",
 				"measure",
-				"callback:textLines:2",
 				"callback:systemMessageLayout:10"
 			]
 		},
@@ -2101,6 +2107,44 @@
 			"functions": [
 				"read",
 				"rider"
+			]
+		},
+		{
+			"consumer": "src/engine/runtime/renderer/frame/frame.ts",
+			"provider": "src/engine/runtime/renderer/device/hdr.ts",
+			"functions": [
+				"encode",
+				"encodePreview"
+			]
+		},
+		{
+			"consumer": "src/engine/runtime/renderer/frame/frame.ts",
+			"provider": "src/engine/runtime/renderer/device/sun-shadow.ts",
+			"functions": [
+				"encode"
+			]
+		},
+		{
+			"consumer": "src/engine/runtime/renderer/renderer.ts",
+			"provider": "src/engine/runtime/renderer/device/sun-shadow.ts",
+			"functions": [
+				"prepare"
+			]
+		},
+		{
+			"consumer": "src/engine/runtime/renderer/frame/frame.ts",
+			"provider": "src/engine/runtime/renderer/renderer.ts",
+			"functions": [
+				"resolve",
+				"resolveDepth"
+			]
+		},
+		{
+			"consumer": "src/engine/runtime/renderer/renderer.ts",
+			"provider": "src/engine/runtime/renderer/device/finish.ts",
+			"functions": [
+				"encodeUpscale",
+				"encodeDepthUpscale"
 			]
 		}
 	],

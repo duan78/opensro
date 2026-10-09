@@ -165,7 +165,8 @@
     "src/engine/runtime/characters/presentation-finalize.ts": "src/engine/runtime/characters/characters.ts",
     "src/engine/runtime/characters/presentation-auxiliary.ts": "src/engine/runtime/characters/characters.ts",
     "src/engine/runtime/characters/spawn-fades.ts": "src/engine/runtime/characters/characters.ts",
-    "src/engine/runtime/characters/appearance-lookup.ts": "src/engine/runtime/characters/characters.ts"
+    "src/engine/runtime/characters/appearance-lookup.ts": "src/engine/runtime/characters/characters.ts",
+    "src/engine/runtime/ui/hud/compact-hud.ts": "src/engine/runtime/ui/ui.ts"
   },
   "internals": {
     "src/engine/runtime/platform/telemetry.ts": "src/engine/runtime/platform/platform.ts",
@@ -202,7 +203,10 @@
     "src/engine/runtime/bug-report/transcode.ts": "src/engine/runtime/bug-report/bug-report.ts",
     "src/engine/runtime/bug-report/journal.ts": "src/engine/runtime/bug-report/bug-report.ts",
     "src/engine/runtime/assets/worker/world/mesh-admission/mesh-admission.ts": "src/engine/runtime/assets/worker/world/world.ts",
-    "src/engine/runtime/renderer/device/water-reflection.ts": "src/engine/runtime/renderer/device/device.ts"
+    "src/engine/runtime/renderer/device/water-reflection.ts": "src/engine/runtime/renderer/device/device.ts",
+    "src/engine/runtime/renderer/device/hdr.ts": "src/engine/runtime/renderer/device/device.ts",
+    "src/engine/runtime/renderer/device/sun-shadow.ts": "src/engine/runtime/renderer/device/device.ts",
+    "src/engine/runtime/renderer/device/environment-block.ts": "src/engine/runtime/renderer/device/device.ts"
   },
   "workers": {
     "src/engine/runtime/simulation/worker/entry.ts": "src/engine/runtime/simulation/host.ts",

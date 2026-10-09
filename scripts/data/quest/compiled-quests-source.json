@@ -17,10 +17,12 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 3,
 					"0x23": 39,
 					"0x4": 29
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 1,
 					"0x8": "NPC_CA_HUNTER"
 				}
@@ -101,10 +103,12 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 3,
 					"0x23": 40,
 					"0x4": 29
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 2,
 					"0x8": "NPC_CA_HUNTER",
 					"0xc": "NPC_CA_SOLDIER_EA1"
@@ -141,6 +145,7 @@
 		"QNO_CA_GORIA_6": {
 			"words": {
 				"+0x2d": 1,
+				"0xc3.b": 0,
 				"0x121": 1,
 				"0x138": "SN_NPC_EU_HUNTER_QS",
 				"0x130": "SN_TALK_QNO_CA_GORIA_6_01",
@@ -153,11 +158,13 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 3,
 					"0x23": 40,
 					"0x4": 29,
 					"0x1c": 1
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 1,
 					"0x8": "NPC_CA_HUNTER"
 				}
@@ -185,6 +192,8 @@
 				"+0x2d": 1,
 				"+0x2e": 1,
 				"0x151": 1,
+				"0x15b.b": 1,
+				"0x15c.w": null,
 				"+0x572": 1,
 				"0x121": 2,
 				"0x138": "SN_NPC_CA_HUNTER_QS",
@@ -199,10 +208,12 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 65539,
 					"0x23": 40,
 					"0x4": 29
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 1,
 					"0x8": "NPC_CA_HUNTER"
 				}
@@ -236,10 +247,12 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 3,
 					"0x23": 29,
 					"0x4": 19
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 2,
 					"0x8": "NPC_CA_HORSE",
 					"0xc": "NPC_CA_WAREHOUSE"
@@ -293,10 +306,12 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 3,
 					"0x23": 31,
 					"0x4": 21
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 6,
 					"0x8": "NPC_CA_HUNTER",
 					"0xc": "NPC_CA_WAREHOUSE",
@@ -404,10 +419,12 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 3,
 					"0x23": 32,
 					"0x4": 21
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 2,
 					"0x8": "NPC_CA_HUNTER",
 					"0xc": "NPC_CA_SPECIAL"
@@ -466,10 +483,12 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 3,
 					"0x23": 32,
 					"0x4": 21
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 1,
 					"0x8": "NPC_CA_SPECIAL"
 				}
@@ -526,10 +545,12 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 3,
 					"0x23": 34,
 					"0x4": 23
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 2,
 					"0x8": "NPC_CA_SMITH",
 					"0xc": "NPC_CA_POTION"
@@ -645,10 +666,12 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 3,
 					"0x23": 34,
 					"0x4": 23
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 1,
 					"0x8": "NPC_CA_SMITH"
 				}
@@ -721,11 +744,13 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 3,
 					"0x23": 29,
 					"0x4": 19,
 					"0x1c": 2
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 1,
 					"0x8": "NPC_CA_WAREHOUSE"
 				}
@@ -803,10 +828,12 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 3,
 					"0x23": 29,
 					"0x4": 19
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 3,
 					"0x8": "NPC_CA_WAREHOUSE",
 					"0xc": "NPC_CA_POTION",
@@ -876,11 +903,13 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 3,
 					"0x23": 35,
 					"0x4": 25,
 					"0x1c": 2
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 1,
 					"0x8": "NPC_CA_WAREHOUSE"
 				}
@@ -940,6 +969,7 @@
 		"QNO_CA_WAREHOUSE_4": {
 			"words": {
 				"+0x2d": 3,
+				"0x106.b": 1,
 				"0x121": 1,
 				"0x138": "SN_NPC_CA_WAREHOUSE_QS",
 				"0x130": "SN_TALK_QNO_CA_WAREHOUSE_4_01",
@@ -952,11 +982,13 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 3,
 					"0x23": 36,
 					"0x4": 25,
 					"0x1d": 1
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 1,
 					"0x8": "NPC_CA_WAREHOUSE"
 				}
@@ -1003,10 +1035,20 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 7,
 					"0x23": 35,
-					"0x4": 25
+					"0x4": 25,
+					"0x38": [
+						"ITEM_QNO_CH_POTION_5_04",
+						"ITEM_QNO_CH_POTION_5_05",
+						"ITEM_QNO_CH_POTION_5_06",
+						"ITEM_QNO_CH_EUROPE_3_04",
+						"ITEM_QNO_CH_EUROPE_3_05",
+						"ITEM_QNO_CH_EUROPE_3_06"
+					]
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 1,
 					"0x8": "NPC_CH_BIGMAN"
 				}
@@ -1032,10 +1074,12 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 3,
 					"0x23": 35,
 					"0x4": 25
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 1,
 					"0x8": "NPC_CH_EUROPE"
 				}
@@ -1131,7 +1175,13 @@
 				"+0x2d": 1,
 				"+0x4e0": "SN_NPC_CH_LOTTERY_QS"
 			},
-			"tables": {},
+			"tables": {
+				"0xc2": {
+					"0x28": [
+						"ITEM_QNO_WC_FERRY4_1_01"
+					]
+				}
+			},
 			"lists": {},
 			"missions": [],
 			"overrides": [
@@ -1147,10 +1197,20 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 7,
 					"0x23": 35,
-					"0x4": 25
+					"0x4": 25,
+					"0x38": [
+						"ITEM_QNO_CH_POTION_5_04",
+						"ITEM_QNO_CH_POTION_5_05",
+						"ITEM_QNO_CH_POTION_5_06",
+						"ITEM_QNO_CH_EUROPE_3_04",
+						"ITEM_QNO_CH_EUROPE_3_05",
+						"ITEM_QNO_CH_EUROPE_3_06"
+					]
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 1,
 					"0x8": "NPC_CH_LOTTERY"
 				}
@@ -1198,10 +1258,12 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 3,
 					"0x23": 17,
 					"0x4": 7
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 2,
 					"0x8": "NPC_CH_POTION",
 					"0xc": "NPC_CH_FERRY2"
@@ -1250,10 +1312,12 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 3,
 					"0x23": 17,
 					"0x4": 7
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 3,
 					"0x8": "NPC_CH_POTION",
 					"0xc": "NPC_CH_FERRY2",
@@ -1317,10 +1381,12 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 3,
 					"0x23": 35,
 					"0x4": 25
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 1,
 					"0x8": "NPC_CH_POTION"
 				}
@@ -1428,10 +1494,12 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 3,
 					"0x23": 7,
 					"0x4": 1
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 1,
 					"0x8": "NPC_CH_PRIEST"
 				}
@@ -1660,10 +1728,12 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 3,
 					"0x23": 8,
 					"0x4": 1
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 1,
 					"0x8": "NPC_CH_SHAMAN"
 				}
@@ -1718,10 +1788,12 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 3,
 					"0x23": 10,
 					"0x4": 1
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 2,
 					"0x8": "NPC_CH_SHAMAN",
 					"0xc": "NPC_CH_INDIA"
@@ -1774,11 +1846,13 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 3,
 					"0x23": 26,
 					"0x4": 16,
 					"0x1d": 1
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 1,
 					"0x8": "NPC_EU_ADVENTURER"
 				}
@@ -1854,10 +1928,12 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 3,
 					"0x23": 10,
 					"0x4": 1
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 2,
 					"0x8": "NPC_EU_UNION1",
 					"0xc": "NPC_EU_SPECIAL"
@@ -1902,10 +1978,12 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 3,
 					"0x23": 4,
 					"0x4": 1
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 2,
 					"0x8": "NPC_EU_POTION",
 					"0xc": "NPC_EU_MERCHANT"
@@ -1952,10 +2030,12 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 3,
 					"0x23": 4,
 					"0x4": 1
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 2,
 					"0x8": "NPC_EU_MERCHANT",
 					"0xc": "NPC_EU_SPECIAL"
@@ -2010,10 +2090,12 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 65539,
 					"0x23": 5,
 					"0x4": 1
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 1,
 					"0x8": "NPC_EU_SPECIAL"
 				}
@@ -2057,10 +2139,12 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 3,
 					"0x23": 7,
 					"0x4": 1
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 2,
 					"0x8": "NPC_EU_SPECIAL",
 					"0xc": "NPC_EU_UNION1"
@@ -2108,10 +2192,12 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 3,
 					"0x23": 7,
 					"0x4": 1
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 2,
 					"0x8": "NPC_EU_UNION1",
 					"0xc": "NPC_EU_WITCH"
@@ -2166,11 +2252,13 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 3,
 					"0x23": 11,
 					"0x4": 1,
 					"0x1c": 2
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 1,
 					"0x8": "NPC_EU_WITCH"
 				}
@@ -2235,10 +2323,12 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 3,
 					"0x23": 16,
 					"0x4": 5
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 2,
 					"0x8": "NPC_EU_HUNTER",
 					"0xc": "NPC_EU_WITCH"
@@ -2276,6 +2366,7 @@
 		"QNO_EU_EASTEU_11_1": {
 			"words": {
 				"+0x2d": 1,
+				"0xc3.b": 0,
 				"0x121": 1,
 				"0x138": "SN_NPC_EU_WITCH_QS",
 				"0x130": "SN_TALK_QNO_EU_EASTEU_11_1_01",
@@ -2288,11 +2379,13 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 3,
 					"0x23": 16,
 					"0x4": 5,
 					"0x1c": 1
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 1,
 					"0x8": "NPC_EU_WITCH"
 				}
@@ -2348,10 +2441,12 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 3,
 					"0x23": 16,
 					"0x4": 6
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 2,
 					"0x8": "NPC_EU_WITCH",
 					"0xc": "NPC_EU_ADVENTURER"
@@ -2397,10 +2492,12 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 3,
 					"0x23": 17,
 					"0x4": 6
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 2,
 					"0x8": "NPC_EU_ADVENTURER",
 					"0xc": "NPC_EU_WITCH"
@@ -2438,6 +2535,7 @@
 		"QNO_EU_EASTEU_14_1": {
 			"words": {
 				"+0x2d": 1,
+				"0xc3.b": 0,
 				"0x121": 1,
 				"0x138": "SN_NPC_EU_WITCH_QS",
 				"0x130": "SN_TALK_QNO_EU_EASTEU_14_1_01",
@@ -2450,11 +2548,13 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 3,
 					"0x23": 17,
 					"0x4": 6,
 					"0x1c": 1
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 1,
 					"0x8": "NPC_EU_WITCH"
 				}
@@ -2492,10 +2592,12 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 3,
 					"0x23": 17,
 					"0x4": 7
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 2,
 					"0x8": "NPC_EU_WITCH",
 					"0xc": "NPC_EU_GENERAL"
@@ -2541,10 +2643,12 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 3,
 					"0x23": 17,
 					"0x4": 7
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 2,
 					"0x8": "NPC_EU_GENERAL",
 					"0xc": "NPC_EU_WITCH"
@@ -2582,6 +2686,7 @@
 		"QNO_EU_EASTEU_17_1": {
 			"words": {
 				"+0x2d": 1,
+				"0xc3.b": 0,
 				"0x121": 1,
 				"0x138": "SN_NPC_EU_WITCH_QS",
 				"0x130": "SN_TALK_QNO_EU_EASTEU_17_1_01",
@@ -2594,11 +2699,13 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 3,
 					"0x23": 18,
 					"0x4": 7,
 					"0x1c": 1
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 1,
 					"0x8": "NPC_EU_WITCH"
 				}
@@ -2655,11 +2762,13 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 3,
 					"0x23": 19,
 					"0x4": 9,
 					"0x1c": 2
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 1,
 					"0x8": "NPC_EU_WITCH"
 				}
@@ -2732,10 +2841,12 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 3,
 					"0x23": 11,
 					"0x4": 1
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 2,
 					"0x8": "NPC_EU_PRIEST",
 					"0xc": "NPC_EU_UNION2"
@@ -2775,6 +2886,8 @@
 				"+0x2d": 1,
 				"+0x2e": 1,
 				"0x151": 1,
+				"0x15b.b": 1,
+				"0x15c.w": null,
 				"+0x572": 1,
 				"0x121": 2,
 				"0x138": "SN_NPC_EU_WITCH_QS",
@@ -2790,10 +2903,12 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 65539,
 					"0x23": 20,
 					"0x4": 9
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 1,
 					"0x8": "NPC_EU_WITCH"
 				}
@@ -2827,10 +2942,12 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 3,
 					"0x23": 11,
 					"0x4": 1
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 1,
 					"0x8": "NPC_EU_UNION2"
 				}
@@ -2889,10 +3006,12 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 3,
 					"0x23": 12,
 					"0x4": 2
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 1,
 					"0x8": "NPC_EU_WITCH"
 				}
@@ -2934,6 +3053,7 @@
 		"QNO_EU_EASTEU_5": {
 			"words": {
 				"+0x2d": 1,
+				"0xc3.b": 0,
 				"0x121": 1,
 				"0x138": "SN_NPC_EU_WITCH_QS",
 				"0x130": "SN_TALK_QNO_EU_EASTEU_5_01",
@@ -2946,11 +3066,13 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 3,
 					"0x23": 12,
 					"0x4": 2,
 					"0x1c": 1
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 1,
 					"0x8": "NPC_EU_WITCH"
 				}
@@ -3009,10 +3131,12 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 3,
 					"0x23": 14,
 					"0x4": 4
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 2,
 					"0x8": "NPC_EU_WITCH",
 					"0xc": "NPC_EU_SMITH"
@@ -3068,10 +3192,12 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 3,
 					"0x23": 15,
 					"0x4": 5
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 2,
 					"0x8": "NPC_EU_WITCH",
 					"0xc": "NPC_EU_HUNTER"
@@ -3119,10 +3245,12 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 65539,
 					"0x23": 21,
 					"0x4": 11
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 1,
 					"0x8": "NPC_EU_FERRY2"
 				}
@@ -3165,6 +3293,7 @@
 		"QNO_EU_GENERAL_1": {
 			"words": {
 				"+0x2d": 1,
+				"0xc3.b": 0,
 				"0x121": 1,
 				"0x138": "SN_NPC_EU_GENERAL_QS",
 				"0x130": "SN_TALK_QNO_EU_GENERAL_1_01",
@@ -3177,10 +3306,12 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 3,
 					"0x4": 13,
 					"0x1c": 1
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 1,
 					"0x8": "NPC_EU_GENERAL"
 				}
@@ -3216,10 +3347,12 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 65539,
 					"0x23": 23,
 					"0x4": 13
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 1,
 					"0x8": "NPC_EU_GENERAL"
 				}
@@ -3290,6 +3423,7 @@
 		"QNO_EU_IVY_1": {
 			"words": {
 				"+0x2d": 1,
+				"0xc3.b": 0,
 				"0x121": 2,
 				"0x138": "SN_NPC_EU_GENERAL_QS",
 				"0x130": "SN_TALK_QNO_EU_IVY_1_01",
@@ -3302,11 +3436,13 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 3,
 					"0x23": 30,
 					"0x4": 20,
 					"0x1c": 1
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 1,
 					"0x8": "NPC_EU_GENERAL",
 					"0xc": "NPC_EU_ADVENTURER"
@@ -3346,11 +3482,13 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 3,
 					"0x23": 30,
 					"0x4": 20,
 					"0x1c": 2
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 1,
 					"0x8": "NPC_EU_ADVENTURER"
 				}
@@ -3415,6 +3553,8 @@
 				"+0x2d": 1,
 				"+0x2e": 1,
 				"0x151": 1,
+				"0x15b.b": 1,
+				"0x15c.w": null,
 				"+0x572": 1,
 				"0x121": 6,
 				"0x138": "SN_NPC_EU_GENERAL_QS",
@@ -3429,10 +3569,12 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 65539,
 					"0x23": 30,
 					"0x4": 20
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 1,
 					"0x8": "NPC_EU_GENERAL"
 				}
@@ -3467,10 +3609,12 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 3,
 					"0x23": 25,
 					"0x4": 14
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 1,
 					"0x8": "NPC_EU_WITCH"
 				}
@@ -3556,10 +3700,12 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 3,
 					"0x23": 25,
 					"0x4": 14
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 2,
 					"0x8": "NPC_EU_WITCH",
 					"0xc": "NPC_EU_GENERAL"
@@ -3597,6 +3743,7 @@
 		"QNO_KT_ACCESSORY_2": {
 			"words": {
 				"+0x2d": 1,
+				"0x106.b": 3,
 				"0x121": 1,
 				"0x138": "SN_NPC_KT_ACCESSORY_QS",
 				"0x130": "SN_TALK_QNO_KT_ACCESSORY_2_01",
@@ -3608,10 +3755,12 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 3,
 					"0x23": 68,
 					"0x4": 55
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 1,
 					"0x8": "NPC_KT_ACCESSORY"
 				}
@@ -3673,10 +3822,12 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 3,
 					"0x23": 71,
 					"0x4": 55
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 1,
 					"0x8": "NPC_KT_ACCESSORY"
 				}
@@ -3738,10 +3889,12 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 3,
 					"0x23": 79,
 					"0x4": 69
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 3,
 					"0x8": "NPC_KT_HORSE",
 					"0xc": "NPC_WC_HORSE",
@@ -3838,6 +3991,7 @@
 		"QNO_KT_SMITH_2": {
 			"words": {
 				"+0x2d": 1,
+				"0x106.b": 3,
 				"0x121": 1,
 				"0x138": "SN_NPC_KT_SMITH_QS",
 				"0x130": "SN_TALK_QNO_KT_SMITH_2_03",
@@ -3851,10 +4005,12 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 3,
 					"0x23": 68,
 					"0x4": 55
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 1,
 					"0x8": "NPC_KT_SMITH"
 				}
@@ -3912,10 +4068,12 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 3,
 					"0x23": 71,
 					"0x4": 55
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 1,
 					"0x8": "NPC_KT_SMITH"
 				}
@@ -3975,10 +4133,12 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 3,
 					"0x23": 82,
 					"0x4": 72
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 2,
 					"0x8": "NPC_RM_FLYSHIP1",
 					"0xc": "NPC_RM_YOUNGWOMAN1"
@@ -4028,11 +4188,13 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 3,
 					"0x23": 82,
 					"0x4": 72,
 					"0x1c": 1
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 1,
 					"0x8": "NPC_RM_FLYSHIP1"
 				}
@@ -4091,10 +4253,12 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 65539,
 					"0x23": 80,
 					"0x4": 70
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 1,
 					"0x8": "NPC_RM_FLYSHIP2"
 				}
@@ -4172,10 +4336,12 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 3,
 					"0x23": 89,
 					"0x4": 79
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 1,
 					"0x8": "NPC_RM_VILLAGECHIEF"
 				}
@@ -4249,11 +4415,13 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 4099,
 					"0x23": 89,
 					"0x4": 79,
 					"0x20": 2
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 2,
 					"0x8": "NPC_RM_VILLAGECHIEF",
 					"0xc": "NPC_KT_MINISTER"
@@ -4308,11 +4476,13 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 4099,
 					"0x23": 89,
 					"0x4": 79,
 					"0x20": 2
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 4,
 					"0x8": "NPC_RM_VILLAGECHIEF",
 					"0xc": "NPC_RM_SLAVE2",
@@ -4387,11 +4557,13 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 3,
 					"0x23": 89,
 					"0x4": 79,
 					"0x1c": 2
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 1,
 					"0x8": "NPC_RM_SLAVE2"
 				}
@@ -4458,6 +4630,8 @@
 				"+0x2d": 1,
 				"+0x2e": 1,
 				"0x151": 1,
+				"0x15b.b": 1,
+				"0x15c.w": null,
 				"+0x572": 1,
 				"0x121": 2,
 				"0x138": "SN_NPC_RM_SLAVE2_QS",
@@ -4472,10 +4646,12 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 65539,
 					"0x23": 20,
 					"0x4": 10
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 1,
 					"0x8": "NPC_RM_SLAVE2"
 				}
@@ -4509,10 +4685,12 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 3,
 					"0x23": 89,
 					"0x4": 79
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 2,
 					"0x8": "NPC_RM_SLAVE2",
 					"0xc": "NPC_RM_OLDWOMAN"
@@ -4567,10 +4745,12 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 3,
 					"0x23": 85,
 					"0x4": 75
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 3,
 					"0x8": "NPC_RM_SLAVE1",
 					"0xc": "NPC_RM_SLAVE2",
@@ -4652,12 +4832,14 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 3,
 					"0x22": 1,
 					"0x23": 85,
 					"0x4": 75,
 					"0x1c": 2
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 2,
 					"0x8": "NPC_RM_SLAVE2",
 					"0xc": "NPC_RM_SLAVE1"
@@ -4710,11 +4892,13 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 4099,
 					"0x4": 20,
 					"0x20": 1,
 					"0x21": 1
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 2,
 					"0x8": "NPC_CH_SPECIAL2",
 					"0xc": "NPC_CH_KISAENG3"
@@ -4784,11 +4968,13 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 4099,
 					"0x4": 70,
 					"0x20": 1,
 					"0x21": 1
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 2,
 					"0x8": "NPC_RM_SPECIAL",
 					"0xc": "NPC_RM_YOUNGWOMAN1"
@@ -4858,11 +5044,13 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 4099,
 					"0x4": 60,
 					"0x20": 1,
 					"0x21": 1
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 2,
 					"0x8": "NPC_TK_SPECIAL",
 					"0xc": "NPC_KT_SPECIAL"
@@ -4932,11 +5120,13 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 4099,
 					"0x4": 30,
 					"0x20": 1,
 					"0x21": 1
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 2,
 					"0x8": "NPC_WC_SPECIAL2",
 					"0xc": "NPC_WC_WAREHOUSE_M"
@@ -5007,10 +5197,12 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 3,
 					"0x23": 26,
 					"0x4": 16
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 2,
 					"0x8": "NPC_WC_ACCESSORY",
 					"0xc": "NPC_CH_ACCESSORY"
@@ -5062,10 +5254,12 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 3,
 					"0x23": 38,
 					"0x4": 28
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 1,
 					"0x8": "NPC_WC_ARMOR"
 				}
@@ -5107,6 +5301,7 @@
 		"QNO_WC_POTION_3": {
 			"words": {
 				"+0x2d": 1,
+				"0x106.b": 1,
 				"0x151": 1,
 				"0x121": 1,
 				"0x126": "SN_NPC_WC_POTION_QS",
@@ -5117,10 +5312,12 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 3,
 					"0x23": 32,
 					"0x4": 22
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 2,
 					"0x8": "NPC_WC_POTION",
 					"0xc": "NPC_CH_ACCESSORY"
@@ -5171,10 +5368,16 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 7,
 					"0x23": 32,
-					"0x4": 22
+					"0x4": 22,
+					"0x28": [
+						"ITEM_QNO_WC_POTION_3_01",
+						"ITEM_QNO_WC_POTION_3_02"
+					]
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 2,
 					"0x8": "NPC_CH_ACCESSORY",
 					"0xc": "NPC_WC_SPECIAL"
@@ -5221,10 +5424,12 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 3,
 					"0x23": 21,
 					"0x4": 11
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 1,
 					"0x8": "NPC_WC_PRIEST1"
 				}
@@ -5267,10 +5472,12 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 3,
 					"0x23": 40,
 					"0x4": 30
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 2,
 					"0x8": "NPC_WC_SMITH",
 					"0xc": "NPC_WC_FERRY3"
@@ -5322,10 +5529,12 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 3,
 					"0x23": 24,
 					"0x4": 13
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 2,
 					"0x8": "NPC_WC_SOLDIER_EA2",
 					"0xc": "NPC_CH_GENARAL"
@@ -5374,10 +5583,12 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 3,
 					"0x4": 18,
 					"0x23": 29
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 1,
 					"0x8": "NPC_WC_WAREHOUSE_W"
 				}
@@ -5439,6 +5650,7 @@
 		"QNO_WC_WAREHOUSE_W_3": {
 			"words": {
 				"+0x2d": 1,
+				"0x106.b": 2,
 				"0x121": 2,
 				"0x138": "SN_NPC_WC_WAREHOUSE_W_QS",
 				"0x130": "SN_TALK_QNO_WC_WAREHOUSE_W_3_01",
@@ -5451,10 +5663,12 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 3,
 					"0x23": 29,
 					"0x4": 18
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 1,
 					"0x8": "NPC_WC_WAREHOUSE_W"
 				}
@@ -5525,11 +5739,13 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 259,
 					"0x23": 30,
 					"0x4": 30,
 					"0x27": 1
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 1,
 					"0x8": "NPC_CA_ACCESSORY"
 				}
@@ -5583,11 +5799,13 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 259,
 					"0x23": 5,
 					"0x4": 5,
 					"0x27": 0
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 1,
 					"0x8": "NPC_CH_ACCESSORY"
 				}
@@ -5638,11 +5856,13 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 259,
 					"0x23": 5,
 					"0x4": 5,
 					"0x27": 1
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 1,
 					"0x8": "NPC_EU_ACCESSORY"
 				}
@@ -5693,11 +5913,13 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 259,
 					"0x23": 60,
 					"0x4": 60,
 					"0x27": 3
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 1,
 					"0x8": "NPC_KT_ACCESSORY"
 				}
@@ -5754,11 +5976,13 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 259,
 					"0x23": 90,
 					"0x4": 90,
 					"0x27": 3
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 1,
 					"0x8": "NPC_RM_YOUNGWOMAN2"
 				}
@@ -5812,11 +6036,13 @@
 			},
 			"tables": {
 				"0xc2": {
+					"flags": 259,
 					"0x23": 30,
 					"0x4": 30,
 					"0x27": 0
 				},
 				"0xc4": {
+					"flags": 1,
 					"0x4": 1,
 					"0x8": "NPC_WC_ACCESSORY"
 				}
