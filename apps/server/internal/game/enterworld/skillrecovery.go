@@ -192,6 +192,20 @@ exceed.
 */
 func partyRecoveryArea(op SkillInstruction) bool {
 	a := op.Arguments
+	// Extended content (isro-live-2026), port-only, not v1.150-native: the
+	// live party recovery rows (RECOVERYA_GROUP's heal-over-time shape)
+	// author the area as efr kind 2 - the persistent-area kind
+	// skilloffense.go documents - with the same caster-centred shape,
+	// party select 5 and a cap word of 1 (the heal spreads to whoever the
+	// selection returns, the cap naming one recipient per pulse). The
+	// native kind-1 word stays the default; inference recorded 2026-10-09
+	// (M8 s22), the void proof being the family's own never-admitted
+	// tiers being the only rows carrying the shape.
+	if op.Tag == tagEfr && op.Count == 6 && a[0] == 2 && a[1] == recoveryEfrAroundCaster &&
+		a[2] != 0 && a[4] == 0 &&
+		(a[5] == recoveryPartySelect || a[5] == recoveryPartySelectWithCaster) {
+		return true
+	}
 	return op.Tag == tagEfr && op.Count == 6 &&
 		a[0] == recoveryEfrActionArea && a[1] == recoveryEfrAroundCaster && a[2] != 0 &&
 		a[3] >= recoveryPartyMemberBound && a[4] == 0 &&
