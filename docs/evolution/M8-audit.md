@@ -714,23 +714,49 @@ intent walk-then-cast, tant hostility à l'installation, expiration
 déjà câblée). Gates : abnormal/enterworld/action/simulation verts,
 check source PASSED, gate serveur forcée PASS (87,5 s).
 
-## Le reste (carte actualisée après s33)
+## Session 34 — l'exécuteur du debuff de ratio : le lane WATER_CANCEL timed COMPLET (+8, 80,3 %)
 
-1. **WATER_CANCEL timed** : MOTEUR LIVRÉ s33 (8 rangées épinglées,
-   inertes) ; reste s34 : l'exécuteur ciblé-monstre (intent
-   walk-then-cast, beginSupportApproach est lié aux personnages), tant
-   hostility à l'installation, puis l'union compte les 8 rangées.
-2. SWORD_SHIELDPD (8) : debuff de parade temporisé `dura adps iqer`.
-3. SOULA_STUNLINK + RAZEA tiers isolés + STEALTHA_CHANGE/
+La seconde étape du lane s33 : le cast. `acceptRatioDebuff`→
+`advanceRatioDebuffIntent`→`executeRatioDebuff` (action/ratiodebuff.go)
+suivent le pattern du capture (monstercapture.go) — le SEUL lane
+d'intent existant dont la cible est un monstre : un nouveau drapeau
+`DebuffCast` sur basicAttackIntent + une branche dans le dispatch du
+tick (basicattack.go), résolution par characterMonster + Mover,
+espacement playerToMonsterCombatSpacing, marche par
+approachIntentTarget puis exécution à portée. L'exécution :
+admission (admitTarget avec le motion du monstre), coût/commit comme
+le capture, **installation par MonsterState.ApplyRatioDebuff** (les
+écritures sans slot du moteur s33 : paramètres 9/11, facteur restant,
+until = now+dura), **tant** déposé comme événement d'hostilité positif
+vers le lanceur, trames cast + vitals. Aucun changement de formule :
+les deux jets lisent déjà les Modifiers du block via
+MonsterInstanceStats.
+
+Test runtime complet (discordwave_test.go) : cast ciblé refusé sans
+HasTarget, MP débité, block installé, **MonsterInstanceStats.Monstre
+.HitRate = 4 % de la base** (drht 96), tant = 5831 ajouté, et le tick
+abnormal 4A4390 expire l'écriture à l'instant exact et restaure la
+stat (le test conduit advanceMonsterAbnormals directement). Deux
+leçons de test mineures : l'horloge factice a une base non-nulle (les
+bornes absolues sortent immédiatement), et le wire exige HasTarget
+explicite.
+
+L'union des deux tests de mesure compte `RatioDebuff.Pinned` (bucket
+« debuff »). **Couverture : 80,0 → 80,3 %** (2410/3002, +8 exact).
+
+## Le reste (carte actualisée après s34)
+
+1. SWORD_SHIELDPD (8) : debuff de parade temporisé `dura adps iqer`.
+2. SOULA_STUNLINK + RAZEA tiers isolés + STEALTHA_CHANGE/
    BATTLAA_GUARD/GUARDA_PHYSICAL/REBIRTHA_SPECIAL : à sonder.
-4. La dispersion (~110 rangs sur les petites familles) : une à une.
-5. **Danses de barde** (40 rangs) : le rythme 2026 — décision owner V5,
+3. La dispersion (~110 rangs sur les petites familles) : une à une.
+4. **Danses de barde** (40 rangs) : le rythme 2026 — décision owner V5,
    jamais reçue ; sans preuve : pas d'implémentation.
-7. **MANADRY (10, parked-owner nouveau s31)** : PvP-seul — EnemyP sans
-   EnemyM, tooltip « not effective on monsters », bannière status-cast
-   le refusant à dessein. Un runtime hostile-joueur = du PvP, hors
+5. **MANADRY (10, parked-owner s31)** : PvP-seul — EnemyP sans EnemyM,
+   tooltip « not effective on monsters », bannière status-cast le
+   refusant à dessein. Un runtime hostile-joueur = du PvP, hors
    périmètre PvE. Sur décision owner uniquement.
-8. **Ouvert pour l'owner (s28)** : élargir l'admission HoT native aux
+6. **Ouvert pour l'owner (s28)** : élargir l'admission HoT native aux
    tiers cap-90 RECOVERYA_GROUP (interleavé) exige la preuve du
    binaire (58D8F0/5830B0).
 

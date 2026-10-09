@@ -91,6 +91,12 @@ func skillCoveragePast90(t *testing.T, source *TextdataSkills) map[int]map[strin
 			// compiler just never names the lane.
 			kind = "trap"
 		}
+		if kind == "unsupported" && row.RatioDebuff.Pinned {
+			// The timed hostile ratio cut (acceptRatioDebuff installs the
+			// slotless abnormal writes, action/ratiodebuff.go): measured
+			// s34.
+			kind = "debuff"
+		}
 		if kind == "unsupported" && row.Threat.Decrease {
 			// The hostility-cut lane (skill.Threat.Decrease rows run
 			// acceptDiscordWave targeted and its untargeted sibling past
@@ -158,7 +164,7 @@ func TestExtendedSkillsExecutionCoveragePastLevel90(t *testing.T) {
 			total += bandTotal
 			routed += bandRouted
 			summary := ""
-			for _, kind := range []string{"offense", "recovery", "instant", "passive", "timed", "periodic", "wall", "concealment", "position", "threat", "unsupported-unpinned", "unsupported-chain", "chain-stage"} {
+			for _, kind := range []string{"offense", "recovery", "instant", "passive", "timed", "periodic", "wall", "concealment", "position", "threat", "debuff", "trap", "unsupported-unpinned", "unsupported-chain", "chain-stage"} {
 				if counts[kind] > 0 {
 					summary += fmt.Sprintf(" %s=%d", kind, counts[kind])
 				}

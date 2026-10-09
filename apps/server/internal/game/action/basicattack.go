@@ -128,6 +128,7 @@ type basicAttackIntent struct {
 	FollowSession  uint64                // prevents a reconnected target inheriting old pursuit
 	SupportCast    bool                  // a player-targeted heal, cure or resurrection waiting for reach
 	CaptureCast    bool                  // a Monster Mask waiting to reach its corpse
+	DebuffCast     bool                  // extended: a monster-targeted ratio debuff waiting for reach
 	SingleCast     bool                  // executes the explicit sequence before any authored basic continuation
 	ResumeBasic    bool                  // transition resolves the current weapon after the explicit action closes
 	ResumeNotified bool                  // the skill-to-basic count transition has reached the actor
@@ -425,6 +426,9 @@ func (rt *Runtime) advanceBasicAttackIntent(character *enterworld.Character, int
 	}
 	if intent.CaptureCast {
 		return rt.advanceCaptureIntent(character, intent, nowMs)
+	}
+	if intent.DebuffCast {
+		return rt.advanceRatioDebuffIntent(character, intent, nowMs)
 	}
 	snapshot := rt.characterSnapshot(intent.DivisionID, character)
 	if snapshot == nil || snapshot.DeletePending || !enterworld.CharacterAlive(snapshot) {
