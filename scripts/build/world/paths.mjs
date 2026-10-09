@@ -69,6 +69,10 @@ export const generatedRoot = GENERATED_ROOT;
 // and its tests read the projection from here when it is set.
 export const SERVER_GAME_DATA_ROOT_ENV = "SRO_SERVER_GAME_DATA_ROOT";
 
+// gamedata.EnvExtendedRoot (apps/server/internal/gamedata/extended.go): the
+// extended (isro-live-2026, not v1.150-native) projection's override.
+export const EXTENDED_GAME_DATA_ROOT_ENV = "SRO_EXTENDED_GAME_DATA_ROOT";
+
 /*
 ================
 resolveServerGameDataRoot
@@ -94,6 +98,29 @@ export function resolveServerGameDataRoot( env = process.env, mainCheckout = MAI
 }
 
 export const serverGameDataRoot = resolveServerGameDataRoot();
+
+/*
+================
+resolveExtendedGameDataRoot
+
+The extended projection is the sibling of the native one under the Go
+module, produced by buildExtendedGameDataBundle.mjs and read by
+gamedata.ResolveExtended only when SRO_EXTENDED_CONTENT is on. The same
+absolute-only override rule as the native root.
+================
+*/
+export function resolveExtendedGameDataRoot( env = process.env, mainCheckout = MAIN_CHECKOUT_ROOT ) {
+	const override = env[EXTENDED_GAME_DATA_ROOT_ENV]?.trim();
+	if ( override ) {
+		if ( !path.isAbsolute( override ) ) {
+			throw Error( `${EXTENDED_GAME_DATA_ROOT_ENV} must be an absolute path, not ${JSON.stringify( override )}` );
+		}
+		return path.resolve( override );
+	}
+	return path.join( mainCheckout, "apps", "server", ".generated", "game-data", "extended" );
+}
+
+export const extendedGameDataRoot = resolveExtendedGameDataRoot();
 export const publicRoot = path.join( generatedRoot, "client-public" );
 export const publicAssetsRoot = path.join( publicRoot, "assets" );
 export const imageSourceRoot = path.join( generatedRoot, "intermediate", "images" );
