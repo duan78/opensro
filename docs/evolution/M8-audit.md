@@ -259,7 +259,26 @@ la relaxation s14 : aucune clause native ne bouge, une seule case efr
 s'élargit d'un kind documenté. La preuve du vide (21/21 = HARMONY)
 reste valable pour ce périmètre. Aucun rang basculé.
 
-## Le reste (carte actualisée après s15)
+## Session 16 — WATER_HARMONY s'exécute : l'efr kind 3 admis comme porte, la case cgri ajoutée
+
+Deux edits dans la marche timed (`skilltimedeffect.go`), tous deux
+documentés par l'évidence existante :
+1. la case efr tolère le **kind 3** — la PORTE DE CAST Efr3 que
+   `skilloffense.go:200` documente (jamais une sélection de victimes ;
+   le mot passe sans rien sélectionner, les effets self restent au
+   lanceur). Inférence enregistrée, preuve du vide : 21/21 rangées
+   natives pola+efr = HARMONY elle-même.
+2. une case **cgri** ({flat, pct}) remplit `result.Recovery`
+   (`SkillRecoveryRates` existant), avec la sémantique exacte de
+   `itemEffectRecovery` (595A33..595A93 : écritures percent-sum
+   indépendantes aux paramètres de récupération HP/MP).
+**Couverture 76,3 % → 76,7 %** (+13 rangs 91-140 ; les 21 ancêtres
+natifs 1-90 s'exécutent aussi). La clause self-only de la case
+preemptive est INTACTE — la garde reste au lanceur, conforme au
+contrat et au consommateur noise.go. Package enterworld complet
+vert, gates source + serveur vertes, aucun test natif bougé.
+
+## Le reste (carte actualisée après s16)
 
 1. BINGPAN : la porte duration (preuve du vide natif d'abord).
 2. BINGBYEOK/HWABYEOK : forme timed onff/wp.
