@@ -294,7 +294,7 @@ end: [mwhh] [mwmh] [getv HLRU] [getv HLMD], each at most once.
 ==================
 */
 func healProgramTail(program SkillProgram, first int) bool {
-	var weaponHP, weaponMP, recoveryUp, mpDecrease bool
+	var weaponHP, weaponMP, recoveryUp, mpDecrease, eshp bool
 	for i := first; i < program.Len(); i++ {
 		op := program.Instruction(i)
 		parameter, known := SkillParameterFromKey(op.Arguments[0])
@@ -304,6 +304,16 @@ func healProgramTail(program SkillProgram, first int) bool {
 			weaponHP = true
 		case op.Tag == recoveryTagMwmh && op.Count == 1 && !weaponMP:
 			weaponMP = true
+		case op.Tag == recoveryTagEshp && op.Count == 0 && !eshp:
+			// Extended content (isro-live-2026), port-only, not
+			// v1.150-native: the live party heal-over-time rows
+			// (RECOVERYA_GROUP) author eshp after the heal block - the HoT
+			// lands on the party member with the lowest HP ratio each
+			// pulse (the runtime's partyOverTime path reads the row's
+			// Aura.Eshp for the same selection). Inference recorded
+			// 2026-10-09 (M8 s24); void: the family's own never-admitted
+			// tiers are the only rows carrying the shape.
+			eshp = true
 		case getv && parameter == ParameterHealRecoveryUp && !recoveryUp:
 			recoveryUp = true
 		case getv && parameter == ParameterHealerMPDecrease && !mpDecrease:

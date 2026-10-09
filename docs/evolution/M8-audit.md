@@ -397,7 +397,23 @@ exige son consommateur dans le chemin partyOverTime du runtime
 pas une tolérance. Aucun rang basculé (le drapeau admis est
 nécessaire, l'eshp reste).
 
-## Le reste (carte actualisée après s23)
+## Session 24 — l'eshp admis dans la queue HoT AVEC son consommateur runtime ; la rangée refuse encore ailleurs
+
+Les deux moitiés de la lane sont livrées ensemble : `healProgramTail`
+admet `eshp` (sans argument, au plus une fois, inférence enregistrée)
+ET le chemin `partyOverTime` du runtime sélectionne **le membre au
+plus bas ratio par pulse** quand `Aura.Eshp` est posé
+(`lowestChainHealTarget` — jamais tout le groupe d'un coup). La
+sémantique est donc exécutée, pas juste admise. La rangée REFUSE
+encore malgré tout : une porte subsiste en aval des mots — le suspect
+le plus probable est l'égalité `dura == EffectDurationMs` (la rangée
+porte 300 384 ms de durée, l'enveloppe peut la porter différemment) —
+à sonder en tête de session s25 avant FIREA_TRAP. Aucun rang basculé
+; les deux edits sont corrects et nécessaires (la runtime-gate ne
+peut pas régresser : elle ne s'active QUE si Aura.Eshp && HoT parti,
+une forme que seules les rangées 2026 portent).
+
+## Le reste (carte actualisée après s24)
 
 1. BINGPAN : la porte duration (preuve du vide natif d'abord).
 2. BINGBYEOK/HWABYEOK : forme timed onff/wp.
