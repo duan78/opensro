@@ -360,6 +360,7 @@ func parseHealOverTime(fields []string, row *SkillRow) bool {
 		return false
 	}
 	first := 0
+	live2026HoT := false
 	if !row.TargetRequired {
 		// Extended content (isro-live-2026), port-only, not v1.150-native:
 		// the live party heal-over-time rows (RECOVERYA_GROUP) lead with the
@@ -371,6 +372,7 @@ func parseHealOverTime(fields []string, row *SkillRow) bool {
 		areaIndex := 0
 		if program.Len() > 0 && program.Instruction(0).Tag == 0x65667461 && program.Instruction(0).Count == 0 {
 			areaIndex = 1
+			live2026HoT = true
 		}
 		if program.Len() <= areaIndex || !partyRecoveryArea(program.Instruction(areaIndex)) {
 			return false
@@ -381,8 +383,23 @@ func parseHealOverTime(fields []string, row *SkillRow) bool {
 		return false
 	}
 	dura, puls := program.Instruction(first), program.Instruction(first+1)
+	durationOK := dura.Arguments[0] == row.EffectDurationMs
+	if !durationOK && live2026HoT {
+		// Extended content (isro-live-2026), port-only, not v1.150-native:
+		// the live rows author the dura word 384ms off the envelope's
+		// duration column (measured: program 300384 vs envelope 300000 on
+		// RECOVERYA_GROUP_B_05; every native tier authors the exact
+		// equality). Tolerate the offset ONLY on the atfe-leading shape -
+		// no native row can enter this branch (void proof: natives never
+		// lead a HoT with atfe), so the exact contract stays theirs.
+		left, right := int64(dura.Arguments[0]), int64(row.EffectDurationMs)
+		if left < right {
+			left, right = right, left
+		}
+		durationOK = left-right <= 4096
+	}
 	if dura.Tag != recoveryTagDura || dura.Count != 1 || puls.Tag != recoveryTagPuls || puls.Count != 1 ||
-		puls.Arguments[0] == 0 || dura.Arguments[0] < puls.Arguments[0] || dura.Arguments[0] != row.EffectDurationMs ||
+		puls.Arguments[0] == 0 || dura.Arguments[0] < puls.Arguments[0] || !durationOK ||
 		!recoveryHealBlock(program.Instruction(first+2)) || !healProgramTail(program, first+3) {
 		return false
 	}
