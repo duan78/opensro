@@ -1219,11 +1219,41 @@ arme ×4 (4), WATER_CANCEL2 tier isolé (1), GUARDA_DIVIDE (1).
    les tiers ≤90) — « sans preuve : pas d'implémentation » tant que
    la décision V5 n'est pas reçue.
 
-## Le reste (carte actualisée après s47)
+## Session 48 — la grappe DAMAGE_DIVIDE livrée : la dispersion de dégâts au groupe (+4, 83,9 %)
 
-1. **FAIT (s47)** : la classification est livrée — 43 rangées
-   livrables sur 15 familles (liste ci-dessus), 379 hors joueur,
-   12 PvP parked, 2 danses. La couverture JOUEUR mesurée : 97,3 %.
+La première grappe des 43 : `lnks{0,1500,2,1} dura[300000] lkdd{60|75}
+reqi{arme}` — « the damage received by the connected target is
+dispersed among all party members » (les lignes d'armes CH partagent
+60 %, la garde du Guerrier 75 %). Livré sur le motif s42 :
+
+- **Parseur** : le cas `lkdd` (Link requis, part 1..100, plancher ≥91)
+  → Link.Disperse ; MAIS la rangée a exigé TROIS tolérances chaînées,
+  chacune nommée par bissectrice de troncature : (1) la définition
+  `targeted` du walk (Ally+Party) ne couvre pas la forme
+  Party-sans-Ally des rangées live → `partyTargeted` (sous plancher) ;
+  (2) la porte de colonnes zéro exigeait col21=0 — le MOT DE PORTÉE
+  du cast ciblé ; (3) le saut de col28. Le mur final : la colonne de
+  portée, invisible dans les dumps de cols 21-33 précédents.
+- **Registre** : DispersePercent sur Link + DisperseLinks (quatrième
+  mirror de la requête).
+- **Crochet** : scaleLinkedDisperse (avant commit, une frappe qui
+  n'atterrit pas disperse rien) + commitLinkedDisperse — la part se
+  répartit ÉGALEMENT entre les membres du groupe (58BEF0's roster
+  walk, la victime exceptée — inférence enregistrée), chaque débit
+  tenu à 1 PV (la borne v1 du redirect).
+
+Tests : plancher (les 4 : 60/60/60/75), vide natif, runtime (500
+dispersés → 250+250 aux deux membres ; le fixture exige le stub
+RewardParties — les personnages proches ne sont pas un groupe).
+**Couverture : 83,8 → 83,9 %** (2519/3002) ; joueur : 97,5 % (2093/
+2146). Reste livrable : 39 rangées.
+
+## Le reste (carte actualisée après s48)
+
+1. **FAIT (s47+s48)** : classification livrée ; DAMAGE_DIVIDE LIVRÉE
+   (+4). Reste livrable : 39 rangées (FRENZYA, POISONA_FIELD,
+   CONFUSIONA_ILLUSION, FIRE_SHIELD, HEALSHIELD, STEALTHA_POINT,
+   TRANSFORMA_DUPLE, MINDP×2, SPELLP, WATER_CANCEL2 tier).
 2. **La traîne joueur (~270−15 rangées)** : les familles 2-5 de
    l'histogramme, une à une après les trois lanes.
 3. **Décision owner de périmètre (nouveau s39)** : ~180 rangées

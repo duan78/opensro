@@ -122,3 +122,95 @@ func (rt *Runtime) commitLinkedRedirect(division string, debit linkedRedirectDeb
 		rt.PushCharacterFrames(division, source.Name, []wire.Frame{frame})
 	}
 }
+
+/*
+================
+scaleLinkedDisperse
+
+Extended content (isro-live-2026), port-only, not v1.150-native (M8
+s48): scale the victim's resolved formulas down by the live lkdd
+links' share and return the dispersed total per link. The commit has
+not run yet: a strike that never lands disperses nothing.
+================
+*/
+func (rt *Runtime) scaleLinkedDisperse(division string, victim *enterworld.Character, strike *playerStrike, now int64) []linkedDisperseShare {
+	if rt.effects == nil {
+		return nil
+	}
+	links, _ := rt.effects.DisperseLinks(division, victim.Name, now)
+	var shares []linkedDisperseShare
+	for _, link := range links {
+		var amount uint32
+		for i := range strike.formulas {
+			formula := &strike.formulas[i]
+			if formula.Damage == 0 {
+				continue
+			}
+			part := formula.Damage * link.DispersePercent / 100
+			if part == 0 || part >= formula.Damage {
+				continue
+			}
+			formula.Damage -= part
+			formula.MagicalDamage -= min(formula.MagicalDamage, part)
+			amount += part
+		}
+		if amount > 0 {
+			shares = append(shares, linkedDisperseShare{amount: amount})
+		}
+	}
+	return shares
+}
+
+type linkedDisperseShare struct {
+	amount uint32
+}
+
+/*
+================
+commitLinkedDisperse
+
+Spread one dispersed share evenly among the victim's party - every
+member but the victim itself (58BEF0's roster walk), each debit held
+at one HP as the redirect's recorded v1 boundary. Inferred, recorded
+deliberately (M8 s48): "dispersed among ALL party members" counts the
+members the roster walk returns; the victim already paid its reduced
+share and is not debited twice.
+================
+*/
+func (rt *Runtime) commitLinkedDisperse(division string, victim *enterworld.Character, share linkedDisperseShare, now int64) {
+	from := rt.liveSpawn(simulation.WorldKey(division, victim.Name), victim, now)
+	members := rt.partyMembersAround(division, victim, from, 10000, false, now)
+	if len(members) == 0 {
+		return
+	}
+	each := share.amount / uint32(len(members))
+	if each == 0 {
+		return
+	}
+	for _, gid := range members {
+		member := rt.findCharacterByGid(division, gid)
+		if member == nil {
+			continue
+		}
+		var frame wire.Frame
+		if !rt.deps.Update(member, "linked-damage-disperse", func() bool {
+			if member.DeletePending || !enterworld.CharacterAlive(member) {
+				return false
+			}
+			hp := enterworld.CurrentHP(member)
+			if hp <= 1 {
+				return false
+			}
+			take := min(uint32(hp-1), each)
+			*member.CurrentHP = int64(hp) - int64(take)
+			frame = wire.Frame{Opcode: simulation.OpVitalsUpdate,
+				Payload: simulation.VitalsRefreshWithSourcePayload(gid, simulation.VitalsSourceSkillRecovery, rt.publishedVitals(division, member))}
+			return true
+		}) {
+			continue
+		}
+		if frame.Opcode != 0 && rt.PushCharacterFrames != nil {
+			rt.PushCharacterFrames(division, member.Name, []wire.Frame{frame})
+		}
+	}
+}

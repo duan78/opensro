@@ -26,10 +26,14 @@ type Link struct {
 	// GuardDurationMs/GuardChance/GuardLevel are the extended reactive
 	// stun link's st block (M8 s43); GuardCeilingLevel is abnb's word -
 	// an attacker of the recipient at or below it rolls the stun.
-	GuardDurationMs          uint32
-	GuardChance              uint32
-	GuardLevel               uint16
-	GuardCeilingLevel        uint32
+	GuardDurationMs   uint32
+	GuardChance       uint32
+	GuardLevel        uint16
+	GuardCeilingLevel uint32
+	// DispersePercent is lkdd: the share of the recipient's taken damage
+	// spread evenly among all party members (M8 s48); zero means none.
+	Disperse                 bool
+	DispersePercent          uint32
 	ExpiresAtMs, StartedAtMs int64
 	ClientCancelable         bool
 	// TargetModifiers are the recipient half's parameter writes (594AC0 in
@@ -261,6 +265,38 @@ func (r *Registry) StunGuards(division, target string, nowMs int64) (guards []Li
 		held++
 		l, ok := r.links[linkKey(division, e.LinkToken)]
 		if !ok || l.GuardDurationMs == 0 || l.sourceRetired || l.targetRetired || (Effect{ExpiresAtMs: l.ExpiresAtMs}).Expired(nowMs) {
+			continue
+		}
+		l.TargetModifiers = Modifiers{}
+		out = append(out, l)
+	}
+	return out, held
+}
+
+/*
+==================
+DisperseLinks
+
+The logically active links whose recipient is target and that disperse
+a share of target's taken damage among the party (lkdd). The fourth
+mirror of the same query shape.
+==================
+*/
+func (r *Registry) DisperseLinks(division, target string, nowMs int64) (links []Link, held int) {
+	if r == nil {
+		return nil, 0
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	key := ownerKey(division, target)
+	var out []Link
+	for _, e := range r.byOwner[key] {
+		if e.LinkToken == 0 || e.Phase != 2 || e.StopRequested {
+			continue
+		}
+		held++
+		l, ok := r.links[linkKey(division, e.LinkToken)]
+		if !ok || !l.Disperse || l.sourceRetired || l.targetRetired || (Effect{ExpiresAtMs: l.ExpiresAtMs}).Expired(nowMs) {
 			continue
 		}
 		l.TargetModifiers = Modifiers{}
