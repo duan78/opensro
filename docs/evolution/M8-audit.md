@@ -533,12 +533,31 @@ past-90 refusent quelque part, à sonder en premier), RECOVERYA_QUICK,
 BINGBYEOK D/E, JIPJUNG, AGGROLOW, SWORD_SHIELDPD, STEALTHA
 HIDING/DETECT/POINT, SAINTA_INNOCENT.
 
-## Le reste (carte actualisée après s29)
+## Session 30 — HEALA_CYCLE_B était une fausse piste : le filtre d'échantillon ne mesurait pas l'union
 
-1. HEALA_CYCLE_B tiers past-90 (B_03/05/07+) : la famille même du
-   test licencié natif — sa porte de refus étendue à nommer.
-2. MANADRY (10) : drain de mana ciblé `pmsc tnat getv×2`.
-3. JIPJUNG (9) : buff d'un mot `dura re{…}`.
+Le probe par ID rangée a retourné la vérité en une passe : les 7 tiers
+HEALA_CYCLE_B étendus (maîtrises 80–116, forme efr-en-tête classique
+efr[1,1,300,8,0,5] dura 16000 puls 2000 heal mwhh getv×2) sont TOUS
+`pinned=true` par le contrat natif — comptés « recovery » dans les
+bandes. Ils n'apparaissaient dans les échantillons « unpinned » que
+parce que le filtre D'ÉCHANTILLON (ligne dédiée du test de couverture)
+ne regardait que le kind du planneur, sans l'union runtime que les
+COMPTEURS mesurent. Le filtre reflète désormais `rowRuntimeAdmitted`
+(le même prédicat que les comptes). Zéro compteur changé (79,1 %),
+les échantillons maintenant honnêtes dessinent la vraie carte :
+MANADRY, WATER_CANCEL, JIPJUNG, SWORD_SHIELDPD, SOULA_STUNLINK,
+RAZEA INT/STR/PHYSICAL (certains tiers), STEALTHA_CHANGE,
+BATTLAA_GUARD, GUARDA_PHYSICAL, REBIRTHA_SPECIAL — plus les P2SKILL/
+INNATE (rangées d'arène/innées) et les danses (owner V5).
+
+## Le reste (carte actualisée après s30)
+
+1. MANADRY (10) : drain de mana ciblé `pmsc tnat getv×2` (bandes
+   101/131 dans les échantillons).
+2. JIPJUNG (9) : buff d'un mot `dura re{…}` (bande 91).
+3. WATER_CANCEL (7+) : purge temporisée (bandes 91/101).
+3b. SOULA_STUNLINK + RAZEA tiers isolés + STEALTHA_CHANGE/
+    BATTLAA_GUARD/GUARDA_PHYSICAL/REBIRTHA_SPECIAL : à sonder.
 4. AGGROLOW (9) / FORGETA_AGGRO (8) : coupes d'aggro de zone
    `efr tntd tdwm`.
 5. SWORD_SHIELDPD (8) : debuff de parade temporisé `dura adps iqer`.
