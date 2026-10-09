@@ -689,6 +689,14 @@ func decodeSkillOffense(fields []string, row *SkillRow) string {
 				return "offense:invalid-envelope-or-arguments"
 			}
 			row.OffensiveArea = area
+		case 0x70736f67, 0x7265706c, 0x72706373:
+			// Extended content (isro-live-2026), port-only, not v1.150-native:
+			// the live client's added instructions (psog {1|2} on every 2026
+			// attack/defense row, repl {1} and srpc {skillId} on the bard
+			// dances). The v1.150 engine has no reader for them; tolerated
+			// as one-word riders so the row's native admission shape decides
+			// executability exactly as its working native ancestor.
+			arity = 1
 		default:
 			return "offense:instruction:" + strconv.FormatInt(tag, 16)
 		}

@@ -124,6 +124,10 @@ func compileTimedItemEffect(fields []string, row SkillRow) (SkillTimedEffect, bo
 			// parseSkillOffense already decodes these shared modifier blocks;
 			// the common installer owns their arithmetic and removal.
 			modifiers = true
+		case 0x70736f67, 0x7265706c, 0x72706373:
+			// Extended content (isro-live-2026), port-only, not v1.150-native:
+			// the live client's added one-word riders; the v1.150 engine has
+			// no reader for them, so they ride without changing the contract.
 		default:
 			return SkillTimedEffect{}, false
 		}

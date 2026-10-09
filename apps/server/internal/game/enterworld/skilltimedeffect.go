@@ -598,6 +598,13 @@ func parseSkillTimedEffect(fields []string, row *SkillRow) {
 			}
 			result.Hawk = SkillSummonedHawk{Present: true, IntervalMs: op.Arguments[2],
 				Physical: op.Arguments[3], Magical: op.Arguments[4]}
+		case 0x70736f67, 0x7265706c, 0x72706373:
+			// Extended content (isro-live-2026), port-only, not v1.150-native:
+			// the live client's added one-word instructions (psog rides the
+			// 2026 attack/defense rows, repl and srpc the bard dances). The
+			// v1.150 engine has no reader for them; tolerated as riders so
+			// the row's native admission shape decides, exactly as its
+			// working native ancestor without them.
 		default:
 			return
 		}
