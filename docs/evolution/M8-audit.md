@@ -429,7 +429,24 @@ du parse sur la rangée, pas une hypothèse de plus. Aucun rang
 basculé ; golangci a attrapé un delta signé impossible sur uint32
 (corrigé en int64 — cité en leçon).
 
-## Le reste (carte actualisée après s25)
+## Session 26 — la porte fautive TROUVÉE : la position de l'efr ; restructuration tentée puis ANNULÉE pour préserver le contrat natif
+
+La sonde ligne-à-ligne a nommé la porte : le programme live est
+`atfe, dura, puls, EFR, eshp, heal, mwhh, getv×2` — l'efr arrive
+**en quatrième position**, pas en tête ; le s23 ne sautait que atfe,
+le prédicat d'aire lisait donc DURA et refusait. La vraie forme est
+une **interpénétration** de la tête (les mots dans un autre ordre),
+pas un simple drapeau de plus. Une restructuration en marche flexible
+a été écrite : elle a fait basculer +8 rangs (78,7 %) mais a **cassé
+quatre tests natifs** (TestHealOverTimeRowsAreAdmittedByCompleteProgram,
+TestHealOverTimeProgramRefusesAlteredShapes, deux RecoveryDivision) —
+elle a été ANNULÉE : le contrat natif prime sur la rangée, toujours.
+La lane s27 : la marche flexible doit admettre les deux ordres SANS
+changer une seule rangée native (répliquer les quatre tests contre la
+nouvelle tête AVANT de rouvrir), ou un prédicat dédié à la forme
+atfe-interleavée à côté du contrat natif intact.
+
+## Le reste (carte actualisée après s26)
 
 1. BINGPAN : la porte duration (preuve du vide natif d'abord).
 2. BINGBYEOK/HWABYEOK : forme timed onff/wp.
