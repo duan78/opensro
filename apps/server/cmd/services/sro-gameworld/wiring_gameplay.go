@@ -472,6 +472,9 @@ func (game *gameplayPlane) register(hub *transport.Hub, loadQuests questDefiniti
 		log.Infof("progression: beta total mastery allowance %d for both races (%s)", masteryOverride, progression.EnvBetaMastery)
 	}
 	stats.Growth = progression.BetaGrowthFromEnv()
+	// The extended cap arrives with its curve as one decision (wiring.go);
+	// zero keeps the native 90 walk.
+	stats.LevelCap = game.deps.LevelCap
 	if stats.Growth.Enabled {
 		log.Infof("progression: beta growth ON (%s): every level at the level-%d kill pace, skill EXP at that pace x%d, drop passes x%d, gold x%d", progression.EnvBetaGrowth, progression.BetaReferenceLevel, stats.Growth.SkillExpRate, stats.Growth.DropRate, stats.Growth.GoldRate)
 		game.items.DropPassRate = stats.Growth.DropRate

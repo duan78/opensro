@@ -109,12 +109,27 @@ func newGameWorldApplication(
 		dataPaths.BundleRoot,
 		dataPaths.ManifestDigest,
 	)
-	// Extended content is port-only, not native: report its state once at
-	// boot so an operator sees exactly which game is running.
+	// Extended content is port-only, not native: when the sealed
+	// projection is built, its live-2026 level curve and cap replace the
+	// native table everywhere (progression walk, presentation, creation
+	// bounds) as ONE decision; a drifted or moved-cap projection fails
+	// the boot instead of quietly running a different game.
+	var extendedLevels enterworld.LevelDataSource
+	var extendedLevelCap int64
 	if extendedRoot, extendedOk, extendedErr := gamedata.ResolveExtended(); extendedErr != nil {
 		return nil, fmt.Errorf("extended content: %w", extendedErr)
 	} else if extendedOk {
-		log.Infof("extended content: ON, projection=%q (not v1.150-native)", extendedRoot)
+		extended, loadErr := gamedata.LoadExtended()
+		if loadErr != nil {
+			return nil, fmt.Errorf("extended content: %w", loadErr)
+		}
+		extendedLevels = enterworld.NewExtendedLevels(extended.LeveldataPath, extended.GoldCurvePath)
+		extendedLevelCap = extended.Manifest.DerivedCap
+		log.Infof(
+			"extended content: ON, projection=%q, live-2026 level curve, cap %d (not v1.150-native)",
+			extendedRoot,
+			extendedLevelCap,
+		)
 	} else if gamedata.ExtendedContentEnabled() {
 		log.Warnf(
 			"extended content: %s is on but no projection is built at %q; the world stays native (build it with scripts/build/server/buildExtendedGameDataBundle.mjs)",
@@ -132,6 +147,7 @@ func newGameWorldApplication(
 	)
 	devPaths.AuthoredAreas = authoredAreas
 	devPaths.StructureZones = filepath.Join(dataPaths.WorldAuthorityDir, "structure-zones.json")
+	devPaths.LevelOverride, devPaths.LevelCap = extendedLevels, extendedLevelCap
 	characterRoster, err := enterworld.LoadRoster(devPaths.RosterPath)
 	if err != nil {
 		return nil, fmt.Errorf("character roster: %w", err)

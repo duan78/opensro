@@ -35,7 +35,9 @@ import (
 
 // LevelCap is the Legend III era character level cap: 90, pinned by the
 // era's official patch notes ("Increased level cap: Advance to level
-// 90"). The shipped
+// 90"). The extended content (isro-live-2026, port-only, not native)
+// lifts the effective cap through Runtime.LevelCap at the wiring level;
+// the constant itself never moves. The shipped
 // leveldata carries 140 curve rows, but rows past the cap are the same
 // future-content data the 240 EU mastery ceiling is - the cap is the
 // era's rule. At the cap experience still accrues but freezes just
@@ -453,7 +455,7 @@ func (rt *Runtime) commitExperience(
 		return nil, false
 	}
 
-	walk := walkExpCurve(rt.deps.LevelData(), characterLevel(next), coercePoints(next.Experience), expDelta)
+	walk := walkExpCurve(rt.deps.LevelData(), characterLevel(next), coercePoints(next.Experience), expDelta, rt.effectiveLevelCap())
 	if !walk.ok {
 		// A level without a curve row cannot be walked on either side of
 		// the wire; refuse the whole grant.
@@ -672,17 +674,32 @@ type expWalkResult struct {
 
 /*
 ==================
+effectiveLevelCap
+
+The extended mode's injected cap when one is wired, else the native
+constant: the freeze rule below runs at whichever cap is in force.
+==================
+*/
+func (rt *Runtime) effectiveLevelCap() int64 {
+	if rt.LevelCap > 0 {
+		return rt.LevelCap
+	}
+	return LevelCap
+}
+
+/*
+==================
 walkExpCurve
 
 walkExpCurve is the server's copy of the client's own level walk
 (sub_779620 @0x7797d6..0x779800) over the same shipped curve
 (leveldata column 1 via LevelDataSource.ExpRequired), plus the level
 cap the client-side walk never needed (retail servers simply stopped
-granting at the cap): at LevelCap the experience freezes at
+granting at the cap): at the effective cap the experience freezes at
 requirement-1 so no crossing is ever emitted or walked.
 ==================
 */
-func walkExpCurve(levels enterworld.LevelDataSource, level, exp, delta int64) expWalkResult {
+func walkExpCurve(levels enterworld.LevelDataSource, level, exp, delta, cap int64) expWalkResult {
 	result := expWalkResult{level: level, exp: exp, ok: true}
 	if delta == 0 {
 		return result
@@ -724,7 +741,7 @@ func walkExpCurve(levels enterworld.LevelDataSource, level, exp, delta int64) ex
 			result.exp = total
 			break
 		}
-		if result.level >= LevelCap {
+		if result.level >= cap {
 			// Freeze just below the boundary: emitting a crossing the
 			// server refuses to apply would desync the client's walk.
 			result.exp = required - 1

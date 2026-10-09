@@ -54,6 +54,10 @@ type Deps struct {
 	Skills            SkillDataSource
 	MagicOptions      MagicOptionSource
 	EquipItemsEnabled bool
+	// LevelCap is the effective character cap the composition wired
+	// (extended content, port-only, not native); zero keeps the native
+	// progression constant. Arrives with Levels as one decision.
+	LevelCap int64
 	// StarterKit is the beta starter kit (starterkit.go); empty when disabled.
 	StarterKit []WireItem
 	// MasteryTotalOverride is shared with progression; zero means native.

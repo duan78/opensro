@@ -242,6 +242,9 @@ export async function buildExtendedGameDataBundle( options ) {
 
 	const leveldata = parseLevelTable( sourceRoot, "leveldata.txt", LEVELDATA_COLUMNS );
 	const levelgold = parseLevelTable( sourceRoot, "levelgold.txt", LEVELGOLD_COLUMNS );
+	// dg.txt is the gold-walk basis the native server reads (v1.150
+	// CDropGoldData); the live-2026 file carries the same role to 140.
+	const goldcurve = parseLevelTable( sourceRoot, "dg.txt", LEVELGOLD_COLUMNS );
 	const items = censusItems( sourceRoot, itemShards );
 	const characters = censusCharacters( sourceRoot, characterShards );
 
@@ -286,6 +289,11 @@ export async function buildExtendedGameDataBundle( options ) {
 				columns: LEVELGOLD_COLUMNS,
 				rows: levelgold.rows
 			} ),
+			await write( "goldcurve.json", {
+				sourceFile: "dg.txt",
+				columns: LEVELGOLD_COLUMNS,
+				rows: goldcurve.rows
+			} ),
 			await write( "census.json", { items, characters } )
 		];
 		const manifest = {
@@ -307,6 +315,7 @@ export async function buildExtendedGameDataBundle( options ) {
 			counts: {
 				levelRows: leveldata.rows.length,
 				goldRows: levelgold.rows.length,
+				goldCurveRows: goldcurve.rows.length,
 				itemRows: items.rows,
 				characterRows: characters.rows
 			},

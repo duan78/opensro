@@ -126,6 +126,7 @@ type Extended struct {
 	Manifest      ExtendedManifest
 	LeveldataPath string
 	LevelgoldPath string
+	GoldCurvePath string
 	CensusPath    string
 }
 
@@ -233,6 +234,7 @@ func LoadExtended() (Extended, error) {
 		Manifest:      manifest,
 		LeveldataPath: filepath.Join(root, "leveldata.json"),
 		LevelgoldPath: filepath.Join(root, "levelgold.json"),
+		GoldCurvePath: filepath.Join(root, "goldcurve.json"),
 		CensusPath:    filepath.Join(root, "census.json"),
 	}, nil
 }

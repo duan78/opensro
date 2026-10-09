@@ -45,6 +45,14 @@ type DevPaths struct {
 	// StructureZones is world-authority/structure-zones.json: the event
 	// zones the fortress worlds' structures stand on.
 	StructureZones string
+	// LevelOverride swaps the level curve for the extended content
+	// (isro-live-2026, port-only, not native); nil keeps the native
+	// textdata table. The curve and the cap below arrive together, wired
+	// by the composition root when the sealed extended projection loads.
+	LevelOverride LevelDataSource
+	// LevelCap is the effective character cap (0 = native 90); the
+	// extended content wires 140 alongside its curve.
+	LevelCap int64
 }
 
 // DevPathsFromEnv resolves bootstrap-owned optional environment settings
@@ -110,7 +118,10 @@ func NewDevDepsWithRoster(paths DevPaths, textdata *TextdataCatalogs, roster *Ro
 	// first EnterWorld request.
 	textdataDir := paths.TextdataDir
 	items := textdata.Items
-	levels := textdata.Levels
+	var levels LevelDataSource = textdata.Levels
+	if paths.LevelOverride != nil {
+		levels = paths.LevelOverride
+	}
 	skills := textdata.Skills
 	magicOptions := textdata.MagicOptions
 
@@ -177,6 +188,7 @@ func NewDevDepsWithRoster(paths DevPaths, textdata *TextdataCatalogs, roster *Ro
 		Characters:        source,
 		Items:             items,
 		Levels:            levels,
+		LevelCap:          paths.LevelCap,
 		Skills:            skills,
 		MagicOptions:      magicOptions,
 		EquipItemsEnabled: paths.EquipItemsEnabled,

@@ -32,8 +32,10 @@ import sro_pk2
 ARCHIVES = ("Data.pk2", "Media.pk2", "Map.pk2", "Particles.pk2", "Music.pk2")
 SOURCE_CLIENT = "isro-live-2026"
 TEXTDATA_PREFIX = "server_dep/silkroad/textdata/"
-# The progression tables the extended level curve reads (mission M1/M2).
-TABLES = ("leveldata.txt", "levelgold.txt")
+# The progression tables the extended level curve reads (mission M1/M2):
+# leveldata for XP/SP/mob-basis/jobs, levelgold as the gold record,
+# dg.txt as the gold-walk basis the native server reads (CDropGoldData).
+TABLES = ("leveldata.txt", "levelgold.txt", "dg.txt")
 # Loader files whose listed shards are extracted for the item/character
 # censuses (degrees, requirement levels, mob levels).
 LOADERS = {

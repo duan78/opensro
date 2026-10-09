@@ -145,6 +145,12 @@ type Runtime struct {
 	Growth GrowthRates
 	// MasteryTotalOverride is the beta budget; zero keeps native race rules.
 	MasteryTotalOverride int64
+	// LevelCap lifts the character cap for the extended content
+	// (isro-live-2026, port-only, not native): the level curve and the
+	// cap come as one decision, wired together. Zero keeps the native
+	// 90; the freeze-just-below-the-threshold rule applies at whichever
+	// cap is in force.
+	LevelCap int64
 }
 
 /*

@@ -78,6 +78,7 @@ async function writeSource( directory, { goldMax = 140, mobLevels = null } = {} 
 	const files = {
 		"leveldata.txt": utf16( levelRows( 150, 14 ) ),
 		"levelgold.txt": utf16( levelRows( goldMax, 3 ) ),
+		"dg.txt": utf16( levelRows( goldMax, 3 ) ),
 		"itemdata.txt": utf16( "ItemData_1.txt\r\n" ),
 		"ItemData_1.txt": utf16( itemShard ),
 		"characterdata.txt": utf16( "CharacterData_1.txt\r\n" ),

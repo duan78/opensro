@@ -98,6 +98,20 @@ func characterItems(items []enterworld.VisualItem) []agentapi.CharacterItem {
 
 /*
 ================
+effectiveLevelCap
+
+The native 90 unless the extended content wired its sealed cap.
+================
+*/
+func effectiveLevelCap(wired int64) int64 {
+	if wired > 0 {
+		return wired
+	}
+	return progression.LevelCap
+}
+
+/*
+================
 openAuthorityPlane
 ================
 */
@@ -115,6 +129,13 @@ func openAuthorityPlane(
 	textdata, err := enterworld.LoadTextdataCatalogs(textdataDir)
 	if err != nil {
 		return authorityPlane{}, err
+	}
+	// The extended content (not v1.150-native) swaps the level curve as
+	// one decision with the cap; presentation percentages must read the
+	// same curve the progression walk uses.
+	characterLevels := enterworld.LevelDataSource(textdata.Levels)
+	if devPaths.LevelOverride != nil {
+		characterLevels = devPaths.LevelOverride
 	}
 	options := store.OptionsFromEnv()
 	options.DefaultSkills = enterworld.DefaultSkillSeeder(textdata.Skills)
@@ -162,7 +183,7 @@ func openAuthorityPlane(
 
 	config := agentapi.Config{
 		Store:                 authorityStore,
-		CharacterPresentation: characterPresentationProjector(characterRoster, textdata.Levels),
+		CharacterPresentation: characterPresentationProjector(characterRoster, characterLevels),
 		CharacterCreationValid: func(character *domain.Character) bool {
 			return enterworld.CharacterCreationValid(character, characterRoster)
 		},
@@ -174,7 +195,7 @@ func openAuthorityPlane(
 		MarksDir:                os.Getenv(agentapi.EnvMarksDir),
 		AuthoredAreas:           devPaths.AuthoredAreas,
 		BenchmarkFixtureControl: os.Getenv(agentapi.EnvBenchmarkFixtureControl) == "1",
-		LevelCap:                progression.LevelCap,
+		LevelCap:                effectiveLevelCap(devPaths.LevelCap),
 		SkillGroup: func(id uint32) (uint32, bool) {
 			row, ok := textdata.Skills.SkillByID(id)
 			return row.Group, ok
