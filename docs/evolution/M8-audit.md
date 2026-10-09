@@ -64,18 +64,41 @@ pilotes — flag-off identique par construction.
   lifetime/parse avant la dispatch (lane identifiée, non livrée) ;
   MPHEAL est déjà un HoT admis par l'union.
 
-## Le reste (carte actualisée après s3)
+## Session 4 — le diagnostic chirurgical des débuffs (aucun rang basculé)
 
-Par impact décroissant, chaque grappe une lane d'admission + exécution :
-1. **Froid/feu CH** (BINGPAN 20, BINGBYEOK 12, HWABYEOK 9 : `zf bf efr
-   tnat`, `ffno wp`, `ffno wp`) : débuffs anormaux ciblés — la mécanique
-   existe (`skillabnormal.go`, `abnormal.Sources`), formes à admettre
-   dans la marche offense (colonnes ennemi 29/30).
-2. **Auras de régénération** (WATER_HARMONY 13 : `dura efr alop cgri`)
-   et la porte lifetime de MANATRANS (forme déjà valide).
-3. **Danses de barde** (40 rangs, 4 familles) : le système de rythme
-   2026, probablement wire-nouveau (charte V5, décision owner).
-4. INVISIBLE/MANADRY/traps/JIPJUNG et la longue traîne : une à une.
+La lane status-cast EXISTS (`compileSkillStatusCast` : « damage-free
+hostile status programs ») et le programme de BINGPAN
+(`fz bf efr{1,1,50,5,0,24} tnat`) correspond presque exactement à son
+contrat. Les sondages (foldés) ont isolé les portes exactes :
+- **BINGPAN (20 rangs)** : refuse sur `row.ActionDurationMs == 0` — un
+  cast de statut INSTANTANÉ dont la durée vit dans les mots de durée
+  des blocs fz/bf eux-mêmes, pas dans l'enveloppe d'action. Desserre la
+  porte = faire basculer des rangées natives aujourd'hui refusées
+  (changement de comportement natif, interdit sans preuve binaire). La
+  lane : recenser quelles rangées natives passeraient la porte
+  ouverte, et si AUCUNE n'existe, l'ouvrir avec l'inférence enregistrée.
+- **BINGBYEOK/HWABYEOK (21 rangs)** : rangées TIMED (handler 3), pas
+  instantanées — leur forme `onff {t,pct} wp {…}` n'est pas un
+  programme anormal (`abnormal.Present` faux, `onff` n'est pas une
+  source anormale). Lane : une admission timed pour la forme
+  onff/wp (débuff temporisé), distincte du status-cast.
+- **WATER_HARMONY (13)** : `dura efr{3,1,60,0,0,7} pola cgri` —
+  `pola` (0x706f6c61) n'a pas de case dans la marche timed ; l'aura de
+  régénération de groupe est une nouvelle forme timed (efr select 7).
+
+Aucune de ces portes ne s'ouvre gratuitement : chacine exigerait soit
+la preuve qu'aucune rangée native ne bascule, soit une nouvelle forme
+avec son exécution runtime. C'est le travail de s5, avec les cibles
+exactes ci-dessus.
+
+## Le reste (carte actualisée après s4)
+
+1. BINGPAN : la porte duration (preuve du vide natif d'abord).
+2. BINGBYEOK/HWABYEOK : forme timed onff/wp.
+3. WATER_HARMONY : forme timed pola (aura régén).
+4. MANATRANS : la porte lifetime du parse recovery.
+5. **Danses de barde** (40 rangs) : le rythme 2026 — décision owner V5.
+6. INVISIBLE/MANADRY/traps/JIPJUNG et la traîne : une à une.
 
 ## Tests et gates (sorties de session 2)
 
