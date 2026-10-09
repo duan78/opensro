@@ -111,7 +111,21 @@ TargetSelection_DispatchByShape pour 18 ?) et la preuve du vide natif
 associée — c'est de l'RE dirigé, pas une tolérance. Lane s7, cible
 exacte : la case efr de `compileSkillStatusCast`.
 
-## Le reste (carte actualisée après s6)
+## Session 7 — les cônes BINGPAN admis (et une correction honnête)
+
+La « sélection 18 » de s6 était une erreur de lecture de mes propres
+sondages : les args étaient affichés en HEXADÉCIMAL — `select = 0x18`
+= **24 décimal**, la sélection hostile standard. La seule différence
+réelle était la **forme d'aire 4** (cône directionnel) sur les rangées
+ciblées. La porte est ouverte pour la forme 4 (le sélecteur partagé
+`areaVictims` exécute les formes 1-4 et 6 génériquement via
+`directionalVictims`), avec l'inférence enregistrée et la même preuve
+du vide (seuls les paliers BINGPAN basculent, jamais admis avant).
+**Couverture 75,2 % → 75,6 %** (+11 cônes 91+). Leçon citée :
+vérifier la base d'affichage d'un sondage avant d'en dériver une
+sémantique.
+
+## Le reste (carte actualisée après s7)
 
 1. BINGPAN : la porte duration (preuve du vide natif d'abord).
 2. BINGBYEOK/HWABYEOK : forme timed onff/wp.

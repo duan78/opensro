@@ -116,10 +116,23 @@ func compileSkillStatusCast(fields []string, row SkillRow) (SkillThreat, bool) {
 			if !row.TargetRequired {
 				wantShape = 1
 			}
-			if a[0] != 1 || a[1] != wantShape || a[2] == 0 || a[2] > 0xffff ||
-				a[3] == 0 || a[3] > 255 || a[4] > 100 || a[5] != statusCastSelect {
+			// A targeted row may also author the directional cone
+			// (shape 4, the BINGPAN tiers) instead of the sphere: the
+			// shared areaVictims selector executes shape 4 generically
+			// (directionalVictims), the cast's consequence stays the
+			// status roll, and the hostile select word is the standard 24.
+			// Inference recorded 2026-10-09 (M8 s7); the void proof: the
+			// rows this admits beyond the sphere are the BINGPAN family's
+			// own tiers, never admitted by this port.
+			shapeOK := a[1] == wantShape || row.TargetRequired && a[1] == 4
+			if a[0] != 1 || !shapeOK ||
+				a[2] == 0 || a[2] > 0xffff || a[3] == 0 || a[3] > 255 || a[4] > 100 || a[5] != statusCastSelect {
 				return SkillThreat{}, false
 			}
+
+			// A cone (shape 4) keeps its geometry but reports as the
+			// primary-centred shape the area contract names; directional
+			// victims resolve it through the same primary-centred lease.
 			threat.Area = SkillOffensiveArea{Shape: uint8(a[1]), Radius: a[2], MaxTargets: uint8(a[3]),
 				ReductionPercent: uint8(a[4]), Select: statusCastSelect}
 		default:
