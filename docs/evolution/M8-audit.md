@@ -932,6 +932,40 @@ GUARDA_MAGIC, POISONA_FIELD, TRANSFORMA_MASK, CONFUSIONA_ILLUSION,
 FIRE_SHIELD…) plus la traîne. Parked-owner : danses (V5), MANADRY
 (PvP), STEALTHA_CHANGE (PvP) — 52 rangées.
 
+## Amorce s41 complétée — le chemin de frisse cartographié pour le crochet GUARDA
+
+Ouverture de s41 (10/10) : les trois derniers faits mesurés avant la
+livraison (lectures, pas de probe) :
+
+1. **Le registre** : `statuseffect.Link` (link.go) porte déjà les mots
+   lkdh (ManaHPPercent/ManaPercent/ManaCap) et `ManaLinks(division,
+   target, now)` est la requête exacte à mirroir — un
+   `RedirectLinks(division, victim, now)` filtrant les liens
+   redirect, même structure (byOwner du RECIPIENT, phase 2, non
+   stoppé, non expiré).
+2. **Le point d'atterrissage** : `monsterStrikePlayer`
+   (monsterstrike.go:120) — le débit HP de la victime vit DANS
+   `strikePlayerInDoor` (sous le verrou du personnage, ligne 149) ;
+   `formula.MagicalDamage != 0` marque la voie magique (précédent :
+   la boucle COS ligne 247) ; `monsterStrikeInput.percent` est un
+   scalaire de dégâts EXISTANT (ligne 129) — la part victime peut
+   chevaucher via (100−share)/100, le débit guerrier se fait dans la
+   porte du source (précédent commitLinkedMana ligne 87).
+3. **Preuve du vide par construction** : AUCUNE rangée native
+   n'épingle lkdr (plancher ≥91) → aucun lien redirect ne peut
+   exister en natif → le crochet dans le chemin de frappe est
+   inopérant pour chaque frappe native, par construction. Le risque
+   du changement est confiné aux rangées étendues.
+
+Reste à écrire (une session fraîche, le chemin de frappe natif exige
+du soin) : le cas `tagTimedLinkedRedirect = 0x6c6b6472` dans le walk
+timed (Link.Present requis, masque ∈ {4,8}, part 1..100, mot 2 = 0,
+plancher ≥91, épinglage `Link.Present && (... || Redirect)`), les
+trois champs sur SkillEffectLink ET sur statuseffect.Link (l'install
+les recopie), `RedirectLinks`, et le crochet dans
+monsterStrikePlayer : diversion avant le commit, débit guerrier dans
+sa porte, trames vitals des deux côtés.
+
 ## Le reste (carte actualisée après s39)
 
 1. **Les trois amorces s39 ci-dessus** (lkdr redirection, garde
