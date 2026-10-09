@@ -175,7 +175,11 @@ func TestExtendedSkillsExecutionCoveragePastLevel90(t *testing.T) {
 		if mastery < 91 || mastery > 140 || row.ChainSub || row.ChainNext != 0 {
 			continue
 		}
-		if skills.plans[row.ID].kind != SkillExecutionUnsupported {
+		// The sample must mirror the admission union the counts measure
+		// (s30: the plan-kind-only filter listed HEALA_CYCLE_B's past-90
+		// tiers and the trap rows as "unpinned" while both were counted
+		// executable - a false lead that cost a probe).
+		if skills.plans[row.ID].kind != SkillExecutionUnsupported || rowRuntimeAdmitted(skills, row) {
 			continue
 		}
 		key := fmt.Sprintf("band %d", int((mastery-1)/10)*10+1)
