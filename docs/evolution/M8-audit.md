@@ -125,7 +125,22 @@ du vide (seuls les paliers BINGPAN basculent, jamais admis avant).
 vérifier la base d'affichage d'un sondage avant d'en dériver une
 sémantique.
 
-## Le reste (carte actualisée après s7)
+## Session 8 — les portes timed localisées au switch exact
+
+Sondage (foldé) : BINGBYEOK, HWABYEOK et WATER_HARMONY passent TOUTES
+les portes d'enveloppe de la marche timed principale (actif, handler 3,
+chaînes, consommation, cast, durée, timing, remplacement, HP/HP%,
+colonnes). Le refus est exactement l'absence de case pour
+`onff {t, pct}` / `wp {…}` et `pola {…}` / `cgri {…}` dans le switch
+d'instructions de la marche — et la doctrine du fichier l'exige :
+« reconnaître une instruction seule n'active jamais une route »,
+« aucune ne peut être effacée pour fabriquer un programme self-only ».
+Chaque case exige son consommateur runtime (l'exécution du débuff
+temporisé onff/wp ; l'aura de régénération pola/cgri) AVANT
+l'admission. C'est le travail de s9 : deux formes avec exécution, pas
+des tolérances. Aucun rang basculé cette session (correctement).
+
+## Le reste (carte actualisée après s8)
 
 1. BINGPAN : la porte duration (preuve du vide natif d'abord).
 2. BINGBYEOK/HWABYEOK : forme timed onff/wp.
