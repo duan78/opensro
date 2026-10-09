@@ -303,3 +303,26 @@ AC : les dix E cochés avec preuve ; branche `evolution/extended-content`
    owner en dernier recours (jamais d'invention silencieuse).
 4. Fin de session = audit + commit + push fork + ligne au journal
    coordination. Ne jamais laisser un jalon « presque fini » sans rapport.
+
+
+---
+
+## M7 — Jouabilité passé 90 (ordre owner du 2026-10-09, post-clôture)
+
+« Comble et règle ce que tu peux pour que le jeu soit le plus jouable
+et logique possible passé lvl 90. » Périmètre retenu (les écarts de
+l'audit M6 + la finalisation) :
+
+1. Mesurer la couverture d'exécution des skills 91-140 (classification
+   des effets contre le moteur v1.150), puis combler ce que la règle de
+   portée autorise : évidence vSRO 1.188 pour les tranches couvertes,
+   inférence enregistrée au-delà (charte §scope). Jamais de wire nouveau.
+2. Les PNJ de service des villes étendues (boutiques, ravitaillement) :
+   placement depuis le npcpos live, inventaires depuis le `refshopgoods`
+   que le client livre — jamais d'invention d'inventaire.
+3. Les cohérences de trajectoire : soins/potions 91+, tout ce qui rend
+   la boucle autonome sans quitter les zones étendues.
+4. La preuve navigateur en clôture (recette M6-audit).
+
+Hors périmètre inchangé : alchimie 11D+ (magicoption 2026 vide — mesuré),
+quêtes 91+ (parquées), systèmes à wire nouveau (charte §4.8).
