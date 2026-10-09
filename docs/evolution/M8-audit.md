@@ -278,7 +278,20 @@ preemptive est INTACTE — la garde reste au lanceur, conforme au
 contrat et au consommateur noise.go. Package enterworld complet
 vert, gates source + serveur vertes, aucun test natif bougé.
 
-## Le reste (carte actualisée après s16)
+## Session 17 — la « porte MANATRANS » n'existe plus : déjà admise, carte re-coupée
+
+Le sondage (foldé) a vérifié la rangée témoin : `admitted=true`,
+`PartyHealPinned=true` — MANATRANS est ADMISE et comptée depuis les
+corrections de mesure et de tolérances précédentes ; la « porte
+lifetime » du sondage s3 était une trace périmée. **Carte re-coupée
+avec le prédicat union courant : 58 familles / 268 rangs joueur
+restants** (plus grosses : FIREA_TRAP 12, les quatre danses 40,
+MANADRY 10, INVISIBLE 10, WATER_HEAL 9, JIPJUNG 9, AGGROLOW 9,
+RECOVERYA_GROUP 8, SWORD_SHIELDPD 8, FORGETA_AGGRO 8, WATER_CANCEL
+7…). La traîne continue grappe par grappe sur le même patron ; les
+danses (40) restent l'arbitrage owner V5.
+
+## Le reste (carte actualisée après s17)
 
 1. BINGPAN : la porte duration (preuve du vide natif d'abord).
 2. BINGBYEOK/HWABYEOK : forme timed onff/wp.
