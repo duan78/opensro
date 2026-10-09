@@ -36,6 +36,18 @@ func CompileSkillProgram(fields []string) (SkillProgram, error) {
 			continue
 		}
 		arity, known := spawnParamSpec(uint32(n))
+		// Extended content (isro-live-2026), port-only, not v1.150-native:
+		// the three one-word instructions the live client adds and the
+		// v1.150 engine has no reader for (spawnParamSpec is native
+		// hash-pinned evidence, so the riders are admitted here instead).
+		// Measured on the live rows (2026-10-09): psog {1|2} rides every
+		// 2026 attack and defense row, repl {1} and srpc {skillId} ride the
+		// bard dance programs (srpc's word is a skill id, 9932..). The
+		// v1.150 engine ignores them; the admission walks tolerate the
+		// riders so the row's native shape decides executability.
+		if !known && (n == 0x70736f67 || n == 0x7265706c || n == 0x72706373) {
+			arity, known = 1, true
+		}
 		if !known {
 			return SkillProgram{}, fmt.Errorf("skill program: unknown instruction %x at %d", n, col)
 		}
