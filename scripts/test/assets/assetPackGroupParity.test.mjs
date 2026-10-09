@@ -150,12 +150,16 @@ function expectedGroups( { outdoorFiles } ) {
 		{ name: "game-images", load: "startup", files: [ "/assets/images/loose.png" ] },
 		{
 			name: "world-textures",
-			load: "lazy",
+			load: "startup",
 			files: [ "/assets/world/constantinople/object-textures/wall.texture" ]
 		},
-		{ name: "map-tiles", load: "lazy", files: [ "/assets/images/Map_extracted/tile2d/tile.png" ] },
-		{ name: "ui-icons", load: "lazy", files: [ "/assets/images/Media_extracted/icon/skill.png" ] },
-		{ name: "particle-textures", load: "lazy", files: [ "/assets/images/Particles_extracted/textures/spark.png" ] },
+		{ name: "map-tiles", load: "startup", files: [ "/assets/images/Map_extracted/tile2d/tile.png" ] },
+		{ name: "ui-icons", load: "startup", files: [ "/assets/images/Media_extracted/icon/skill.png" ] },
+		{
+			name: "particle-textures",
+			load: "startup",
+			files: [ "/assets/images/Particles_extracted/textures/spark.png" ]
+		},
 		{
 			name: "game-data",
 			load: "startup",
