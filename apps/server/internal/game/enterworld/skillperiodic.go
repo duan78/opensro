@@ -17,6 +17,10 @@ const (
 	tagPeriodicPerTarget = 0x6c6b7332
 	parameterDotPower    = 0x44544154
 	parameterDotDuration = 0x44544452
+	// extendedDotScalingKey is the live-2026 rebalance's DoT scaling
+	// input ("DMIR"), measured on the 2026 rows only (never on a native
+	// row): tolerated, not executed.
+	extendedDotScalingKey = 0x52494d44
 )
 
 /*
@@ -110,7 +114,16 @@ func compileSkillPeriodicEffect(fields []string, row SkillRow) SkillPeriodicEffe
 			statusCount++
 		case tagGetv:
 			if op.Arguments[0] != parameterDotPower && op.Arguments[0] != parameterDotDuration {
-				return SkillPeriodicEffect{}
+				// Extended content (isro-live-2026), port-only, not
+				// v1.150-native: the live DoT rows carry a third getv key,
+				// 0x52494d44 ("DMIR"), the 2026 rebalance's scaling input.
+				// The v1.150 engine has no reader for it (the way the
+				// offense walk has none for MAAT beyond acknowledging it);
+				// tolerating the rider keeps every word the engine DOES
+				// read - power and duration - and never drops the program.
+				if op.Arguments[0] != extendedDotScalingKey {
+					return SkillPeriodicEffect{}
+				}
 			}
 		case 0x70736f67, 0x7265706c, 0x72706373:
 			// Extended content (isro-live-2026), port-only, not v1.150-native:
