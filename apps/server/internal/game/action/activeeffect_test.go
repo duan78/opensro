@@ -7,6 +7,7 @@ import (
 	"opensro.online/server/internal/game/enterworld"
 	"opensro.online/server/internal/game/item/statuseffect"
 	"opensro.online/server/internal/game/item/wire"
+	"opensro.online/server/internal/game/paramkeeper"
 )
 
 func newActiveEffectTestRuntime(t *testing.T, skills staticSkillSource) (*Runtime, *enterworld.Character) {
@@ -225,5 +226,36 @@ func TestEffectPublicationRejectsMismatchedRidersBeforeMutation(t *testing.T) {
 	}
 	if sends != 0 || len(rt.effects.Snapshot(testDivision, c.Name)) != 0 {
 		t.Fatal("partial application")
+	}
+}
+
+/*
+================
+TestTimedEvasionEffectWritesParameterNine
+
+Extended content (isro-live-2026), port-only, not v1.150-native (M8 s32):
+a learned skill's er block - the evasion twin of hr's hit-rate pair -
+installs through the same 594AC0 write the item lane owns: parameter 9,
+percent-sum then flat.
+================
+*/
+func TestTimedEvasionEffectWritesParameterNine(t *testing.T) {
+	rt, character := newActiveEffectTestRuntime(t, staticSkillSource{
+		100: {ID: 100, Group: 9, EffectDurationMs: 10000, TimedEffect: enterworld.SkillTimedEffect{
+			Pinned:  true,
+			Evasion: enterworld.SkillFlatRate{Present: true, Flat: 35},
+		}},
+	})
+	if !rt.ApplyCharacterEffect(testDivision, character.Name, 100, 7, statuseffect.StateActive, false) {
+		t.Fatal("the evasion effect did not apply")
+	}
+	found := false
+	for _, write := range rt.effects.ModifierWrites(testDivision, character.Name) {
+		if write.Parameter == itemParamEvasion && write.Channel == paramkeeper.Flat && write.Value == 35 {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("no parameter-9 flat write among %+v", rt.effects.ModifierWrites(testDivision, character.Name))
 	}
 }

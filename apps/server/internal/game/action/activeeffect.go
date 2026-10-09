@@ -290,6 +290,16 @@ func (rt *Runtime) commitCharacterEffectWithCheckpoint(divisionID string, charac
 	if row.TimedEffect.Pinned && row.TimedEffect.Block.Present {
 		writes = append(writes, combat.BlockRateWrites(row.TimedEffect.Block.Mask, row.TimedEffect.Block.Value)...)
 	}
+	if row.TimedEffect.Pinned && row.TimedEffect.Evasion.Present && !row.TimedEffect.ItemProgram {
+		// Extended content (isro-live-2026), port-only, not v1.150-native
+		// (M8 s32): a learned skill's er block rides the same 594AC0 install
+		// as the item lane's - parameter 9, percent-sum then flat
+		// (timedItemModifierWrites files the item-owned copy itself).
+		writes = append(writes,
+			paramkeeper.Write{Parameter: itemParamEvasion, Channel: paramkeeper.PercentSum, Value: float32(row.TimedEffect.Evasion.Percent)},
+			paramkeeper.Write{Parameter: itemParamEvasion, Channel: paramkeeper.Flat, Value: float32(row.TimedEffect.Evasion.Flat)},
+		)
+	}
 	if row.TimedEffect.Pinned && row.TimedEffect.Reat.Mask != 0 {
 		// 595542..59568F: a buff's reat, as a resistance passive's.
 		writes = append(writes, combat.StatusReductionWrites(row.TimedEffect.Reat)...)

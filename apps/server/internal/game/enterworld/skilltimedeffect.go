@@ -488,6 +488,23 @@ func parseSkillTimedEffect(fields []string, row *SkillRow) {
 				return
 			}
 			result.Block = SkillBlockBoost{Present: true, Mask: normalizeLaneMask(op.Arguments[0]), Value: op.Arguments[1]}
+		case itemEffectEvasion:
+			// Extended content (isro-live-2026), port-only, not v1.150-native
+			// (M8 s32): er {flat, percent}, the evasion twin of hr's hit-rate
+			// pair - 594AC0 installs the same word on parameter 9
+			// (timeditemmodifier.go owns the item side), and the live JIPJUNG
+			// tiers past the cap author it as a learned skill's self buff
+			// (the EN tooltip's "parry ratio" is the localisation's known
+			// dodge/parry swap; SOCKET_STONE_ER and the EVATION_SCROLL name
+			// the stat). The v1.150 catalogue authors the word on the
+			// family's cap-90 tiers, so admission carries the extended
+			// mastery floor - no v1.150 row reaches it.
+			if result.Evasion.Present || op.Count != 2 || targeted || result.Area.Present ||
+				textdataNonNegative(fields[skilldataColReqMasteryLv1]) < extendedPastCapMastery &&
+					textdataNonNegative(fields[skilldataColReqMasteryLv2]) < extendedPastCapMastery {
+				return
+			}
+			result.Evasion = SkillFlatRate{Present: true, Flat: op.Arguments[0], Percent: op.Arguments[1]}
 		case tagTimedStrength:
 			if !boost(&result.Strength, op) {
 				return
@@ -672,7 +689,7 @@ func parseSkillTimedEffect(fields []string, row *SkillRow) {
 	result.Pinned = duration && (attributes || defense || movement || result.Block.Present || result.Strength.Present ||
 		result.Intellect.Present || result.IncomingReduction || result.HitRate || result.Range || result.Hawk.Present ||
 		result.Link.Present && (result.Link.Threat || result.Link.Mana) || result.Preemptive.Present ||
-		result.DamageReturn.Present ||
+		result.DamageReturn.Present || result.Evasion.Present ||
 		result.DamageToMP || result.Reat.Mask != 0 || result.Real.Mask != 0)
 	result.Targeted = targeted
 	row.TimedEffect = result

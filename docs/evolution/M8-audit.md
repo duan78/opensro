@@ -627,25 +627,59 @@ lanes runtime, pas des ouvertures de porte :
    temporisée d'un modificateur de ratio SUR UN MONSTRE + expiration +
    intégration aux deux jets. Aucun lane existant ne fait de debuff de
    stat temporisé hostile.
-2. **JIPJUNG** (9 past-90 : D_04..D_09, E_01..E_03 ; les tiers natifs
-   A_01..D_02 authorisent le même mot → plancher requis). Forme :
-   `dura[758824] re{35,0}`, handler 3, non ciblé, self. **`re` =
-   0x6572 — piège de boutisme corrigé cette nuit : le tag u32 est
-   0x00006572, le mot deux octets est "er" dans la convention
-   br(0x6272)**, et les preuves de nommage disent EVASION :
-   `SKILL_ITEM_ETC_SOCKET_STONE_ER_*` et
-   `SKILL_ETC_E051123_EVATION_SCROLL` authorisent le même mot (le
-   tooltip EN « parry ratio » est la localisation officielle, notoire
-   pour ses inversions dodge/parry). Le mot est authorisé sur 89
-   rangées étendues (passives lightning, pierres à socket, mall,
-   quêtes). À construire : l'attribut timed evasion + son point
-   d'application dans les stats de combat du personnage (parametergraph
-   liste EvasionRate ; le walk timed connaît br=block mais pas er).
+2. **JIPJUNG** : LIVRÉ en s32 (voir la section session 32) — le
+   `er` des amorces ci-dessus, admis dans le walk timed skill avec
+   plancher ≥ 91, installé sur le paramètre 9 comme le lane item.
 
-## Le reste (carte actualisée après s31)
+## Session 32 — JIPJUNG livré (le buff er) ; WATER_CANCEL réduit à ses lignes timed
 
-1. WATER_CANCEL et JIPJUNG : voir les amorces s32 ci-dessus — deux
-   nouveaux lanes runtime.
+Le sondage par ligne a encore corrigé la carte avant d'écrire :
+
+1. **Les lignes instantanées C-G de WATER_CANCEL étaient DÉJÀ épinglées**
+   — leurs mots sont des STATUSES abnormal connus (`dpsc`=Decay,
+   `dmsc`=Weaken, `rssc`=Impotent, `tisc`=Division, `st`=Stun) et le
+   lane status-cast (s5/s7) les admet : `statusCastPinned=true` sur
+   chaque ligne C/D/E/F/G et CANCEL2_B/C past-90. Le « WATER_CANCEL 7
+   rangs » de la carte M7 ne concernait que les lignes TIMED.
+2. **WATER_CANCEL timed (A/B/CANCEL2_A) reste un vrai lane** :
+   `bbuf(0) dura[10000] terd[90] tant` (A, esquive) / `drht[96]`
+   (B, précision) / les deux (CANCEL2_A). terd/drht ne sont PAS des
+   statuses (mots du métadonnées name-attack 7F85A0). Le précédent
+   natif du mécanisme existe : callbacks.go:97 — ElectricShock écrit
+   le PARAMÈTRE 9 (EvasionRate) en canal percent-product avec
+   expiration par slot ; MonsterInstanceStats applique les
+   Modifiers du block (ids 9/11) aux deux jets (formula.go:382).
+   Mais un debuff SANS bit d'état exigerait des modifiers sans slot
+   + expiration hors Update + block gardé vivant sans slot actif
+   (finish() le pose à nil) — un changement de cycle de vie du block
+   abnormal, cœur du combat. Trop gros pour une queue de session :
+   **amorce affinée, lane s33, budget session entière.**
+3. **JIPJUNG livré (9 rangs, D_04..D_09 + E_01..E_03)** : le mot `er`
+   {flat, percent} — la bannière de timeditemmodifier.go documente la
+   règle native « 594AC0 installs hpi/mpi on parameters 3/4, er/hr on
+   9/11 » — entre dans le walk timed des SKILLS (le lane item
+   l'admettait déjà pour les scrolls/pierres, colonne 8 = 1) avec le
+   plancher maîtrise ≥ 91 (les tiers cap-90 natifs authorisent er) ;
+   la liste d'épinglage gagne Evasion.Present (première mesure : tout
+   passait mais rien n'épinglait) ; l'installation écrit le paramètre
+   9 en percent-sum puis flat, exactement comme le lane item, dans
+   commitCharacterEffect. Le tooltip EN « parry ratio » est
+   l'inversion dodge/parry connue de la localisation — les preuves de
+   nommage (SOCKET_STONE_ER, EVATION_SCROLL) et la bannière native
+   disent EVASION. Tests : plancher étendu (9 rangs, valeurs par
+   palier), vide natif (aucune rangée skill apprise — les rangées
+   item exclues explicitement), installation (écriture param-9 flat
+   35 via le registry).
+
+**Couverture : 79,7 → 80,0 %** (2402/3002). Gates : enterworld+action
+verts, check source PASSED, gate serveur forcée PASS (97,3 s).
+
+## Le reste (carte actualisée après s32)
+
+1. **WATER_CANCEL timed A/B/CANCEL2_A** (~6-8 rangs past-90) :
+   debuff de ratio hostile temporisé SANS bit d'état — modifiers sans
+   slot + expiration + block vivant sans slot ; précédent
+   ElectricShock param-9 (callbacks.go:97). Budget session entière.
 2. SWORD_SHIELDPD (8) : debuff de parade temporisé `dura adps iqer`.
 3. SOULA_STUNLINK + RAZEA tiers isolés + STEALTHA_CHANGE/
    BATTLAA_GUARD/GUARDA_PHYSICAL/REBIRTHA_SPECIAL : à sonder.
