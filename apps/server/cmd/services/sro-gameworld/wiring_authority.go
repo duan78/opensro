@@ -45,6 +45,10 @@ type authorityPlane struct {
 	agentAPI   *agentapi.API
 	loadQuests questDefinitionLoader
 	textdata   *enterworld.TextdataCatalogs
+	// itemCommands is the merged composer view (native rows, plus the
+	// extended graft when the mode is on); the peer-reference build and
+	// every downstream consumer read the same list.
+	itemCommands []enterworld.ItemCommandReference
 }
 
 /*
@@ -137,11 +141,25 @@ func openAuthorityPlane(
 	if devPaths.LevelOverride != nil {
 		characterLevels = devPaths.LevelOverride
 	}
+	// The same decision grafts the live-2026 catalogs (degrees 11-14,
+	// the 91-140 mobs, the modern skills) onto the native tables: the
+	// native row wins every conflict, so seeders, peer references and
+	// every gameplay lane read one merged view.
+	characterItems := enterworld.ItemRefSource(textdata.Items)
+	var characterSkills enterworld.SkillDataSource = textdata.Skills
+	itemCommands := textdata.Items.ItemCommandReferences()
+	if devPaths.ExtendedItems != nil && devPaths.ExtendedSkills != nil {
+		devPaths.ItemOverlay = enterworld.NewOverlayItems(textdata.Items, devPaths.ExtendedItems)
+		devPaths.SkillOverlay = enterworld.NewOverlaySkills(textdata.Skills, devPaths.ExtendedSkills)
+		characterItems = devPaths.ItemOverlay
+		characterSkills = devPaths.SkillOverlay
+		itemCommands = devPaths.ItemOverlay.ItemCommandReferences()
+	}
 	options := store.OptionsFromEnv()
-	options.DefaultSkills = enterworld.DefaultSkillSeeder(textdata.Skills)
+	options.DefaultSkills = enterworld.DefaultSkillSeeder(characterSkills)
 	options.DefaultInventory = enterworld.StarterInventorySeeder(
 		characterRoster,
-		textdata.Items,
+		characterItems,
 		devPaths.EquipItemsEnabled,
 	)
 
@@ -224,10 +242,11 @@ func openAuthorityPlane(
 	}
 
 	return authorityPlane{
-		store:      authorityStore,
-		agentAPI:   api,
-		loadQuests: loadQuests,
-		textdata:   textdata,
+		store:        authorityStore,
+		agentAPI:     api,
+		loadQuests:   loadQuests,
+		textdata:     textdata,
+		itemCommands: itemCommands,
 	}, nil
 }
 

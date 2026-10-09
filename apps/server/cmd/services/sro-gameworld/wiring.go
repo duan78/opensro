@@ -61,9 +61,12 @@ writer, releases the lease, and closes durable authority last.
 */
 
 type gameWorldApplication struct {
-	history         *history.Journal
+	history *history.Journal
+	// skillCache/itemCache close the native bounded caches;
+	// extendedCaches closes the live-2026 graft's caches beside them.
 	skillCache      io.Closer
 	itemCache       io.Closer
+	extendedCaches  []io.Closer
 	populationCache io.Closer
 	heightCache     io.Closer
 	transport       *transport.Server
@@ -116,6 +119,10 @@ func newGameWorldApplication(
 	// the boot instead of quietly running a different game.
 	var extendedLevels enterworld.LevelDataSource
 	var extendedLevelCap int64
+	var extendedItems *enterworld.TextdataItems
+	var extendedSkills *enterworld.TextdataSkills
+	var extendedAreas *worldarea.Catalog
+	var devPathsExtendedTextdataDir string
 	if extendedRoot, extendedOk, extendedErr := gamedata.ResolveExtended(); extendedErr != nil {
 		return nil, fmt.Errorf("extended content: %w", extendedErr)
 	} else if extendedOk {
@@ -125,10 +132,28 @@ func newGameWorldApplication(
 		}
 		extendedLevels = enterworld.NewExtendedLevels(extended.LeveldataPath, extended.GoldCurvePath)
 		extendedLevelCap = extended.Manifest.DerivedCap
+		// The live-2026 catalogs over the sealed textdata tree; both must
+		// parse or the boot fails - an extended world without its items or
+		// skills would be a different game than the operator asked for.
+		extendedItems = enterworld.NewTextdataItems(extended.TextdataDir)
+		if extendedItems.Len() == 0 {
+			return nil, fmt.Errorf("extended content: no itemdata rows under %s", extended.TextdataDir)
+		}
+		extendedSkills = enterworld.NewTextdataSkills(extended.TextdataDir)
+		if loadErr := extendedSkills.Load(); loadErr != nil {
+			return nil, fmt.Errorf("extended content: %w", loadErr)
+		}
+		extendedAreas, loadErr = worldarea.LoadAuthority(extended.AreasAuthorityDir)
+		if loadErr != nil {
+			return nil, fmt.Errorf("extended content: %w", loadErr)
+		}
+		devPathsExtendedTextdataDir = extended.TextdataDir
 		log.Infof(
-			"extended content: ON, projection=%q, live-2026 level curve, cap %d (not v1.150-native)",
+			"extended content: ON, projection=%q, live-2026 level curve cap %d, %d item rows, %d skill rows (not v1.150-native)",
 			extendedRoot,
 			extendedLevelCap,
+			extendedItems.Len(),
+			extendedSkills.Len(),
 		)
 	} else if gamedata.ExtendedContentEnabled() {
 		log.Warnf(
@@ -148,6 +173,14 @@ func newGameWorldApplication(
 	devPaths.AuthoredAreas = authoredAreas
 	devPaths.StructureZones = filepath.Join(dataPaths.WorldAuthorityDir, "structure-zones.json")
 	devPaths.LevelOverride, devPaths.LevelCap = extendedLevels, extendedLevelCap
+	devPaths.ExtendedItems, devPaths.ExtendedSkills = extendedItems, extendedSkills
+	devPaths.ExtendedTextdataDir = devPathsExtendedTextdataDir
+	if extendedAreas != nil {
+		authoredAreas, err = worldarea.Merge(authoredAreas, extendedAreas)
+		if err != nil {
+			return nil, fmt.Errorf("extended content: %w", err)
+		}
+	}
 	characterRoster, err := enterworld.LoadRoster(devPaths.RosterPath)
 	if err != nil {
 		return nil, fmt.Errorf("character roster: %w", err)
@@ -224,6 +257,15 @@ func newGameWorldApplication(
 		return nil, fmt.Errorf("item cache: %w", err)
 	}
 	application.itemCache = authority.textdata.Items
+	if devPaths.ExtendedItems != nil {
+		if err := devPaths.ExtendedSkills.UseBoundedCache(512); err != nil {
+			return nil, fmt.Errorf("extended skill cache: %w", err)
+		}
+		if err := devPaths.ExtendedItems.UseBoundedCache(512); err != nil {
+			return nil, fmt.Errorf("extended item cache: %w", err)
+		}
+		application.extendedCaches = []io.Closer{devPaths.ExtendedSkills, devPaths.ExtendedItems}
+	}
 
 	gameplay, err := newGameplayPlane(
 		ts,
@@ -285,7 +327,7 @@ func newGameWorldApplication(
 	if err != nil {
 		return nil, err
 	}
-	peerReferences, err := gameplay.items.PreparePeerItemReferences(authority.textdata.Items.ItemCommandReferences())
+	peerReferences, err := gameplay.items.PreparePeerItemReferences(authority.itemCommands)
 	if err != nil {
 		return nil, fmt.Errorf("peer item references: %w", err)
 	}
@@ -485,7 +527,7 @@ func (application *gameWorldApplication) Run(ctx context.Context) error {
 
 	drainErr := application.drainNetwork()
 	runErr := group.Wait()
-	for _, cache := range []io.Closer{application.skillCache, application.itemCache} {
+	for _, cache := range append([]io.Closer{application.skillCache, application.itemCache}, application.extendedCaches...) {
 		if cache != nil {
 			drainErr = errors.Join(drainErr, cache.Close())
 		}
@@ -598,7 +640,7 @@ func (application *gameWorldApplication) rollback() {
 		!errors.Is(err, http.ErrServerClosed) {
 		log.Warnf("startup rollback: %v", err)
 	}
-	for _, cache := range []io.Closer{application.skillCache, application.itemCache} {
+	for _, cache := range append([]io.Closer{application.skillCache, application.itemCache}, application.extendedCaches...) {
 		if cache != nil {
 			if err := cache.Close(); err != nil {
 				log.Warnf("startup rollback reference cache: %v", err)

@@ -35,15 +35,46 @@ TEXTDATA_PREFIX = "server_dep/silkroad/textdata/"
 # The progression tables the extended level curve reads (mission M1/M2):
 # leveldata for XP/SP/mob-basis/jobs, levelgold as the gold record,
 # dg.txt as the gold-walk basis the native server reads (CDropGoldData).
-TABLES = ("leveldata.txt", "levelgold.txt", "dg.txt")
+# textdataname/magicoption are single tables the reference loaders read.
+TABLES = ("leveldata.txt", "levelgold.txt", "dg.txt", "textdataname.txt", "magicoption.txt")
 # Loader files whose listed shards are extracted for the item/character
-# censuses (degrees, requirement levels, mob levels).
+# and skill censuses (degrees, requirement levels, mob levels, skills).
 LOADERS = {
 	"itemdata": "itemdata.txt",
 	"characterdata": "characterdata.txt",
+	"skilldata": "skilldata.txt",
 }
 DEFAULT_GAME_ROOT = r"C:\Program Files (x86)\Silkroad"
 HASH_CHUNK = 4 * 1024 * 1024
+
+# The live-2026 characterdata rows carry the v1.150 _RefObjChar layout
+# minus six columns the modern client dropped (measured 2026-10-09 on
+# MOB_CH_MANGNYANG: columns 77.. of the legacy row appear at 71.. in the
+# live row, identical values; the six legacy cells 71..76 are gone and
+# the legacy tail 110..119 no longer ships). The server's readers (and
+# every provenance comment pinning them) stay on the legacy indexes, so
+# the extraction reshapes each live row back: six empty cells reinserted
+# at index 71, the row padded to CHARACTER_LEGACY_COLUMNS.
+CHARACTER_REMOVED_AT = 71
+CHARACTER_REMOVED_COUNT = 6
+CHARACTER_LEGACY_COLUMNS = 120
+
+
+# ================
+# reshape_character_cells
+#
+# One live-2026 characterdata row back to the v1.150 column layout.
+# ================
+def reshape_character_cells( cells ):
+	if len( cells ) < CHARACTER_REMOVED_AT:
+		return cells
+	# The reinserted and padded cells carry "0", not "": the server's
+	# cell parsers refuse an empty cell where the legacy row carried a
+	# number (an empty CanRide would drop the whole character row).
+	reshaped = cells[:CHARACTER_REMOVED_AT] + ["0"] * CHARACTER_REMOVED_COUNT + cells[CHARACTER_REMOVED_AT:]
+	while len( reshaped ) < CHARACTER_LEGACY_COLUMNS:
+		reshaped.append( "0" )
+	return reshaped
 
 
 # ================
@@ -110,18 +141,36 @@ def main() -> int:
 		try:
 			by_path = {sro_pk2.fold_ascii( entry.path ): entry for entry in sro_pk2.read_directory( memory )}
 
-			def extract( name: str ) -> None:
+			def extract( name: str, transform = None ) -> None:
 				entry = by_path.get( sro_pk2.fold_ascii( TEXTDATA_PREFIX + name ) )
 				if entry is None:
 					raise RuntimeError( f"{name} is absent from the live-2026 Media.pk2 textdata" )
 				payload = sro_pk2.payload( memory, entry )
+				if transform is not None:
+					payload = transform( payload )
+				# The loaders' shard lists carry mixed case; the server's
+				# glob readers (monster.LoadMonsterRefs) and the native
+				# projection's file names are lowercase, so every shard is
+				# written under its folded name.
+				name = sro_pk2.fold_ascii( name )
 				( output / name ).write_bytes( payload )
 				files[name] = {
 					"bytes": len( payload ),
 					"sha256": hashlib.sha256( payload ).hexdigest(),
 				}
 
+			def reshape_character_shard( payload: bytes ) -> bytes:
+				text = payload.decode( "utf-16-le", errors = "replace" ).lstrip( "\ufeff" )
+				lines = []
+				for line in text.splitlines():
+					if not line.strip() or line.startswith( "//" ):
+						continue
+					lines.append( "\t".join( reshape_character_cells( line.split( "\t" ) ) ) )
+				return ( "\ufeff" + "\r\n".join( lines ) + "\r\n" ).encode( "utf-16-le" )
+
 			for table in TABLES:
+				if table == "textdataname.txt":
+					continue  # synthesized below from the object-name shards
 				extract( table )
 			shards = {}
 			for label, loader in LOADERS.items():
@@ -129,8 +178,50 @@ def main() -> int:
 				text = ( output / loader ).read_bytes().decode( "utf-16-le" ).lstrip( "\ufeff" )
 				names = [line.strip() for line in text.splitlines() if line.strip()]
 				for shard in names:
-					extract( shard )
+					extract( shard, reshape_character_shard if label == "characterdata" else None )
 				shards[label] = len( names )
+			# The skill loader feeds skilldata_virtual.txt through the same
+			# parser; ship it when the client carries one, absence is legal.
+			virtual = by_path.get( sro_pk2.fold_ascii( TEXTDATA_PREFIX + "skilldata_virtual.txt" ) )
+			if virtual is not None:
+				extract( "skilldata_virtual.txt" )
+			# The live client's textdataname.txt is an empty BOM: object
+			# names live in the textdata_object shards and equipment/skill
+			# names in the textdata_equip&skill shards (the same measured
+			# layout: SN_ symbol column 2, English column 9, 2026-10-09).
+			# Project them onto the legacy layout the server's name reader
+			# expects (symbol column 1, English column 8).
+			name_rows = []
+			name_shard_count = 0
+			for family in ( "textdata_object", "textdata_equip&skill" ):
+				loader_entry = by_path.get( sro_pk2.fold_ascii( TEXTDATA_PREFIX + family + ".txt" ) )
+				if loader_entry is None:
+					continue
+				loader_text = sro_pk2.payload( memory, loader_entry ).decode( "utf-16-le", errors = "replace" ).lstrip( "\ufeff" )
+				family_shards = [line.strip() for line in loader_text.splitlines() if line.strip()]
+				name_shard_count += len( family_shards )
+				for shard in family_shards:
+					entry = by_path.get( sro_pk2.fold_ascii( TEXTDATA_PREFIX + shard ) )
+					if entry is None:
+						continue
+					shard_text = sro_pk2.payload( memory, entry ).decode( "utf-16-le", errors = "replace" ).lstrip( "\ufeff" )
+					for line in shard_text.splitlines():
+						cells = line.split( "\t" )
+						if len( cells ) < 10 or not cells[2].strip().startswith( "SN_" ):
+							continue
+						symbol = cells[2].strip()
+						english = cells[9].strip()
+						if not english or english in ( "0", "xxx" ):
+							continue
+						legacy = ["1", symbol, "0", "0", "0", "0", "0", "0", english]
+						name_rows.append( "\t".join( legacy ) )
+			shards["textdata_names"] = name_shard_count
+			name_bytes = ( "\ufeff" + "\r\n".join( name_rows ) + "\r\n" ).encode( "utf-16-le" )
+			( output / "textdataname.txt" ).write_bytes( name_bytes )
+			files["textdataname.txt"] = {
+				"bytes": len( name_bytes ),
+				"sha256": hashlib.sha256( name_bytes ).hexdigest(),
+			}
 		finally:
 			memory.close()
 

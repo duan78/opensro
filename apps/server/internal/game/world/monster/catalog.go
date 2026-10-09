@@ -239,6 +239,35 @@ func LoadTemplate(textdataDir string) Template {
 
 /*
 ==================
+GraftRefs
+
+Extended content (isro-live-2026, port-only, not native): add the live
+table's monster references to the native template. The native row wins
+every shared id (charter 4.1); the nests are rebuilt unchanged over the
+merged references.
+==================
+*/
+func GraftRefs(base Template, extra map[uint32]MonsterRef) Template {
+	merged := make(map[uint32]MonsterRef, len(base.Refs)+len(extra))
+	for id, ref := range base.Refs {
+		merged[id] = ref
+	}
+	for id, ref := range extra {
+		if _, native := merged[id]; native {
+			continue
+		}
+		merged[id] = ref
+	}
+	if len(merged) == len(base.Refs) {
+		return base
+	}
+	grafted := TemplateFromParts(merged, base.Nests)
+	grafted.EvidenceMatches = base.EvidenceMatches
+	return grafted
+}
+
+/*
+==================
 TemplateFromParts
 
 TemplateFromParts assembles a template from explicit refs + nest rows,

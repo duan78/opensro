@@ -16,12 +16,12 @@ authority and is not touched.
 ===========================================================================
 */
 import { createHash } from "node:crypto";
-import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
 import { withGeneratedAssetsLock } from "../../rebuildLock.mjs";
-import { generatedRoot, extendedGameDataRoot } from "../world/paths.mjs";
+import { generatedRoot, extendedGameDataRoot, retailTextdataRoot } from "../world/paths.mjs";
 import { readTextDataRowsSync } from "../shared/textDataIo.mjs";
 
 const MANIFEST_FORMAT = "sro-extended-game-data";
@@ -129,8 +129,9 @@ Mob levels per ten-level band from the character shards; bosses above the
 cap are counted, never allowed to lift the chain.
 ================
 */
-function censusCharacters( sourceRoot, shardNames ) {
+function censusCharacters( sourceRoot, shardNames, nativeSkip ) {
 	const bands = new Map();
+	const bandExamples = new Map();
 	const kinds = new Map();
 	let rows = 0;
 	let maxLevel = 0;
@@ -150,13 +151,114 @@ function censusCharacters( sourceRoot, shardNames ) {
 			maxLevel = Math.max( maxLevel, level );
 			const band = Math.floor( (level - 1) / 10 ) * 10 + 1;
 			bands.set( band, (bands.get( band ) ?? 0) + 1 );
+			const examples = bandExamples.get( band ) ?? [];
+			if ( examples.length < 8 ) {
+				// Deterministic NEW-content candidates only: not shipped by
+				// the native v1.150 table and not a non-combat family (the
+				// leading shards carry whole native-known families - EU_THIEF
+				// alone fills ~190 rows per band).
+				if (
+					nativeSkip?.has( codename ) ||
+					NON_COMBAT_MOB_PREFIXES.some( ( prefix ) => codename.startsWith( prefix ) )
+				) {
+					continue;
+				}
+				bandExamples.set( band, [ ...examples, { codename, level } ] );
+			}
 		}
 	}
 	return {
 		rows,
 		kinds: Object.fromEntries( [ ...kinds.entries() ].sort() ),
 		maxMobLevel: maxLevel,
-		mobsPerBand: Object.fromEntries( [ ...bands.entries() ].sort( ( a, b ) => a[0] - b[0] ) )
+		mobsPerBand: Object.fromEntries( [ ...bands.entries() ].sort( ( a, b ) => a[0] - b[0] ) ),
+		bandExamples: Object.fromEntries( [ ...bandExamples.entries() ].sort( ( a, b ) => a[0] - b[0] ) )
+	};
+}
+
+// Measured 2026-10-09: families the live table carries that are not
+// field combat mobs (server notifiers, events, test rows); the seed
+// exemplar never picks one.
+const NON_COMBAT_MOB_PREFIXES = [ "MOB_BOT_", "MOB_GM_", "MOB_EV_", "MOB_TEST_", "MOB_EVENT_", "MOB_TUTORIAL" ];
+
+/*
+================
+loadNativeCharacterCodenames
+
+The v1.150 characterdata codenames, so the seed area prefers band
+exemplars the native game never shipped. A missing native extraction
+leaves the choice to the first candidate.
+================
+*/
+async function loadNativeCharacterCodenames() {
+	try {
+		const entries = await readdir( retailTextdataRoot );
+		const codenames = new Set();
+		for ( const entry of entries ) {
+			if ( !entry.toLowerCase().startsWith( "characterdata" ) || !entry.toLowerCase().endsWith( ".txt" ) ) {
+				continue;
+			}
+			for ( const cells of readTextDataRowsSync( path.join( retailTextdataRoot, entry ) ) ) {
+				if ( cells.length > 2 ) {
+					codenames.add( cells[2].trim() );
+				}
+			}
+		}
+		return codenames;
+	} catch {
+		return undefined;
+	}
+}
+
+/*
+================
+buildSeedAreas
+
+The M3 seed: one authored GM lab area placing the deterministic exemplar
+mob of every band 91..140, the same shape and rules as the native
+manyang-lab (region-local coordinates, leash 140, respawn 5s). It proves
+the extended population mechanics behind the flag; milestone M4 replaces
+it with placements derived from the real zone data. Region 0x62a8 is a
+served native region the native catalog leaves free.
+================
+*/
+async function buildSeedAreas( characters, nativeCodenames ) {
+	const population = [];
+	for ( const band of Object.keys( characters.bandExamples ).map( Number ).sort( ( a, b ) => a - b ) ) {
+		if ( band < 91 || band > 140 ) {
+			continue;
+		}
+		// The census already filtered the candidates to new-content mobs
+		// the native v1.150 table never shipped; the first is the exemplar.
+		const example = characters.bandExamples[band][0];
+		population.push( {
+			codename: example.codename,
+			x: 900 + population.length * 40,
+			y: 0,
+			z: 950,
+			maxCount: 1,
+			respawnDelayMinSec: 5,
+			respawnDelayMaxSec: 5,
+			respawn: true,
+			aggressive: false,
+			sightRange: 0,
+			leashRadius: 140,
+			generateRadius: 0
+		} );
+	}
+	if ( population.length === 0 ) {
+		throw Error( "extended seed area: no band exemplars between 91 and 140" );
+	}
+	return {
+		format: "sro-server-world-area-catalog",
+		version: 1,
+		areas: [ {
+			slug: "extended-content-lab",
+			regionId: 0x62a8,
+			access: "gm",
+			entry: { x: 860, y: 0, z: 950, angle: 16384 },
+			population
+		} ]
 	};
 }
 
@@ -246,7 +348,8 @@ export async function buildExtendedGameDataBundle( options ) {
 	// CDropGoldData); the live-2026 file carries the same role to 140.
 	const goldcurve = parseLevelTable( sourceRoot, "dg.txt", LEVELGOLD_COLUMNS );
 	const items = censusItems( sourceRoot, itemShards );
-	const characters = censusCharacters( sourceRoot, characterShards );
+	const nativeCodenames = await loadNativeCharacterCodenames();
+	const characters = censusCharacters( sourceRoot, characterShards, nativeCodenames );
 
 	// Gear: the highest shipped degree at or under the sealed cap. A
 	// rare-only shipment is that band's playable gear (degrees 13+ ship
@@ -275,6 +378,7 @@ export async function buildExtendedGameDataBundle( options ) {
 		await mkdir( temporaryRoot, { recursive: true } );
 		const write = async ( name, value ) => {
 			const bytes = Buffer.from( JSON.stringify( value, null, 2 ) + "\n" );
+			await mkdir( path.dirname( path.join( temporaryRoot, name ) ), { recursive: true } );
 			await writeFile( path.join( temporaryRoot, name ), bytes );
 			return { path: name, bytes: bytes.length, sha256: digestBytes( bytes ) };
 		};
@@ -294,8 +398,20 @@ export async function buildExtendedGameDataBundle( options ) {
 				columns: LEVELGOLD_COLUMNS,
 				rows: goldcurve.rows
 			} ),
-			await write( "census.json", { items, characters } )
+			await write( "census.json", { items, characters } ),
+			await write( "areas/catalog.json", await buildSeedAreas( characters, nativeCodenames ) )
 		];
+		// The whole extraction ships inside the projection under textdata/,
+		// sealed by the same digests: the extended catalogs (items, mobs,
+		// skills, names) then read one verified tree - the characterdata
+		// shards carry the reshape back to the legacy column layout, the
+		// name table the synthesis from the object/equip&skill shards.
+		await mkdir( path.join( temporaryRoot, "textdata" ), { recursive: true } );
+		for ( const [name, record] of Object.entries( inventory.files ) ) {
+			const bytes = await readFile( path.join( sourceRoot, name ) );
+			await writeFile( path.join( temporaryRoot, "textdata", name ), bytes );
+			files.push( { path: `textdata/${name}`, bytes: record.bytes, sha256: record.sha256 } );
+		}
 		const manifest = {
 			format: MANIFEST_FORMAT,
 			schemaVersion: SCHEMA_VERSION,
@@ -337,6 +453,13 @@ export async function buildExtendedGameDataBundle( options ) {
 		);
 		console.log(
 			`  counts: ${items.rows} item rows, ${characters.rows} character rows, ${leveldata.rows.length} levels`
+		);
+		console.log(
+			`  seed exemplars: ${
+				nativeCodenames ?
+					`chosen against ${nativeCodenames.size} native codenames` :
+					"native table unavailable, first candidates used"
+			}`
 		);
 		console.log( `  manifest: ${digestBytes( manifestBytes )}` );
 		for ( const line of report ) {

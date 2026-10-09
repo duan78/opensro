@@ -128,6 +128,15 @@ type Extended struct {
 	LevelgoldPath string
 	GoldCurvePath string
 	CensusPath    string
+	// TextdataDir holds the sealed live-2026 textdata tree (reshaped to
+	// the legacy column layouts): the extended item, character and skill
+	// catalogs read it through their ordinary textdata loaders.
+	TextdataDir string
+	// AreasAuthorityDir is the authority-shaped root whose areas/catalog.json
+	// carries the projection's authored areas (the M3 seed placing the band
+	// exemplars until M4 derives real zone placements); worldarea.LoadAuthority
+	// reads it exactly like the native world authority.
+	AreasAuthorityDir string
 }
 
 /*
@@ -230,11 +239,13 @@ func LoadExtended() (Extended, error) {
 		}
 	}
 	return Extended{
-		Root:          root,
-		Manifest:      manifest,
-		LeveldataPath: filepath.Join(root, "leveldata.json"),
-		LevelgoldPath: filepath.Join(root, "levelgold.json"),
-		GoldCurvePath: filepath.Join(root, "goldcurve.json"),
-		CensusPath:    filepath.Join(root, "census.json"),
+		Root:              root,
+		Manifest:          manifest,
+		LeveldataPath:     filepath.Join(root, "leveldata.json"),
+		LevelgoldPath:     filepath.Join(root, "levelgold.json"),
+		GoldCurvePath:     filepath.Join(root, "goldcurve.json"),
+		CensusPath:        filepath.Join(root, "census.json"),
+		TextdataDir:       filepath.Join(root, "textdata"),
+		AreasAuthorityDir: root,
 	}, nil
 }

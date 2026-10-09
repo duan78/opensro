@@ -53,6 +53,22 @@ type DevPaths struct {
 	// LevelCap is the effective character cap (0 = native 90); the
 	// extended content wires 140 alongside its curve.
 	LevelCap int64
+	// ExtendedItems / ExtendedSkills are the live-2026 catalog loaders
+	// over the sealed projection's textdata tree (port-only, not
+	// native); nil keeps native-only. They arrive with the curve and cap
+	// above, as one composition decision; the authority plane grafts
+	// them onto the native tables and publishes the overlays below.
+	ExtendedItems  *TextdataItems
+	ExtendedSkills *TextdataSkills
+	// ExtendedTextdataDir is the sealed projection's textdata tree; the
+	// monster template grafts its characterdata references (the 91-140
+	// mobs) beside the native ones.
+	ExtendedTextdataDir string
+	// ItemOverlay / SkillOverlay are the grafts the authority plane
+	// built (native row wins every conflict); devdeps honors them when
+	// set, else reads the plain native tables.
+	ItemOverlay  *OverlayItems
+	SkillOverlay *OverlaySkills
 }
 
 // DevPathsFromEnv resolves bootstrap-owned optional environment settings
@@ -117,12 +133,25 @@ func NewDevDepsWithRoster(paths DevPaths, textdata *TextdataCatalogs, roster *Ro
 	// admission. Reuse that one view here; never hide filesystem work in the
 	// first EnterWorld request.
 	textdataDir := paths.TextdataDir
-	items := textdata.Items
+	// The extended overlay (port-only, not native) replaces the item and
+	// skill faces as one composition decision; nil keeps the native
+	// tables. The locals stay interface-typed so the graft is invisible
+	// to every consumer below.
+	var items interface {
+		ItemRefSource
+		CharacterRefSource
+	} = textdata.Items
 	var levels LevelDataSource = textdata.Levels
+	var skills SkillDataSource = textdata.Skills
 	if paths.LevelOverride != nil {
 		levels = paths.LevelOverride
 	}
-	skills := textdata.Skills
+	if paths.ItemOverlay != nil {
+		items = paths.ItemOverlay
+	}
+	if paths.SkillOverlay != nil {
+		skills = paths.SkillOverlay
+	}
 	magicOptions := textdata.MagicOptions
 
 	// Mission chat config (bootstrap systemMessages).
@@ -163,6 +192,13 @@ func NewDevDepsWithRoster(paths DevPaths, textdata *TextdataCatalogs, roster *Ro
 	var monsters *simulation.MonsterState
 	if monsterSpawns.Enabled {
 		template := monster.LoadTemplate(textdataDir)
+		// The extended graft (port-only, not native): the live-2026
+		// characterdata references join the native ones so the authored
+		// extended areas (and M4's zone placements) can spawn them; the
+		// native row wins every shared id.
+		if paths.ExtendedTextdataDir != "" {
+			template = monster.GraftRefs(template, monster.LoadTemplate(paths.ExtendedTextdataDir).Refs)
+		}
 		resolvedTemplate, err := appendAuthoredAreaPopulation(template, paths.AuthoredAreas)
 		if err != nil {
 			return nil, fmt.Errorf("bootstrap: %w", err)

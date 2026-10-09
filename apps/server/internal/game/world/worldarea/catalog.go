@@ -106,6 +106,46 @@ func Load(clientPublicRoot string) (*Catalog, error) {
 	return catalog, nil
 }
 
+/*
+================
+Merge
+
+One catalog over two authorities: the native projection's areas first,
+the extended projection's (port-only, not native) added beside them. A
+slug or region the native catalog already owns refuses the merge - the
+extended seed never silently replaces a native area.
+================
+*/
+func Merge(primary, secondary *Catalog) (*Catalog, error) {
+	if secondary == nil {
+		return primary, nil
+	}
+	if primary == nil {
+		return secondary, nil
+	}
+	merged := &Catalog{
+		bySlug:   make(map[string]Area, len(primary.bySlug)+len(secondary.bySlug)),
+		byRegion: make(map[uint16]Area, len(primary.byRegion)+len(secondary.byRegion)),
+	}
+	for slug, area := range primary.bySlug {
+		merged.bySlug[slug] = area
+	}
+	for region, area := range primary.byRegion {
+		merged.byRegion[region] = area
+	}
+	for slug, area := range secondary.bySlug {
+		if _, duplicate := merged.bySlug[slug]; duplicate {
+			return nil, fmt.Errorf("worldarea: merge duplicate slug %q", area.Slug)
+		}
+		if previous, duplicate := merged.byRegion[area.RegionID]; duplicate {
+			return nil, fmt.Errorf("worldarea: merge region 0x%04X belongs to both %q and %q", area.RegionID, previous.Slug, area.Slug)
+		}
+		merged.bySlug[slug] = area
+		merged.byRegion[area.RegionID] = area
+	}
+	return merged, nil
+}
+
 // LoadAuthority loads the server-owned projection. Unlike Load, it neither
 // accepts browser-public paths nor reopens client render bundles to validate a
 // mirror; the projection manifest already commits to the exact accepted file.
