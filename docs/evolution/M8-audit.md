@@ -610,16 +610,47 @@ palier. C'est un VRAI lane runtime (drain MP périodique sur la cible
 + restitution au lanceur) : parser + exécuteur + preuves du vide —
 budget d'une session entière, pas une queue de nuit.
 
-## Le reste (carte actualisée après s30)
+## Amorces s32 (mesurées en fin de nuit 31, implémentation à faire)
 
-1. WATER_CANCEL (7+) : `bbuf dura[10000] drht[86] tant[3185]`,
-   ciblé EnemyM+EnemyP (« Decreases the enemy's dodge ability / hitting
-   ratios »), handler timed — la porte du lane timed à nommer.
-3. SWORD_SHIELDPD (8) : debuff de parade temporisé `dura adps iqer`.
-4. SOULA_STUNLINK + RAZEA tiers isolés + STEALTHA_CHANGE/
+Sondées après la livraison s31 (probe effacé) ; les deux sont de VRAIS
+lanes runtime, pas des ouvertures de porte :
+
+1. **WATER_CANCEL** (12 rangées étendues dont ~7-9 past-90 ; 6 natives
+   cap-90 refusées pareil → plancher maîtrise requis). Forme :
+   `bbuf(count 0) dura[10000] drht[86] tant[3185]`, handler 3, ciblé
+   EnemyM+EnemyP, tooltips « Decreases the enemy's dodge ability » (A)
+   / « hitting ratios » (B). `drht` = 0x74687264 (mot du métadonnées
+   name-attack 7F85A0, PAS un status abnormal). Le hook existe dans le
+   moteur : formula.go:382 `ratio = attacker.HitRate /
+   defender.EvasionRate`, et monsterabnormal.go:132 expose
+   EvasionRate/HitRate comme paramètres. À construire : installation
+   temporisée d'un modificateur de ratio SUR UN MONSTRE + expiration +
+   intégration aux deux jets. Aucun lane existant ne fait de debuff de
+   stat temporisé hostile.
+2. **JIPJUNG** (9 past-90 : D_04..D_09, E_01..E_03 ; les tiers natifs
+   A_01..D_02 authorisent le même mot → plancher requis). Forme :
+   `dura[758824] re{35,0}`, handler 3, non ciblé, self. **`re` =
+   0x6572 — piège de boutisme corrigé cette nuit : le tag u32 est
+   0x00006572, le mot deux octets est "er" dans la convention
+   br(0x6272)**, et les preuves de nommage disent EVASION :
+   `SKILL_ITEM_ETC_SOCKET_STONE_ER_*` et
+   `SKILL_ETC_E051123_EVATION_SCROLL` authorisent le même mot (le
+   tooltip EN « parry ratio » est la localisation officielle, notoire
+   pour ses inversions dodge/parry). Le mot est authorisé sur 89
+   rangées étendues (passives lightning, pierres à socket, mall,
+   quêtes). À construire : l'attribut timed evasion + son point
+   d'application dans les stats de combat du personnage (parametergraph
+   liste EvasionRate ; le walk timed connaît br=block mais pas er).
+
+## Le reste (carte actualisée après s31)
+
+1. WATER_CANCEL et JIPJUNG : voir les amorces s32 ci-dessus — deux
+   nouveaux lanes runtime.
+2. SWORD_SHIELDPD (8) : debuff de parade temporisé `dura adps iqer`.
+3. SOULA_STUNLINK + RAZEA tiers isolés + STEALTHA_CHANGE/
    BATTLAA_GUARD/GUARDA_PHYSICAL/REBIRTHA_SPECIAL : à sonder.
-5. La dispersion (~110 rangs sur les petites familles) : une à une.
-6. **Danses de barde** (40 rangs) : le rythme 2026 — décision owner V5,
+4. La dispersion (~110 rangs sur les petites familles) : une à une.
+5. **Danses de barde** (40 rangs) : le rythme 2026 — décision owner V5,
    jamais reçue ; sans preuve : pas d'implémentation.
 7. **MANADRY (10, parked-owner nouveau s31)** : PvP-seul — EnemyP sans
    EnemyM, tooltip « not effective on monsters », bannière status-cast
