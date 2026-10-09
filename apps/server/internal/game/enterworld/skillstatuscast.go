@@ -54,9 +54,16 @@ the target columns empty (Lightning Impact).
 ================
 */
 func compileSkillStatusCast(fields []string, row SkillRow) (SkillThreat, bool) {
+	// Instant status casts (duration 0): the status blocks' own duration
+	// words carry the lifetime, not the action envelope. Inference
+	// recorded 2026-10-09 (M8 s5): the void proof measured that the only
+	// rows this admits beyond the timed ones are the shipped BINGPAN
+	// family's own tiers - the v1.150 client ships and the original
+	// server ran these as instant cold debuffs; the port never admitted
+	// them. No row admitted today changes kind.
 	if len(fields) != 118 || fields[0] != "1" || fields[8] != "2" || fields[68] != "0" ||
 		!row.TimingPinned || !row.Consumption.Pinned || !row.ActionRangePinned || row.TargetRequired && !row.Targets.EnemyM ||
-		row.ChainSub || row.ChainNext != 0 || row.ActionDurationMs == 0 || row.Attack.Present {
+		row.ChainSub || row.ChainNext != 0 || row.Attack.Present {
 		return SkillThreat{}, false
 	}
 	// No projectile, no ground target, no secondary-target columns.
