@@ -854,11 +854,39 @@ serveur forcée PASS (39,9 s).
   l'attaquant (st = le status Stun !) : à sonder contre le lane link.
 - La dispersion (~110) : une à une après.
 
-## Le reste (carte actualisée après s37)
+## Session 38 — le lane aura compté : +49 rangs (81,6 → 83,3 %) ; STEALTHA_CHANGE parked
 
-1. La carte s38 ci-dessus (BATTLAA_GUARD, GUARDA_PHYSICAL,
-   REBIRTHA_SPECIAL, STEALTHA_CHANGE, SOULA_STUNLINK), puis la
-   dispersion (~110).
+BATTLAA_GUARD s'est avéré **déjà épinglé et exécutable** : le métadonnées
+(noteParameterIndex) pose `Aura.Present` pour tout efr kind 2 et
+`BuffModifiers.Odar` dans la même passe, et le dispatch
+`Aura.Present && (BuffModifiers.Present() || Aura.Eshp)` lance
+acceptPartyBuff — la famille entière (tiers natifs ≤90 compris) était
+jouable depuis l'origine, plan kind 0, jamais comptée. **CINQUIÈME
+écart de mesure** (murs, dissimulation, pièges, coupes d'hostilité,
+auras) : l'union des deux tests compte désormais la condition exacte
+du dispatch. **+49 rangs past-90** (81,6 → 83,3 %, 2500/3002) —
+presque autant que le DMIR, caché au même endroit : les auras de
+groupe du barde et leurs cousines.
+
+**STEALTHA_CHANGE reclassé parked-owner (2 rangs)** : le tooltip dit
+mot pour mot « You cannot use the skill against monsters » — moquer
+un ennemi JOUEUR pour le forcer à vous cibler (hitm). Même classe de
+preuve que MANADRY : un runtime hostile-joueur est du PvP, hors du
+périmètre PvE.
+
+### Carte s39 (restante)
+
+- **GUARDA_PHYSICAL (4)** : lien guerrier 30 min, mot `lkdr` inconnu.
+- **SOULA_STUNLINK (5)** : lien portant un bloc Stun (`st{5000,35,10}`).
+- **REBIRTHA_SPECIAL (2)** : forme resu + mot `tmur` inconnu.
+- La dispersion (~110) : une à une.
+- Parked-owner : danses (V5), MANADRY (PvP), STEALTHA_CHANGE (PvP).
+
+## Le reste (carte actualisée après s38)
+
+1. GUARDA_PHYSICAL (lkdr), SOULA_STUNLINK (lien+Stun),
+   REBIRTHA_SPECIAL (tmur) : mots à décoder ; puis la dispersion
+   (~110).
 4. **Danses de barde** (40 rangs) : le rythme 2026 — décision owner V5,
    jamais reçue ; sans preuve : pas d'implémentation.
 5. **MANADRY (10, parked-owner s31)** : PvP-seul — EnemyP sans EnemyM,

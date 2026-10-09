@@ -149,8 +149,11 @@ directly, action/skillwall.go), the planted combat-trap lane
 hostility-cut lane (skill.Threat.Decrease rows run acceptDiscordWave
 and its untargeted sibling, action/discordwave.go - measured s31), the
 timed hostile ratio cut (RatioDebuff.Pinned rows run acceptRatioDebuff,
-action/ratiodebuff.go - measured s34), the offensive periodic path, and
-the recovery dispatch's shape flags. Keep the two tests measuring the
+action/ratiodebuff.go - measured s34), the persistent party-aura lane
+(Aura.Present rows with modifier blocks run acceptPartyBuff,
+action/skillparty.go - measured s38: the live BATTLAA_GUARD rows were
+already pinned there), the offensive periodic path, and the recovery
+dispatch's shape flags. Keep the two tests measuring the
 same predicate.
 ================
 */
@@ -161,6 +164,7 @@ func rowRuntimeAdmitted(source *TextdataSkills, row SkillRow) bool {
 		row.CombatTrap.Pinned ||
 		row.RatioDebuff.Pinned ||
 		row.Threat.Decrease ||
+		row.Aura.Present && (row.BuffModifiers.Present() || row.Aura.Eshp) ||
 		row.TimedEffect.Periodic.Pinned ||
 		row.Recovery.SelfFlatPinned || row.Recovery.PartyHealPinned ||
 		row.Recovery.LowestHealPinned || row.Recovery.PartyResurrectPinned ||
