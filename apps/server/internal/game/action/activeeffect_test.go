@@ -259,3 +259,47 @@ func TestTimedEvasionEffectWritesParameterNine(t *testing.T) {
 		t.Fatalf("no parameter-9 flat write among %+v", rt.effects.ModifierWrites(testDivision, character.Name))
 	}
 }
+
+/*
+================
+TestShieldStanceEffectWritesTheTradeOff
+
+Extended content (isro-live-2026), port-only, not v1.150-native (M8
+s36): the stance's writes are the attack pair raised in the percent-sum
+channel and parameter 5 cut by the negative percent-sum, Bleeding's own
+defense-cut channel.
+================
+*/
+func TestShieldStanceEffectWritesTheTradeOff(t *testing.T) {
+	rt, character := newActiveEffectTestRuntime(t, staticSkillSource{
+		100: {ID: 100, Group: 9, EffectDurationMs: 120000, TimedEffect: enterworld.SkillTimedEffect{
+			Pinned: true,
+			Stance: enterworld.SkillShieldStance{Present: true, AttackPercent: 90, DefenseCutPercent: 45},
+		}},
+	})
+	if !rt.ApplyCharacterEffect(testDivision, character.Name, 100, 11, statuseffect.StateActive, false) {
+		t.Fatal("the stance did not apply")
+	}
+	writes := rt.effects.ModifierWrites(testDivision, character.Name)
+	attack, defense := 0, 0
+	for _, write := range writes {
+		if write.Channel != paramkeeper.PercentSum {
+			continue
+		}
+		switch write.Parameter {
+		case 13, 14:
+			if write.Value != 90 {
+				t.Fatalf("attack write %+v", write)
+			}
+			attack++
+		case 5:
+			if write.Value != -45 {
+				t.Fatalf("defense write %+v", write)
+			}
+			defense++
+		}
+	}
+	if attack != 2 || defense != 1 {
+		t.Fatalf("writes: attack=%d defense=%d among %+v", attack, defense, writes)
+	}
+}
