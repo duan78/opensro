@@ -140,7 +140,26 @@ temporisé onff/wp ; l'aura de régénération pola/cgri) AVANT
 l'admission. C'est le travail de s9 : deux formes avec exécution, pas
 des tolérances. Aucun rang basculé cette session (correctement).
 
-## Le reste (carte actualisée après s8)
+## Session 9 — BINGBYEOK/HWABYEOK re-identifiées : des AURAS, pas des timed
+
+Découverte de portée : `onff {périodeMs, coûtMP}` est la MÉTADONNÉE
+d'aura pulsée (`SkillAura.PulseMs/PulseMP`, documentée dans
+`skilloffense.go` — « efr kind 2, onff +0x290/+0x284 : persistent
+aura »). BINGBYEOK/HWABYEOK ne sont donc pas des débuffs timed mais
+des **togglés d'aura persistante** — et leur bloc d'effet est `wp {4
+mots}` : la marche offense parse `wp` en… un CastGate (`CastGate.Pw =
+true`), en IGNORANT ses quatre mots. Deux conséquences pour la lane :
+1. l'aura n'épingle jamais (l'admission `Aura.Present` exige un `efr
+   kind 2` que ces rangées n'authorisent pas — aura auto-centrée sans
+   efr, rayon par défaut ?) ;
+2. les 4 mots de `wp` — les valeurs du débuff — n'ont NI parse NI
+   consommateur : leur sémantique est le vrai travail de s10 (RE des
+   mots + admission d'aura auto-centrée + exécution).
+WATER_HARMONY (pola/cgri) inchangée : aura de régén de groupe.
+Aucun rang basculé (correctement) — cette session a corrigé la NATURE
+de la cible avant d'y investir.
+
+## Le reste (carte actualisée après s9)
 
 1. BINGPAN : la porte duration (preuve du vide natif d'abord).
 2. BINGBYEOK/HWABYEOK : forme timed onff/wp.
