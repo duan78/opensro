@@ -294,6 +294,20 @@ func (rt *Runtime) acceptSupportSkillPhase(
 			for _, gid := range party {
 				recipients = append(recipients, rt.findCharacterByGid(division, gid))
 			}
+			// Extended content (isro-live-2026), port-only, not
+			// v1.150-native: an eshp party heal-over-time (RECOVERYA_GROUP)
+			// lands on the member with the lowest HP ratio each pulse, the
+			// same selection the eshp aura's update applies - never on
+			// every member at once.
+			if skill.Aura.Eshp {
+				if lowest == nil {
+					lowest = rt.lowestChainHealTarget(division, recipients)
+				}
+				if lowest == nil {
+					return OpResult{DiagnosticRefusal: "recovery-admission-refused"}, skillCastRefused
+				}
+				recipients = []*enterworld.Character{lowest}
+			}
 		}
 		curePublic = append(curePublic, rt.installHealsOverTime(division, character, skill, recipients, now)...)
 	case partyResu:
