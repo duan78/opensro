@@ -73,6 +73,12 @@ func (rt *Runtime) petAreaTargets(step petCombatStep, primary petCombatTarget, s
 		if snapshot == nil || snapshot.DeletePending {
 			continue
 		}
+		// 528F40 excludes same-team player targets before owner permission.
+		// INFERENCE: apply that companion rule to secondary owners and their
+		// companions too, so area selection cannot bypass team protection.
+		if rt.companionTeamRefusal(step.snapshot, snapshot) != 0 {
+			continue
+		}
 		if step.ref.TidWord>>11 == domain.MercenaryBand {
 			if !rt.worldPlayerEnemy(step.key.division, step.snapshot, snapshot) {
 				continue
