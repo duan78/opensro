@@ -26,6 +26,7 @@ import (
 	"opensro.online/server/internal/cluster/shard"
 	"opensro.online/server/internal/data/store"
 	"opensro.online/server/internal/game/enterworld"
+	"opensro.online/server/internal/game/item/loot"
 	"opensro.online/server/internal/game/world/simulation"
 	"opensro.online/server/internal/game/world/worldarea"
 	"opensro.online/server/internal/gamedata"
@@ -156,6 +157,13 @@ func newGameWorldApplication(
 				"extended content: no movement mirror under %q (build it with scripts/build_extended_world_resources.mjs); the extended regions stay unwalkable",
 				extendedRoot,
 			)
+		}
+		// The equipment drop supplement (port-only, not native): the live
+		// client's degree 10-12 wearables join the ordinary drop path, its
+		// window rates inferred and marked. A failed install is a boot
+		// error - a half-installed catalogue drops nothing.
+		if installErr := loot.InstallExtendedEquipment(); installErr != nil {
+			return nil, fmt.Errorf("extended content: %w", installErr)
 		}
 		if loadErr != nil {
 			return nil, fmt.Errorf("extended content: %w", loadErr)

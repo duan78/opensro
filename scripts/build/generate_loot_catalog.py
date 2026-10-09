@@ -172,13 +172,91 @@ def compile_catalogs():
 
 
 # ================
+# extended_equipment_supplement
+#
+# Extended content (isro-live-2026), port-only, not v1.150-native. The
+# live client's degree 10-14 wearables ship as a SEPARATE supplement the
+# server installs only behind the extended flag - the native equipment
+# catalogue stays byte-identical, so a flag-off world drops exactly the
+# native set. The supplement is validated against the native rows here:
+# no codename overlap, groups within the rate-row width, windows only in
+# cells the native evidence leaves at zero. Degrees 13-14 ship only
+# flat-101 rare rows (the client's own pre-provisioning): no window can
+# roll them, so they stay out - grant and equip still work through the
+# item overlay. The window rates are inferred (the evidence file says
+# so) and the audit records the whole supplement.
+# ================
+def extended_equipment_supplement(catalogs):
+	extended_path = ROOT / "scripts/data/loot/extended-equipment-source.json"
+	if not extended_path.exists():
+		return None
+	extended = json.loads(extended_path.read_text(encoding="utf-8"))
+	equipment = catalogs["equipment.json"]
+	native_codenames = {row["codename"] for row in equipment["items"]}
+	overlap = sorted({row["codename"] for row in extended["items"]} & native_codenames)
+	if overlap:
+		raise ValueError("Extended equipment collides with native rows: " + ", ".join(overlap[:4]))
+	groups = {len(row) for row in equipment["normal"]} | {len(row) for row in equipment["rare"]}
+	if len(groups) != 1:
+		raise ValueError("Native equipment rate rows have inconsistent widths")
+	width = groups.pop()
+	items = []
+	pre_provisioned = 0
+	for row in extended["items"]:
+		if row["codename"] in native_codenames:
+			continue
+		if not 0 <= row["group"] < width:
+			pre_provisioned += 1
+			continue
+		items.append(dict(row))
+	windows = []
+	native_windows = 0
+	for window in extended["windows"]:
+		level, group = window["level"], window["group"]
+		if not 1 <= level <= len(equipment["normal"]):
+			raise ValueError("Extended window level outside the rows: " + str(level))
+		# Per kind, with the runtime's own activity threshold: the native
+		# rows above 101 carry ~1e-9 epsilons (provisioned-inert windows)
+		# the selection never sees, and the native rare rows stop at 97
+		# while the ordinary ones run to 101 - only a genuinely active
+		# native cell keeps its native rate, per kind.
+		active = lambda value: value > 0.000001
+		normal_kept = active(equipment["normal"][level - 1][group])
+		rare_kept = active(equipment["rare"][level - 1][group])
+		if normal_kept and rare_kept:
+			native_windows += 1
+			continue
+		windows.append({"level": level, "group": group,
+			"applyNormal": not normal_kept, "normalRate": extended["normalRate"],
+			"applyRare": not rare_kept, "rareRate": extended["rareRate"]})
+	catalogs["audit.json"]["extendedEquipment"] = {
+		"sourceClient": extended["sourceClient"],
+		"rates": extended["rates"],
+		"itemRows": len(items),
+		"preProvisionedUncatalogued": pre_provisioned,
+		"windows": len(windows),
+		"windowsNativeKept": native_windows,
+	}
+	print(
+		f"extended equipment supplement: {len(items)} items, {len(windows)} window rows (rates inferred), "
+		f"{native_windows} fully native windows kept, {pre_provisioned} pre-provisioned rows uncatalogued"
+	)
+	return {"version": 1, "sourceClient": extended["sourceClient"], "rates": extended["rates"],
+		"items": items, "windows": windows}
+
+
+# ================
 # main
 # ================
 def main():
 	parser = argparse.ArgumentParser(description=__doc__)
 	parser.add_argument("--check", action="store_true")
 	args = parser.parse_args()
-	for name, value in compile_catalogs().items():
+	catalogs = compile_catalogs()
+	supplement = extended_equipment_supplement(catalogs)
+	if supplement is not None:
+		catalogs["equipment-extended.json"] = supplement
+	for name, value in catalogs.items():
 		data = (json.dumps(value, separators=(",", ":"), ensure_ascii=True) + "\n").encode("utf-8")
 		path = OUTPUT / name
 		if args.check:

@@ -38,6 +38,12 @@ func installLootReferences(t *testing.T, rt *Runtime) {
 	items := enterworld.NewTextdataItems(dir)
 	source := rt.deps.ItemReferences().(staticItemSource)
 	for _, code := range loot.CatalogItemCodenames() {
+		// Extended content (isro-live-2026), port-only, not native: the
+		// supplement's rows join drops only behind the flag; their
+		// references live in the extended catalogue, not this native set.
+		if loot.IsExtendedEquipment(code) {
+			continue
+		}
 		ref, ok := items.ItemRefByCodename(code)
 		if !ok {
 			t.Fatal("missing published loot reference", code)

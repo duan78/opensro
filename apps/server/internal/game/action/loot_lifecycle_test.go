@@ -97,6 +97,16 @@ func TestPublishedLootPickupAndActivation(t *testing.T) {
 	items := enterworld.NewTextdataItems(textdata)
 	magic := enterworld.NewTextdataMagicOptions(textdata)
 	codes := publishedLootCodes(t)
+	native := codes[:0]
+	for _, code := range codes {
+		// Extended content (isro-live-2026), port-only, not native: the
+		// supplement's rows ride the flag-on drop path; their references
+		// live in the extended catalogue (the journey proves them).
+		if !loot.IsExtendedEquipment(code) {
+			native = append(native, code)
+		}
+	}
+	codes = native
 	t.Logf("pickup/persistence coverage: %d production loot identities; activation assertions cover equipment and recovery here", len(codes))
 	for _, code := range codes {
 		t.Run(code, func(t *testing.T) {

@@ -337,14 +337,21 @@ Parkés (aucun travail sans nouvel ordre owner) :
 2. Pets seconde génération / fellowship.
 3. Tout système exigeant du wire nouveau (charte §4.8, mission M5/V5).
 
-Question ouverte pour l'owner (M5, 2026-10-09) : les taux de drop des
-mobs/objets 2026 n'existent dans aucune source locale (client : non
-livrés ; vSRO188/SRObro : stats seulement). L'or et les consommables
-génériques tombent sur les courbes officielles ; l'équipement 11D+
-s'acquiert par grant. Faut-il authoriser des taux inférés explicitement
-marqués (précédent natif : les taux consommables « inferred » du
-catalogue de butin), ou l'acquisition par grant reste-t-elle la règle
-jusqu'à une source officielle ?
+Résolution owner (ordre de finalisation du 2026-10-09, la question
+M5 ci-dessous) : les taux inférés explicitement marqués entrent,
+derrière le flag uniquement. Livré : le supplément d'équipement
+DG10-12 (308 rangs, l'état réel du client live - DG13/14 ne sont que
+pré-provisionnés plat-101 et restent hors catalogue), fenêtres par
+espèce (les lignes rares natives s'arrêtent à 97), taux = continuation
+des motifs uniformes natifs, catalogue natif octet-identique et
+installation explicite au boot étendu (`loot.InstallExtendedEquipment`,
+marqué port-only). Les affectations magiques live restent une évidence
+absente : les portables du supplément tombent sans options magiques
+(documenté dans le code) jusqu'à ce qu'une source existe.
+
+Question d'origine (M5, 2026-10-09, résolue ci-dessus) : les taux de
+drop des mobs/objets 2026 n'existent dans aucune source locale
+(client : non livrés ; vSRO188/SRObro : stats seulement).
 
 ## Annexe A — Faits établis par l'audit du 2026-10-09
 

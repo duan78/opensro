@@ -60,6 +60,7 @@ import { MAIN_CHECKOUT_CLIENT_PUBLIC_ROOT } from "../../lib/generatedRoot.mjs";
 import {
 	extractedRoot,
 	gameRoot,
+	generatedRoot,
 	imageSourceRoot,
 	normalizeRegionId,
 	publicRoot,
@@ -430,8 +431,9 @@ export async function buildExtendedWorldRegionResources( options = {} ) {
 
 	const catalog = await publishExtendedRouting( descriptor );
 	const minimap = await publishExtendedMinimapTiles( sectors );
+	const icons = await publishExtendedItemIcons();
 	const movement = await buildExtendedMovementProjection( descriptor );
-	const manifest = await sealExtendedWorldManifest( discovery, descriptor, sharedObjects.index );
+	const manifest = await sealExtendedWorldManifest( discovery, descriptor, sharedObjects.index, icons.published );
 
 	return {
 		planOnly: false,
@@ -451,6 +453,7 @@ export async function buildExtendedWorldRegionResources( options = {} ) {
 			meshCount: sharedObjects.index.meshFiles.length
 		},
 		minimap,
+		icons,
 		worldManifest: manifest
 	};
 }
@@ -524,6 +527,39 @@ async function publishExtendedMinimapTiles( sectors ) {
 		tilePaths: tilePaths.sort()
 	} );
 	return { published: tilePaths.length, missing };
+}
+
+/*
+================
+publishExtendedItemIcons
+
+The live items' icons (the names the extraction collected, converted in
+the image staging) published at the client's own icon path
+(/assets/images/Media_extracted/icon/<name>.png): the client resolves an
+item's icon straight there, and the union serving answers the names the
+native tree lacks from this private tree. The DG11-14 wearables' icons
+ride this same leg.
+================
+*/
+async function publishExtendedItemIcons() {
+	const manifestPath = path.join( generatedRoot, "extended", "game", "icon-manifest.json" );
+	if ( !(await exists( manifestPath )) ) {
+		return { published: 0, missing: 0 };
+	}
+	const manifest = JSON.parse( await readFile( manifestPath, "utf8" ) );
+	let published = 0;
+	let missing = 0;
+	for ( const name of manifest.icons ?? [] ) {
+		const source = path.join( imageSourceRoot, "Media_extracted", "icon", ...`${name}.png`.split( "/" ) );
+		if ( !(await exists( source )) ) {
+			missing += 1;
+			continue;
+		}
+		const publicPath = `/assets/images/Media_extracted/icon/${name}.png`;
+		await copyIntoPublicTree( source, publicPathToFile( publicPath, publicRoot ) );
+		published += 1;
+	}
+	return { published, missing };
 }
 
 /*
@@ -609,7 +645,7 @@ identical bytes. Sits beside the data-lane manifest (manifest.json) in the
 extended projection root and never touches it.
 ================
 */
-async function sealExtendedWorldManifest( discovery, descriptor, objectIndex ) {
+async function sealExtendedWorldManifest( discovery, descriptor, objectIndex, itemIcons ) {
 	const projectionRoot = resolveExtendedGameDataRoot( process.env );
 	const digests = {};
 	for (
@@ -632,6 +668,7 @@ async function sealExtendedWorldManifest( discovery, descriptor, objectIndex ) {
 		regionCount: descriptor.regions.length,
 		skippedRegions: discovery.skipped,
 		bands: discovery.bandsKept,
+		itemIcons,
 		objectBsrCount: objectIndex.bsrCount,
 		objectMeshCount: objectIndex.meshFiles.length,
 		movementCatalogSha256: sha256Hex( await readFile( movementCatalogPath ) ),

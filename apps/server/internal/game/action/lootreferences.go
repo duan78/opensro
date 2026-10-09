@@ -29,7 +29,15 @@ func (rt *Runtime) ValidateLootReferences() error {
 	for _, code := range loot.CatalogItemCodenames() {
 		ref, ok := items.ItemRefByCodename(code)
 		if !ok || ref == nil || ref.RefObjID == 0 || ref.Codename != code {
-			return fmt.Errorf("loot item reference missing: %s", code)
+			// Extended content (isro-live-2026), port-only, not native:
+			// the supplement's rows exist only in an installed (flag-on)
+			// process, whose item overlay must carry them like any other;
+			// a native registry legitimately lacks them because nothing
+			// installs the supplement there.
+			if !loot.IsExtendedEquipment(code) {
+				return fmt.Errorf("loot item reference missing: %s", code)
+			}
+			continue
 		}
 	}
 	magic := rt.deps.MagicOptionDefinitions()

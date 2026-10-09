@@ -18,15 +18,18 @@ package action
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
 	"opensro.online/server/internal/domain"
 	"opensro.online/server/internal/game/enterworld"
+	"opensro.online/server/internal/game/item/loot"
 	"opensro.online/server/internal/game/progression"
 	"opensro.online/server/internal/game/world/monster"
 	"opensro.online/server/internal/game/world/worldarea"
@@ -46,6 +49,11 @@ func TestExtendedJourneyKillsItsWayFromOneTo140(t *testing.T) {
 	extended, err := gamedata.LoadExtended()
 	if err != nil {
 		t.Skipf("extended projection is not built: %v", err)
+	}
+	// The extended drop supplement (port-only, not native): the journey's
+	// equipment legs need the live degrees in the ordinary drop path.
+	if installErr := loot.InstallExtendedEquipment(); installErr != nil {
+		t.Fatalf("extended equipment supplement: %v", installErr)
 	}
 
 	// The real 2026 curve, the full item catalogue and the full monster
@@ -166,17 +174,40 @@ func TestExtendedJourneyKillsItsWayFromOneTo140(t *testing.T) {
 				RegionID: &region, X: &x, Y: &y, Z: &z, Angle: &angle,
 			}
 			pose := monster.Pose{RegionID: area.RegionID, X: x, Y: y, Z: z}
-			gold := false
+			gold, gear := false, ""
 			for _, drop := range rt.planMonsterKillLoot(character, instance, pose, time.Now().UnixMilli()) {
-				if drop.GoldAmount > 0 {
+				if drop.GoldAmount > 0 && !gold {
 					gold = true
 					t.Logf("band %d: %s dropped a %d-gold heap in 0x%04X", band, ref.Codename, drop.GoldAmount, area.RegionID)
-					break
+				}
+				if gear == "" && (strings.Contains(drop.Codename, "_10_") ||
+					strings.Contains(drop.Codename, "_11_") || strings.Contains(drop.Codename, "_12_")) {
+					gear = drop.Codename
 				}
 			}
 			if !gold {
 				t.Fatalf("band %d: %s dropped no gold on the official curve", band, ref.Codename)
 			}
+			// The equipment leg (E4): from band 91 up, the kill's loot
+			// carries a wearable of the extended degrees. Level 101 is the
+			// live transition - the native DG10-C window and the live
+			// DG11-A one are both open and roll against each other - so the
+			// assertion is the degree floor.
+			floor := 10
+			if band >= 111 {
+				floor = 12
+			}
+			matched := false
+			for degree := floor; degree <= 12; degree++ {
+				if strings.Contains(gear, fmt.Sprintf("_%02d_", degree)) {
+					matched = true
+					break
+				}
+			}
+			if !matched {
+				t.Fatalf("band %d: %s dropped %q, want a DG%02d+ wearable", band, ref.Codename, gear, floor)
+			}
+			t.Logf("band %d: %s dropped %s", band, ref.Codename, gear)
 		}
 	}
 

@@ -105,3 +105,8 @@ def _resolve_generated_root() -> Path:
 
 GENERATED_ROOT = _resolve_generated_root()
 PUBLIC_ROOT = GENERATED_ROOT / "client-public"
+
+# The main checkout's published client assets: the shared authority the
+# extended lane reads read-only (the item icons the native tree already
+# carries), mirroring generatedRoot.mjs's MAIN_CHECKOUT_CLIENT_PUBLIC_ROOT.
+MAIN_CHECKOUT_CLIENT_PUBLIC_ROOT = MAIN_CHECKOUT_ROOT / ".generated" / "client-public"

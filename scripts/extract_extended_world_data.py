@@ -49,6 +49,11 @@ import sro_pk2
 
 SOURCE_CLIENT = "isro-live-2026"
 DEFAULT_GAME_ROOT = r"C:\Program Files (x86)\Silkroad"
+# The main checkout's published icon set (read-only), through sro_paths'
+# owner rule: the filter that keeps the extraction to the icons the
+# native tree does not already carry.
+MAIN_PUBLIC_ICONS = sro_paths.MAIN_CHECKOUT_CLIENT_PUBLIC_ROOT / "assets" / "images" / "Media_extracted" / "icon"
+
 DEFAULT_ZONES_RELATIVE = Path("extended") / "zones.json"
 
 # The o2 placement grammar (scripts/build/world/jmx/JMXVMAPO1001.mjs is the
@@ -345,8 +350,9 @@ def main() -> int:
 	map_root_out = output / "Map_extracted"
 	data_root_out = output / "Data_extracted"
 
-	files = {"mapSector": 0, "navmesh": 0, "tile2d": 0, "objectResource": 0, "minimap": 0}
-	bytes_out = {"mapSector": 0, "navmesh": 0, "tile2d": 0, "objectResource": 0, "minimap": 0}
+	files = {"mapSector": 0, "navmesh": 0, "tile2d": 0, "objectResource": 0, "minimap": 0, "itemIcon": 0}
+	bytes_out = {"mapSector": 0, "navmesh": 0, "tile2d": 0, "objectResource": 0, "minimap": 0, "itemIcon": 0}
+
 
 	# ================
 	# store
@@ -449,6 +455,45 @@ def main() -> int:
 				store( "minimap", media_root_out, tile, sro_pk2.payload( media_memory, entry ) )
 				minimap_tiles += 1
 
+			# -- the item icons ---------------------------------------------
+			# Every icon the live itemdata names (column 54) that the native
+			# published tree does not already carry and the live Media.pk2
+			# does: the client resolves an item's icon straight to
+			# /assets/images/Media_extracted/icon/<name>.png, so publishing
+			# the converted DDJ at that path is the whole leg. The manifest
+			# names what the builder publishes.
+			icon_manifest_path = output.parent / "icon-manifest.json"
+			previous_icons = set()
+			if icon_manifest_path.is_file():
+				try:
+					previous_icons = set( json.loads( icon_manifest_path.read_text( encoding = "utf-8" ) )["icons"] )
+				except ( OSError, ValueError, KeyError ):
+					previous_icons = set()
+			native_icons = set()
+			for icon_png in MAIN_PUBLIC_ICONS.glob( "**/*.png" ):
+				native_icons.add( icon_png.with_suffix( "" ).as_posix()[( len( MAIN_PUBLIC_ICONS.as_posix() ) + 1 ):] )
+			referenced = set()
+			for shard in sorted( ( sro_paths.GENERATED_ROOT / "extended" / "source" ).glob( "itemdata_*.txt" ) ):
+				text = shard.read_bytes().decode( "utf-16-le", errors = "replace" ).lstrip( "\ufeff" )
+				for line in text.splitlines():
+					if not line.strip() or line.startswith( "//" ):
+						continue
+					cells = line.split( "\t" )
+					if len( cells ) > 54:
+						icon = cells[54].strip().replace( "\\", "/" ).lower()
+						if icon and icon != "xxx":
+							referenced.add( icon[:-4] if icon.endswith( ".ddj" ) else icon )
+			wanted_icons = sorted(
+				name for name in referenced
+				if name not in native_icons and f"icon/{name}.ddj" in media_entries
+			)
+			icon_manifest = sorted( set( wanted_icons ) | ( previous_icons & {n for n in referenced if n not in native_icons} ) )
+			for name in icon_manifest:
+				entry = media_entries.get( f"icon/{name}.ddj" )
+				if entry is None:
+					continue
+				store( "itemIcon", media_root_out, f"icon/{name}.ddj", sro_pk2.payload( media_memory, entry ) )
+
 			# -- the object-resource closure --------------------------------
 			object_info = parse_object_info(
 				sro_pk2.payload( map_memory, map_entries["object.ifo"] ).decode( "cp949", errors = "replace" ).lstrip( "\ufeff" )
@@ -521,10 +566,13 @@ def main() -> int:
 		"objectIds": len( object_ids ),
 		"objectClosure": closure,
 		"minimapTiles": minimap_tiles,
+		"itemIcons": len( icon_manifest ),
 		"files": files,
 		"bytes": bytes_out,
 	}
 	inventory_path.write_text( json.dumps( inventory, indent = 2, sort_keys = True ) + "\n", encoding = "utf-8" )
+	icon_manifest_path.write_text( json.dumps( {"icons": icon_manifest}, indent = 1 ) + "\n", encoding = "utf-8" )
+	print( f"item icons: {len( icon_manifest )} extracted (the live items' names the native tree lacks)" )
 	print(
 		f"world plane: {len( extracted_regions )}/{len( zones['zones'] )} regions, "
 		f"{placement_count} placements, {len( object_ids )} object ids, closure {closure}"

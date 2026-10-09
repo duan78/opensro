@@ -33,17 +33,17 @@ cette session.
   sa population apparaître dans sa vraie région par le registre de
   production, aucune n'existe nativement (tests). M4p2 : chaque bande
   91→131 praticable côté serveur (`SpawnRegionAvailable`, test réel).
-- **E4 Équipement — partielle.** Vérifié : 21 529 items chargés dont
-  DG11-14 avec stats officielles (M3, sondes citées), degrés↔niveaux
-  dérivés d'`itemdata`, équipabilité et acquisition par grant (M5 :
-  l'épée 11A accordée au niveau 101). Partiel : (a) les **taux de drop**
-  2026 n'existent dans aucune source locale — question ouverte posée à
-  l'owner (charte §8) ; l'or (courbe officielle) et les consommables
-  génériques tombent réellement (M5) ; (b) les **icônes DDJ 11D+** ne
-  sont pas publiées séparément — le pipeline DDJ est prouvé (minimaps
-  687 tuiles, textures d'objets 1 929 DDJ), la publication d'icônes
-  d'items suit la même lane quand l'owner tranche les drops (les deux
-  vont ensemble : à quoi sert une icône qu'on ne peut pas obtenir).
+- **E4 Équipement — vérifiée** (finalisée sur l'ordre owner du
+  2026-10-09, section « Finalisation » ci-dessous) : 21 529 items chargés
+  dont DG10-14 avec stats officielles (M3), degrés↔niveaux dérivés
+  d'`itemdata`, équipabilité par grant (M5 : l'épée 11A au niveau 101),
+  **droppables** (le supplément DG10-12 derrière le flag, taux inférés
+  marqués, catalogue natif octet-identique — le parcours prouve un
+  portable par bande étendue) et **icônes** (3 410 icônes d'items 2026
+  publiées au chemin de résolution natif du client, scellées au
+  manifeste monde ; l'icône de l'épée 11D vérifiée sur le disque). Les
+  DG13/14 restent l'état du client live : pré-provisionnés plat-101,
+  hors catalogue de drop, accordables et équipables.
 - **E5 Skills — vérifiée au plan déclaré.** 36 008 skills 2026 chargés
   et résolus (M3, compteur exact SRObro) ; l'exécution des effets reste
   le plan v1.150, un effet inconnu échoue fermé au cast — posture
@@ -99,3 +99,60 @@ documentées avec décision owner en attente (taux de drop 2026 — charte
 §8 ; les icônes 11D+ suivent) et un artefact de capture à produire sur
 la pile complète. Les leçons de session vivent dans les audits M1-M5 ;
 les questions restantes dans la charte §8.
+
+
+---
+
+# Finalisation (ordre owner du 2026-10-09) — drops et icônes, la boucle E4 bouclée
+
+L'ordre « finalise totalement l'implémentation du lvl90 au lvl140 »
+tranche la question de la charte §8 : les taux inférés explicitement
+marqués entrent. Livré et vérifié dans la même session :
+
+- **Le supplément de drop** (`scripts/data/loot/extended-equipment-source.json`
+  dérivé de la projection scellée par
+  `scripts/build/build_extended_loot_evidence.py` ; le générateur du
+  catalogue l'émet en FICHIER SÉPARÉ `equipment-extended.json` — le
+  catalogue natif `equipment.json` reste octet-identique, vérifié dans
+  git). Contenu mesuré : **308 rangs** (DG10 complet 90-100, DG11 palier
+  A à 101, DG12 complet 111-120 ; les 132 rangs DG13/14 plat-101
+  pré-provisionnés restent hors catalogue : aucune fenêtre ne peut les
+  tirer, l'état du client live lui-même), **47 rangées de fenêtres par
+  espèce** (les fenêtres ordinaires natives vont à 101, les rares
+  s'arrêtent à 97, les epsilons ~1e-9 au-delà sont inertes au runtime ;
+  à 101 la fenêtre native DG10-C et la live DG11-A roulent l'une contre
+  l'autre — le parcours le documente), taux = continuation des motifs
+  uniformes natifs (0,0035 ordinaire / 0,00269 rare), marqués « rates
+  inferred » dans l'évidence et l'audit du générateur.
+- **L'installation runtime** (`loot.InstallExtendedEquipment`, id-style,
+  marqué port-only) : appelée par le câblage quand le contenu étendu est
+  on ; un processus natif ne l'appelle jamais et sert le catalogue
+  natif octet pour octet. Les portables du supplément tombent sans
+  options magiques tant que l'évidence des affectations magiques live
+  n'existe pas (portes d'évidence natives inchangées pour le natif).
+- **Les icônes** : 3 622 noms d'icônes référencés par les items 2026
+  manquent au natif ; 3 410 existent dans le Media.pk2 live et sont
+  extraites-converties-publiées au chemin exact où le client résout
+  l'icône d'un item (212 référencées-non-livrées par le client, tolérées
+  et comptées ; l'icône de `ITEM_CH_SWORD_11_A` vérifiée : 2 004 octets).
+  Scellées au manifeste monde (`itemIcons: 3410`), deux runs identiques.
+- **Le parcours prouve la chaîne complète** : chaque bande étendue voit
+  sa mise à mort payer l'or officiel ET tomber un portable du bon degré
+  (bande 91 → `ITEM_CH_BLADE_10_A`, 101 → `ITEM_CH_BLADE_10_C` — la
+  transition —, 111/121/131 → `ITEM_CH_BLADE_12_C`).
+
+## Vérification de la finalisation (sorties de session)
+
+- `pnpm check source` → `check pipeline: PASSED, 14 tasks` (la gate
+  `generated-root` a refusé puis validé les exports propriétaires des
+  racines côté python).
+- Gate serveur forcé (`SRO_CHECK_FORCE=1`, env privé) → `server gates:
+  PASS (16 package workers, 85.6s)` — inclut le parcours E8 avec les
+  jambes d'équipement, les tests du supplément deux réglages, et les
+  tests natifs de butin (les énumérations natives écartent les rangs
+  marqués étendus ; le validateur de références accepte un rang marqué
+  absent d'un registre natif et l'exige d'un registre étendu).
+- Client → `client check: PASS (11 gates)`.
+- Reproductibilité : le manifeste monde (avec les icônes) est identique
+  sur deux runs complets ; le catalogue natif de butin est inchangé
+  dans git (seuls l'audit +1 section et le nouveau supplément bougent).

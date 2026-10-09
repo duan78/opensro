@@ -78,6 +78,10 @@ equipmentCatalog
 type equipmentCatalog struct {
 	buckets map[equipmentKey]*equipmentBucket
 	classes [2][][]classThreshold
+	// rows keeps the raw per-level group rates: the extended supplement
+	// (equipment_extended.go) activates its inferred windows by writing
+	// here and rebuilding that level's thresholds.
+	rows [2][][]float32
 }
 
 var equipment = loadEquipmentCatalog()
@@ -122,24 +126,41 @@ func loadEquipmentCatalog() equipmentCatalog {
 	}
 	for kind, rows := range [2][][]float32{source.Normal, source.Rare} {
 		c.classes[kind] = make([][]classThreshold, len(rows))
+		c.rows[kind] = make([][]float32, len(rows))
 		for level, probabilities := range rows {
 			if len(probabilities) != 36 {
 				panic("invalid equipment class width")
 			}
-			var sum float32
-			for group, p := range probabilities {
-				if p < 0 || p > 1 {
-					panic("invalid equipment probability")
-				}
-				if p <= 0.000001 {
-					continue
-				}
-				sum += p
-				c.classes[kind][level] = append(c.classes[kind][level], classThreshold{group, uint32(float64(sum) * 1_000_000)})
-			}
+			c.rows[kind][level] = probabilities
+			c.classes[kind][level] = classThresholds(probabilities)
 		}
 	}
 	return c
+}
+
+/*
+================
+classThresholds
+
+One level row's rates into the cumulative, group-sorted thresholds the
+selection walks. Shared by the load and the extended supplement's window
+rebuild.
+================
+*/
+func classThresholds(probabilities []float32) []classThreshold {
+	var thresholds []classThreshold
+	var sum float32
+	for group, p := range probabilities {
+		if p < 0 || p > 1 {
+			panic("invalid equipment probability")
+		}
+		if p <= 0.000001 {
+			continue
+		}
+		sum += p
+		thresholds = append(thresholds, classThreshold{group, uint32(float64(sum) * 1_000_000)})
+	}
+	return thresholds
 }
 
 // EquipmentGroup preserves float32 accumulation and native lower_bound

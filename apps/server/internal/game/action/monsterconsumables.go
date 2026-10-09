@@ -66,10 +66,20 @@ func (rt *Runtime) prepareSelectedDrop(chosen loot.DropItem, at simulation.Spawn
 		// All version-compatible authored modifier sets are empty in this catalog.
 		if !chosen.Assigned {
 			magic, entered, err := loot.EquipmentMagic(chosen.Codename, rt.DropRoll)
-			if err != nil || chosen.Special && !entered {
+			switch {
+			case err != nil:
+				// Extended content (isro-live-2026), port-only, not native:
+				// the supplement's wearables have no magic-assignment
+				// evidence yet - they drop plain rather than not at all.
+				// Native items keep the fail-closed evidence gate.
+				if !loot.IsExtendedEquipment(chosen.Codename) {
+					return grounditem.Item{}, false
+				}
+			case chosen.Special && !entered:
 				return grounditem.Item{}, false
+			default:
+				row.MagicOptions = magic
 			}
-			row.MagicOptions = magic
 		}
 		if chosen.NonRepair {
 			if option, percent, eligible := loot.NonRepairOption(chosen.Codename, len(row.MagicOptions)); eligible {
