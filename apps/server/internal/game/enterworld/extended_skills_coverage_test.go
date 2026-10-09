@@ -81,6 +81,9 @@ func skillCoveragePast90(t *testing.T, source *TextdataSkills) map[int]map[strin
 		if kind == "unsupported" && row.Wall.Pinned {
 			kind = "wall"
 		}
+		if kind == "unsupported" && row.Concealment.Pinned {
+			kind = "concealment"
+		}
 		if kind == "unsupported" && row.TimedEffect.Periodic.Pinned {
 			kind = "periodic"
 		}
@@ -142,7 +145,7 @@ func TestExtendedSkillsExecutionCoveragePastLevel90(t *testing.T) {
 			total += bandTotal
 			routed += bandRouted
 			summary := ""
-			for _, kind := range []string{"offense", "recovery", "instant", "passive", "timed", "periodic", "wall", "position", "threat", "unsupported-unpinned", "unsupported-chain", "chain-stage"} {
+			for _, kind := range []string{"offense", "recovery", "instant", "passive", "timed", "periodic", "wall", "concealment", "position", "threat", "unsupported-unpinned", "unsupported-chain", "chain-stage"} {
 				if counts[kind] > 0 {
 					summary += fmt.Sprintf(" %s=%d", kind, counts[kind])
 				}

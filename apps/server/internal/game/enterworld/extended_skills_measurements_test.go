@@ -151,6 +151,7 @@ predicate.
 func rowRuntimeAdmitted(source *TextdataSkills, row SkillRow) bool {
 	return source.plans[row.ID].kind != SkillExecutionUnsupported ||
 		row.Wall.Pinned ||
+		row.Concealment.Pinned ||
 		row.TimedEffect.Periodic.Pinned ||
 		row.Recovery.SelfFlatPinned || row.Recovery.PartyHealPinned ||
 		row.Recovery.LowestHealPinned || row.Recovery.PartyResurrectPinned ||

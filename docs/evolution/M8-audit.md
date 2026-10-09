@@ -355,7 +355,20 @@ et 3 apparentées ; les ancêtres natifs D exécutent aussi). Package
 enterworld complet vert, gates source + serveur vertes, aucun test
 natif bougé.
 
-## Le reste (carte actualisée après s20)
+## Session 21 — INVISIBLE et toute la lane concealment : déjà exécutées, comptées maintenant
+
+Cinquième correction de mesure : le sondage a montré
+`Concealment.Pinned=true, Hide=true` sur la rangée INVISIBLE — le
+parse `skillconcealment.go` l'épinglait DEJA, et le runtime la
+dispatche (`action/concealment.go` lit `Concealment.Pinned`/
+`.Hide`). C'était le prédicat de mesure qui ne comptait pas la lane.
+`Concealment.Pinned` rejoint l'union (`rowRuntimeAdmitted` + liste de
+kinds). **Couverture 77,1 % → 78,5 %** (+40 rangs — INVISIBLE, la
+furtivité CH/EU et leurs apparentées). Cinquième gap de mesure du
+jalon : à chaque fois le moteur exécutait déjà, la mesure ne le
+disait pas.
+
+## Le reste (carte actualisée après s21)
 
 1. BINGPAN : la porte duration (preuve du vide natif d'abord).
 2. BINGBYEOK/HWABYEOK : forme timed onff/wp.
