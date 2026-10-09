@@ -64,21 +64,7 @@ pilotes — flag-off identique par construction.
   lifetime/parse avant la dispatch (lane identifiée, non livrée) ;
   MPHEAL est déjà un HoT admis par l'union.
 
-## Session 5 — la porte BINGPAN ouverte sur preuve du vide
-
-- **La preuve du vide mesurée** : les 38 rangées natives qui passeraient
-  la porte duration ouverte sont TOUTES de la famille BINGPAN elle-même
-  (paliers 1-90) — jamais admises par ce port. Le client v1.150 livre
-  ces skills et le serveur original les exécutait : ouvrir la porte
-  complète le port, ce n'est pas un changement de comportement natif
-  (aucune rangée admise ne change de genre). Ouverte avec l'inférence
-  enregistrée dans `skillstatuscast.go`.
-- **Couverture 75,0 % → 75,2 %** (+9 rangs 91-140 ; les 38 ancêtres
-  natifs sous 90 s'exécutent aussi, refermant l'écart de parité natif).
-  Les 11 BINGPAN restantes pass-90 échouent une autre porte du même
-  contrat (variantes ciblées ?) — lane s6.
-
-## Session 4 — le diagnostic chirurgical des débuffs (aucun rang basculé)
+## Sessions 4-5 — le diagnostic chirurgical, puis la porte ouverte sur preuve du vide
 
 La lane status-cast EXISTS (`compileSkillStatusCast` : « damage-free
 hostile status programs ») et le programme de BINGPAN
@@ -100,12 +86,32 @@ contrat. Les sondages (foldés) ont isolé les portes exactes :
   `pola` (0x706f6c61) n'a pas de case dans la marche timed ; l'aura de
   régénération de groupe est une nouvelle forme timed (efr select 7).
 
+**Issue s5** : la preuve du vide a montré que les 38 bascules natives
+potentielles sont TOUTES les propres paliers 1-90 de BINGPAN (jamais
+admis par ce port, livrés par le client, exécutés par l'original) —
+porte ouverte avec l'inférence enregistrée, couverture 75,2 %, aucun
+rang admis ne change de genre.
+
 Aucune de ces portes ne s'ouvre gratuitement : chacine exigerait soit
 la preuve qu'aucune rangée native ne bascule, soit une nouvelle forme
 avec son exécution runtime. C'est le travail de s5, avec les cibles
 exactes ci-dessus.
 
-## Le reste (carte actualisée après s4)
+## Session 6 — la seconde porte BINGPAN nommée
+
+Les 11 BINGPAN 91+ restantes passent TOUTES les portes d'enveloppe du
+contrat status-cast — le refus est dans la case `efr` de la marche du
+programme : ces paliers authorisent `efr{1, 4, rayon, cap, 0, 18}` —
+forme d'aire **4** (cône directionnel centré sur la cible primaire) et
+**sélection 18**, là où le contrat n'admet que forme 2 (cible) /
+forme 1 (lanceur) et sélection 24. La sélection 18 n'est pas non plus
+dans l'ensemble hostile admis de la marche offense (10/24/26). Ouvrir
+exigerait la sémantique de « sélection 18 » prouvée (que fait
+TargetSelection_DispatchByShape pour 18 ?) et la preuve du vide natif
+associée — c'est de l'RE dirigé, pas une tolérance. Lane s7, cible
+exacte : la case efr de `compileSkillStatusCast`.
+
+## Le reste (carte actualisée après s6)
 
 1. BINGPAN : la porte duration (preuve du vide natif d'abord).
 2. BINGBYEOK/HWABYEOK : forme timed onff/wp.
