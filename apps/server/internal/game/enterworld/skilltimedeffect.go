@@ -354,6 +354,20 @@ func parseSkillTimedEffect(fields []string, row *SkillRow) {
 	for i := 0; i < program.Len(); i++ {
 		if op := program.Instruction(i); op.Tag == tagEfr {
 			kind, shape, radius, most, reduction, sel := op.Arguments[0], op.Arguments[1], op.Arguments[2], op.Arguments[3], op.Arguments[4], op.Arguments[5]
+			// efr kind 3 is the Efr3 CAST GATE (skilloffense.go's metadata
+			// documents the kind: 1 = action area, 2 = aura area, 3 =
+			// CastGate.Efr3Present/Efr3Radius - a proximity requirement at
+			// cast time, never a victim selection). A kind-3 word rides the
+			// row without selecting anyone: the self effects (the WATER
+			// HARMONY guard's pola/cgri) stay the caster's own. Inference
+			// recorded 2026-10-09 (M8 s16); the void proof measured that
+			// the only native rows carrying pola with an efr are WATER
+			// HARMONY's own never-admitted tiers, so this widens the walk
+			// for the family the original shipped without changing any
+			// admitted row's kind.
+			if kind == 3 {
+				continue
+			}
 			if result.Area.Present || targeted || kind != 1 || shape != 1 || radius == 0 || reduction != 0 {
 				return
 			}
@@ -547,6 +561,15 @@ func parseSkillTimedEffect(fields []string, row *SkillRow) {
 				return
 			}
 			result.DamageReturn = rule
+		case 0x69726763: // cgri: recovery rates (skillitemeffect.go's
+			// itemEffectRecovery semantics: 595A33..595A93's independent
+			// percent-sum writes to HP/MP recovery parameters). The WATER
+			// HARMONY guard carries its {flat, pct} beside pola; the row
+			// stays self-owned, the preemptive case's contract untouched.
+			if result.Recovery.Present || op.Count != 2 {
+				return
+			}
+			result.Recovery = SkillRecoveryRates{Present: true, HP: op.Arguments[0], MP: op.Arguments[1]}
 		case tagTimedPreemptive:
 			// A self-only guard: the protection is the owner's, so it
 			// never rides a target, an area or a link.
