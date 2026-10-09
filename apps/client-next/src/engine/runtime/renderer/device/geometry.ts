@@ -64,7 +64,7 @@ export function createGeometryResources(
 	fail: ( error: unknown ) => void,
 	// The geometry pipeline for state; the rgba16float sibling (the HDR
 	// stage's scene intermediate) resolves through the second argument.
-	pipelines: ( state: GeometryPipelineState, sceneFloat?: boolean, localPreview?: boolean ) => GPURenderPipeline,
+	pipelines: ( state: GeometryPipelineState, sceneFloat?: boolean, previewCoverage?: boolean ) => GPURenderPipeline,
 	// Each draw holds a lease on its images for as long as it binds them.
 	images: ImageLeases,
 	worldSampler: GPUSampler,
@@ -88,6 +88,7 @@ export function createGeometryResources(
 	// 8BA130 fixes water MIN/MAG to linear independently of the video filter.
 	const waterSampler = worldSampler;
 	const reflectedBindings = new WeakMap<GeometryDraw, { source: GPUBindGroup; draw: GeometryDraw; }>();
+	const previewBindings = new WeakMap<GeometryDraw, { source: GPUBindGroup; draw: GeometryDraw; }>();
 	const geometryBuffers = new Map<GeometryDraw, GPUBuffer[]>();
 	// Released draws and their release records (releasedDraw).
 	const releasedDraws = new WeakMap<GeometryDraw, { atMs: number; error: Error; }>();
@@ -229,7 +230,6 @@ export function createGeometryResources(
 	};
 	const metadata = new Map<GeometryDraw, {
 		water: boolean;
-		localPreview: boolean;
 		state: GeometryPipelineState;
 		uniform: GPUBuffer;
 		material: GPUBuffer;
@@ -279,6 +279,58 @@ export function createGeometryResources(
 		);
 	const commands: GeometryCommands = Object.freeze( {
 		/*
+		================
+		hdrPreview
+
+		Port-only, not native: only the fullscreen preview resolve consumes
+		coverage alpha. Portrait and doll UI textures retain authored alpha.
+		Borrow buffers without changing source handles; bindings follow their
+		source revision and counts are refreshed for each prepared frame.
+		================
+		*/
+		hdrPreview( draws: readonly GeometryDraw[] ): readonly GeometryDraw[] {
+			if ( !floatScene ) return draws;
+			return draws.map( draw => {
+				const meta = metadata.get( draw ), buffers = geometryBuffers.get( draw );
+				if ( !meta || !buffers ) throw Error( "Unknown or released HDR preview draw" );
+				let cached = previewBindings.get( draw );
+				if ( !cached || cached.source !== draw.binding ) {
+					const pipeline = pipelines( meta.state, true, true );
+					cached = {
+						source: draw.binding,
+						draw: {
+							...draw,
+							pipeline,
+							binding: geometryBinding(
+								meta.uniform,
+								buffers[3]!,
+								meta.material,
+								pipeline,
+								meta.clampedSampling,
+								meta.image,
+								meta.skin,
+								meta.bones,
+								meta.environmentImage
+							),
+							vertices: draw.vertices,
+							indices: draw.indices,
+							count: draw.count,
+							indexCount: draw.indexCount,
+							instanceCount: draw.instanceCount,
+							instanceCapacity: draw.instanceCapacity
+						}
+					};
+					previewBindings.set( draw, cached );
+				}
+				return {
+					...cached.draw,
+					indexCount: draw.indexCount,
+					instanceCount: draw.instanceCount,
+					instanceCapacity: draw.instanceCapacity
+				};
+			} );
+		},
+		/*
         ================
         waterReflection
 
@@ -317,7 +369,7 @@ export function createGeometryResources(
 				if ( !meta || meta.water || draw.deferredParticle ) continue;
 				let cached = reflectedBindings.get( draw );
 				if ( !cached || cached.source !== draw.binding ) {
-					const pipeline = pipelines( meta.state, floatScene, meta.localPreview );
+					const pipeline = pipelines( meta.state, floatScene );
 					const binding = geometryBinding(
 						meta.uniform,
 						geometryBuffers.get( draw )![3]!,
@@ -894,7 +946,7 @@ export function createGeometryResources(
 						...(mat?.textureFactor ?? [ 1, 1, 1, 1 ])
 					] ),
 					material = buffer( "geometry-material", materialData, GPUBufferUsage.UNIFORM );
-				const selected = pipelines( geometryPipelineState( mat ), floatScene, data.world !== true ),
+				const selected = pipelines( geometryPipelineState( mat ), floatScene ),
 					clampedSampling = !!(mat?.lightmap || mat?.decal) && !mat?.groundDecal;
 				const binding = geometryBinding(
 					data.world ? worldUniform! : uniform,
@@ -934,7 +986,6 @@ export function createGeometryResources(
 				geometryBuffers.set( draw, buffers );
 				metadata.set( draw, {
 					water: !!mat?.water,
-					localPreview: data.world !== true,
 					state: geometryPipelineState( mat ),
 					uniform: data.world ? worldUniform! : uniform,
 					material,
@@ -1110,7 +1161,7 @@ export function createGeometryResources(
 			floatScene = sceneFloat;
 			waterReflection.reformat( sceneFloat ? "rgba16float" : format );
 			for ( const [draw, meta] of metadata ) {
-				const pipeline = pipelines( meta.state, sceneFloat, meta.localPreview );
+				const pipeline = pipelines( meta.state, sceneFloat );
 				DeviceDraw.repipeline(
 					meta.selection,
 					pipeline,

@@ -741,8 +741,8 @@ The geometry pipeline for state, compiled on first use. The HDR stage's
 rgba16float sibling compiles lazily under the same rule.
 ================
 		*/
-		geometry( state: GeometryPipelineState, sceneFloat = false, localPreview = false ) {
-			const previewCoverage = sceneFloat && localPreview;
+		geometry( state: GeometryPipelineState, sceneFloat = false, fullscreenPreview = false ) {
+			const previewCoverage = sceneFloat && fullscreenPreview;
 			const key = geometryPipelineKey( state ) + (sceneFloat ? "|hdr" : "") +
 				(previewCoverage ? "|preview" : "");
 			let selected = geometryPipelines.get( key );

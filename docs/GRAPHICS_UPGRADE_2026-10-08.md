@@ -47,6 +47,9 @@ between the scene and the lens flares. The character preview uses a
 transparent float intermediate after background UI, then tone-maps and
 composites over it before foreground UI. Scene depth remains available to
 world labels and flare visibility before preview clears its own depth.
+`geometry.hdrPreview` derives coverage-alpha siblings only for that fullscreen
+compositor. HUD portraits and inventory dolls retain authored alpha because
+their textures are consumed by the ordinary UI shader, not the HDR resolve.
 
 ## 2. One sun shadow cascade
 

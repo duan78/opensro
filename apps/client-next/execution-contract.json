@@ -491,7 +491,8 @@
 				"updateTransform",
 				"updateInstances",
 				"releasedDraw",
-				"waterReflection"
+				"waterReflection",
+				"hdrPreview"
 			],
 			"provider": "src/engine/runtime/renderer/device/geometry.ts",
 			"consumer": "src/engine/runtime/renderer/renderer.ts"

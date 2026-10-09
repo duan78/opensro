@@ -121,7 +121,7 @@ async function deviceHarness( t, initial = {} ) {
 			positions: Float32Array.of( 0, 0, 0, 1, 0, 0, 0, 1, 0 ),
 			indices: Uint32Array.of( 0, 1, 2 ),
 			transform: IDENTITY,
-			material,
+			material: { color: [ 1, 1, 1, 1 ], alphaCutoff: 0, blend: false, doubleSided: true, ...material },
 			...(omitWorld ? {} : { world })
 		} );
 	}
@@ -222,7 +222,7 @@ test("only explicit world draws receive the cascade, including after shadow and 
 	}
 });
 
-test("HDR coverage pipelines apply only to local draws and restore exact native pipeline identities", async t => {
+test("HDR coverage is derived only for fullscreen preview and leaves portrait source draws unchanged", async t => {
 	const { owner, upload, pipelineDescriptor } = await deviceHarness( t );
 	const blended = { blend: true }, cutout = { blend: false, alphaCutoff: 0.5 };
 	const world = upload( true, false, blended ), local = upload( false, false, blended );
@@ -232,9 +232,25 @@ test("HDR coverage pipelines apply only to local draws and restore exact native 
 	assert.equal( worldCutout.pipeline, nativeCutout );
 	const nativeBlend = pipelineDescriptor( local ).fragment.targets[0].blend;
 	assert.equal( nativeBlend.alpha.srcFactor, "src-alpha" );
+	const geometry = owner.geometry() ?? assert.fail( "missing geometry" );
+	const sources = [ local, localCutout ];
+	assert.equal( geometry.hdrPreview( sources ), sources, "native path returns original draws" );
 
 	owner.experimentalVideo( options( { hdrToneMap: true } ) );
-	const worldDescriptor = pipelineDescriptor( world ), localDescriptor = pipelineDescriptor( local );
+	const [preview, previewCutout] = geometry.hdrPreview( sources );
+	const worldDescriptor = pipelineDescriptor( world ), localDescriptor = pipelineDescriptor( preview );
+	assert.equal( local.pipeline, world.pipeline, "HDR portraits retain the ordinary authored blend" );
+	assert.deepEqual( pipelineDescriptor( local ).fragment.targets[0].blend, nativeBlend );
+	assert.notEqual( preview.binding, local.binding );
+	assert.equal( geometry.hdrPreview( sources )[0].binding, preview.binding, "unchanged binding is cached" );
+	assert.equal( preview.indexCount, local.indexCount );
+	assert.equal( preview.instanceCount, local.instanceCount );
+	assert.equal( preview.instanceCapacity, local.instanceCapacity );
+	geometry.updateInstances( local, new Float32Array() );
+	const empty = geometry.hdrPreview( sources )[0];
+	assert.equal( empty.binding, preview.binding );
+	assert.equal( empty.instanceCount, 0, "cached siblings refresh getter-backed counts" );
+	geometry.updateInstances( local, IDENTITY );
 	assert.deepEqual(
 		worldDescriptor.fragment.targets[0].blend,
 		nativeBlend,
@@ -247,18 +263,26 @@ test("HDR coverage pipelines apply only to local draws and restore exact native 
 		operation: "add"
 	} );
 	assert.equal( pipelineDescriptor( worldCutout ).fragment.entryPoint, "fs" );
-	assert.equal( pipelineDescriptor( localCutout ).fragment.entryPoint, "fsPreviewOpaque" );
-	assert.equal( pipelineDescriptor( localCutout ).fragment.targets[0].blend, undefined );
-	assert.equal( upload( false, false, blended ).pipeline, local.pipeline, "new draws use the same coverage sibling" );
+	assert.equal( pipelineDescriptor( localCutout ).fragment.entryPoint, "fs" );
+	assert.equal( pipelineDescriptor( previewCutout ).fragment.entryPoint, "fsPreviewOpaque" );
+	assert.equal( pipelineDescriptor( previewCutout ).fragment.targets[0].blend, undefined );
+	assert.equal( upload( false, false, blended ).pipeline, local.pipeline, "new portraits retain authored alpha" );
+	owner.experimentalVideo( options( { hdrToneMap: true, sunShadow: true } ) );
+	assert.notEqual( geometry.hdrPreview( sources )[0].binding, preview.binding, "source rebind invalidates sibling" );
 
 	owner.experimentalVideo( options() );
 	assert.equal( local.pipeline, nativeBlended );
 	assert.equal( world.pipeline, nativeBlended );
 	assert.equal( localCutout.pipeline, nativeCutout );
 	assert.equal( worldCutout.pipeline, nativeCutout );
+	assert.equal( geometry.hdrPreview( sources ), sources );
+	owner.experimentalVideo( options( { hdrToneMap: true } ) );
+	geometry.release( local );
+	assert.throws( () => geometry.hdrPreview( sources ), /Unknown or released HDR preview draw/ );
+	assert.throws( () => geometry.hdrPreview( [ preview ] ), /Unknown or released HDR preview draw/ );
 });
 
-test("HDR local additive draws preserve coverage and ONE/ZERO overwrite forces coverage", async t => {
+test("only HDR fullscreen additive siblings preserve coverage while portrait sources retain native alpha", async t => {
 	const { owner, upload, pipelineDescriptor } = await deviceHarness( t );
 	const materials = [
 		{ blend: true, blendPair: { source: D3DBLEND_SRCALPHA, destination: D3DBLEND_ONE } },
@@ -270,8 +294,11 @@ test("HDR local additive draws preserve coverage and ONE/ZERO overwrite forces c
 		return { world, local, native: local.pipeline, blend: pipelineDescriptor( local ).fragment.targets[0].blend };
 	} );
 	owner.experimentalVideo( options( { hdrToneMap: true } ) );
+	const geometry = owner.geometry() ?? assert.fail( "missing geometry" );
 	for ( const [index, row] of rows.entries() ) {
-		const actual = pipelineDescriptor( row.local ).fragment;
+		const actual = pipelineDescriptor( geometry.hdrPreview( [ row.local ] )[0] ).fragment;
+		assert.deepEqual( pipelineDescriptor( row.local ).fragment.targets[0].blend, row.blend );
+		assert.equal( pipelineDescriptor( row.local ).fragment.entryPoint, "fs" );
 		assert.deepEqual( pipelineDescriptor( row.world ).fragment.targets[0].blend, row.blend );
 		assert.deepEqual( actual.targets[0].blend.color, row.blend.color );
 		if ( index < 2 ) {

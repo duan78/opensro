@@ -30,7 +30,7 @@ test(
 				route => route.fulfill( { contentType: "text/html", body: "<!doctype html><body></body>" } )
 			);
 			await page.goto( CLIENT_NEXT_BASE_URL );
-			const rows = await page.evaluate( captureLightingStages );
+			const rows = await page.evaluate( captureLightingStages, {} );
 			const native = rows[0].rgba;
 			for ( const row of rows ) {
 				if ( row.mode === "off" ) {
@@ -47,7 +47,9 @@ test(
 				colors.get( key ).push( i );
 			}
 			const ground = [ ...colors.values() ].sort( ( a, b ) => b.length - a.length )[0];
-			const shadow = rows.find( row => row.mode === "sunShadow" ).rgba;
+			const shadowRow = rows.find( row => row.mode === "sunShadow" );
+			assert.ok( shadowRow );
+			const shadow = shadowRow.rgba;
 			const unchanged = ground.filter( i => native.slice( i, i + 3 ).every( ( c, j ) => c === shadow[i + j] ) );
 			const darkened = ground.filter( i => shadow[i] < native[i] - 4 );
 			assert.ok( unchanged.length > ground.length / 2, "A sunlit part of the ground must remain lit" );
@@ -77,8 +79,10 @@ test(
 					row.mode + " draws visible geometry"
 				);
 			}
-			assert.deepEqual( rows.find( row => row.mode === "recovered" ).rgba, rows[0].rgba );
-			assert.notDeepEqual( rows.at( -1 ).rgba, rows[0].rgba, "Disabling HDR restores a different native frame" );
+			const recovered = rows.find( row => row.mode === "recovered" ), restored = rows.at( -1 );
+			assert.ok( recovered && restored );
+			assert.deepEqual( recovered.rgba, rows[0].rgba );
+			assert.notDeepEqual( restored.rgba, rows[0].rgba, "Disabling HDR restores a different native frame" );
 		} finally {
 			await browser.close();
 		}

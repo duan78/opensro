@@ -713,7 +713,7 @@ export function createRenderer(
 						...(preview ? [] : staleDraws.live( "weather", scene.weatherDraws ?? [] ))
 					],
 					device.ui( projectedUi ),
-					preview ? liveCharacters : [],
+					preview ? device.geometry()!.hdrPreview( liveCharacters ) : [],
 					scene.flares && video.records[video.active][10] === 1 ?
 						device.flares( scene.flares, surface.depth() ) :
 						undefined,

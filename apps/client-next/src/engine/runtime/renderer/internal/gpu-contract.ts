@@ -330,6 +330,10 @@ GeometryCommands
 ================
 */
 export interface GeometryCommands {
+	// Port-only, not native: coverage-alpha siblings for the fullscreen HDR
+	// scratch target consumed by HdrDraw.encodePreview. Portraits use the
+	// original draws because their UI consumer retains native alpha blending.
+	hdrPreview( draws: readonly GeometryDraw[] ): readonly GeometryDraw[];
 	waterReflection(
 		input: { matrix?: Float32Array; height: number; above: boolean; seconds: number; },
 		draws: readonly GeometryDraw[]

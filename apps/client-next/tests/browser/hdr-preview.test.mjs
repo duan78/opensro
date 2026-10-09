@@ -7,6 +7,8 @@ Production device geometry, UI, bloom and frame owners render a synthetic
 preview over opaque background art and beneath foreground controls. Half
 opacity and overlapping layers witness coverage rather than native alpha
 squared, while native-off captures must survive the toggle round trip.
+The same draws also traverse a portrait texture and ordinary UI sampling:
+that consumer must retain authored alpha, including additive contributions.
 
 ===========================================================================
 */
@@ -20,7 +22,7 @@ import { CLIENT_NEXT_BASE_URL } from "../../../../scripts/lib/probeEndpoints.mjs
 capturePreview
 ================
 */
-async function capturePreview() {
+async function capturePreview( portrait = false ) {
 	const { createDevice } = await import( "/src/engine/runtime/renderer/device/device.ts" );
 	const { createFrame } = await import( "/src/engine/runtime/renderer/frame/frame.ts" );
 	const { createSurface } = await import( "/src/engine/runtime/renderer/surface/surface.ts" );
@@ -87,6 +89,7 @@ async function capturePreview() {
 			try {
 				const view = surface.acquire( { width: SIZE, height: SIZE } );
 				device.worldView( identity, new Float32Array( 88 ), false );
+				const portraitTarget = portrait ? device.portraitTarget( "__portrait", SIZE, SIZE ) : undefined;
 				const ui = device.ui( {
 					revision: 1,
 					width: SIZE,
@@ -100,6 +103,15 @@ async function capturePreview() {
 							color: [ 0, 0, 1, 1 ],
 							layer: "background"
 						},
+						...(portrait ?
+							/** @type {import('../../src/engine/contracts/ui').UiQuad[]} */ ([ {
+								rect: [ 0, 0, SIZE, SIZE ],
+								clip: [ 0, 0, SIZE, SIZE ],
+								uv: [ 0, 0, 1, 1 ],
+								texture: "__portrait",
+								color: [ 1, 1, 1, 1 ]
+							} ]) :
+							[]),
 						{
 							rect: [ 12, 28, 8, 8 ],
 							clip: [ 0, 0, SIZE, SIZE ],
@@ -116,10 +128,10 @@ async function capturePreview() {
 					surface.depth(),
 					[],
 					ui,
-					preview,
+					portrait ? [] : geometry.hdrPreview( preview ),
 					undefined,
 					undefined,
-					undefined,
+					portraitTarget ? { target: portraitTarget, depth: surface.depth(), draws: preview } : undefined,
 					undefined,
 					[],
 					undefined,
@@ -169,7 +181,7 @@ test( "HDR preview preserves UI layering, transparent margins and overlapping co
 				body: "<!doctype html><body></body>"
 			} ) );
 		await page.goto( CLIENT_NEXT_BASE_URL );
-		const rows = await page.evaluate( capturePreview );
+		const rows = await page.evaluate( capturePreview, false );
 		assert.deepEqual( rows.at( -1 ), rows[0], "native-off pixels survive the HDR toggle round trip" );
 		for ( const row of rows ) {
 			assert.deepEqual( row.background, [ 0, 0, 255, 255 ], row.mode + " transparent margin" );
@@ -187,6 +199,44 @@ test( "HDR preview preserves UI layering, transparent margins and overlapping co
 					assert.ok(
 						Math.abs( row[name][channel] - expected[channel] ) <= 2,
 						`${row.mode} ${name}: ${row[name]} expected ${expected}`
+					);
+				}
+			}
+		}
+		assert.deepEqual( errors, [] );
+	} finally {
+		await browser.close();
+	}
+} );
+
+test( "HDR portrait additive pixels survive the ordinary UI texture consumer", { timeout: 60000 }, async () => {
+	const { browser, page } = await launchProbeBrowser();
+	const errors = [];
+	page.on( "pageerror", error => errors.push( error.message ) );
+	try {
+		await page.route(
+			CLIENT_NEXT_BASE_URL + "/",
+			route => route.fulfill( { contentType: "text/html", body: "<!doctype html><body></body>" } )
+		);
+		await page.goto( CLIENT_NEXT_BASE_URL );
+		const rows = await page.evaluate( capturePreview, true );
+		assert.deepEqual( rows.at( -1 ), rows[0], "portrait native-off round trip" );
+		for ( const row of rows ) {
+			// SRCALPHA/ONE stores red .5 and alpha .25; the unchanged UI
+			// consumer yields red .125 over blue .75. Coverage alpha zero
+			// would silently erase the additive pixel at that second consumer.
+			const expected = [ 31.875, 0, 191.25, 255 ];
+			for ( let channel = 0; channel < 4; channel++ ) {
+				assert.ok(
+					Math.abs( row.additive[channel] - expected[channel] ) <= 2,
+					`${row.mode} portrait additive: ${row.additive} expected ${expected}`
+				);
+			}
+			for ( const sample of [ "background", "foreground", "opaque", "cutout", "half", "overlap" ] ) {
+				for ( let channel = 0; channel < 4; channel++ ) {
+					assert.ok(
+						Math.abs( row[sample][channel] - rows[0][sample][channel] ) <= 2,
+						`${row.mode} portrait ${sample}: ${row[sample]} expected native ${rows[0][sample]}`
 					);
 				}
 			}
