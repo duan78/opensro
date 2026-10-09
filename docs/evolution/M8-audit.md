@@ -64,6 +64,20 @@ pilotes — flag-off identique par construction.
   lifetime/parse avant la dispatch (lane identifiée, non livrée) ;
   MPHEAL est déjà un HoT admis par l'union.
 
+## Session 5 — la porte BINGPAN ouverte sur preuve du vide
+
+- **La preuve du vide mesurée** : les 38 rangées natives qui passeraient
+  la porte duration ouverte sont TOUTES de la famille BINGPAN elle-même
+  (paliers 1-90) — jamais admises par ce port. Le client v1.150 livre
+  ces skills et le serveur original les exécutait : ouvrir la porte
+  complète le port, ce n'est pas un changement de comportement natif
+  (aucune rangée admise ne change de genre). Ouverte avec l'inférence
+  enregistrée dans `skillstatuscast.go`.
+- **Couverture 75,0 % → 75,2 %** (+9 rangs 91-140 ; les 38 ancêtres
+  natifs sous 90 s'exécutent aussi, refermant l'écart de parité natif).
+  Les 11 BINGPAN restantes pass-90 échouent une autre porte du même
+  contrat (variantes ciblées ?) — lane s6.
+
 ## Session 4 — le diagnostic chirurgical des débuffs (aucun rang basculé)
 
 La lane status-cast EXISTS (`compileSkillStatusCast` : « damage-free
