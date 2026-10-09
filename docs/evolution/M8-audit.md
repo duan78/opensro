@@ -159,7 +159,25 @@ WATER_HARMONY (pola/cgri) inchangée : aura de régén de groupe.
 Aucun rang basculé (correctement) — cette session a corrigé la NATURE
 de la cible avant d'y investir.
 
-## Le reste (carte actualisée après s9)
+## Session 10 — la découverte décisive : la lane MUR existe déjà, complète
+
+`skillwall.go` (enterworld) + `skillwall.go` (action) implémentent
+DÉJÀ exactement cette forme — la bannière du fichier nomme les
+familles : « the Chinese Force walls (Crystal Wall, Fire Wall) ». Le
+parseur épinglent `onff{période,MP} + pw{mask, pool, defense, parry}`
+(les 4 mots : masque de voies normalisé 587A19, pool d'absorption
+593684, défense 40EBE0, parade) ; le runtime caste, pulse le coût MP
+(585262), absorbe et retire (5851F7), et `playervictim.go` l'applique.
+Les BINGBYEOK/HWABYEOK 2026 sont **les paliers supérieurs des mêmes
+familles** que le moteur exécute au cap 90 natif — il ne s'agit PAS
+d'une nouvelle forme mais d'un écart d'enveloppe dans les portes de
+`parseSkillWall` (colonnes 21-33 à zéro, champs 50/51 = « 255 »,
+etc.). La lane s11 est donc probablement une porte unique comme s5/s7 :
+sonder les portes du parseur sur une rangée 2026, prouver le vide,
+ouvrir. Aucun rang basculé cette session — mais la cible est passée
+de « RE de 4 mots + exécution » à « une porte d'enveloppe ».
+
+## Le reste (carte actualisée après s10)
 
 1. BINGPAN : la porte duration (preuve du vide natif d'abord).
 2. BINGBYEOK/HWABYEOK : forme timed onff/wp.
