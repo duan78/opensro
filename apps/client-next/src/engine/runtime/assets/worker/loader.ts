@@ -350,6 +350,10 @@ export function createLoader( send: ( result: AssetWorkerMessage, transfer: Tran
 			if ( !disposed && pending.get( request.id ) === controller ) {
 				if ( request.decode === "navigation" ) {
 					let size = bytes.byteLength;
+					// Extended content (isro-live-2026), port-only, not
+					// v1.150-native: a bundle from the extended namespace
+					// resolves its neighbourhood through the extended overlay
+					// too; native requests never read it.
 					const product = await navigation.resolve( bytes, Number( url.hash.slice( 1 ) ), async path => {
 						if (
 							typeof path !== "string" || !path.startsWith( "/assets/" ) || path.includes( ".." ) ||
@@ -359,7 +363,7 @@ export function createLoader( send: ( result: AssetWorkerMessage, transfer: Tran
 						size += data.byteLength;
 						if ( size > 128 << 20 ) throw new Error( "Navigation transaction budget" );
 						return data;
-					} );
+					}, url.pathname.startsWith( "/assets/world/extended/" ) );
 					if ( disposed || controller.signal.aborted || pending.get( request.id ) !== controller ) return;
 					pending.delete( request.id );
 					send( { kind: "navigation", id: request.id, product }, [] );

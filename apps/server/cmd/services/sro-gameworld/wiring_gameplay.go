@@ -84,6 +84,7 @@ func newGameplayPlane(
 	devPaths enterworld.DevPaths,
 	characterRoster *enterworld.Roster,
 	worldAuthorityDir string,
+	extendedMovementDir string,
 	ready *readiness.Gate,
 	authoredAreas *worldarea.Catalog,
 	textdata *enterworld.TextdataCatalogs,
@@ -158,6 +159,15 @@ func newGameplayPlane(
 	appendGroundObjectRows(deps, items)
 
 	water := movement.NewAuthorityValidator(worldAuthorityDir)
+	// Extended content (isro-live-2026, port-only, not v1.150-native): the
+	// projection's movement mirror chains behind the native authority for
+	// the regions the v1.150 world never served. The native answer always
+	// wins; empty keeps the validator exactly native.
+	if extendedMovementDir != "" {
+		if err := water.SetExtendedAuthorityRoot(extendedMovementDir); err != nil {
+			return nil, err
+		}
+	}
 	if err := water.ValidateSecurityAssets(); err != nil {
 		return nil, err
 	}
@@ -167,6 +177,12 @@ func newGameplayPlane(
 		return nil, err
 	}
 	log.Infof("movement: preloaded %d outdoor navigation regions in %s before gameplay readiness", navigationRegions, time.Since(navigationStarted))
+	if extendedRegions := water.ExtendedMovementRegions(); extendedRegions > 0 {
+		log.Infof(
+			"movement: extended authority chained, %d live-2026 outdoor regions (not v1.150-native)",
+			extendedRegions,
+		)
+	}
 	if deps.MonsterState != nil {
 		deps.MonsterState.EnableRegionDormancy()
 		deps.MonsterState.SetSpawnGroundResolver(water.WalkableSpawnHeightAt)

@@ -82,6 +82,11 @@ type WaterValidator struct {
 	// must never enter surfaceByRegion/grid tile math.
 	dungeonSpawnOnce     sync.Once
 	dungeonSpawnSurfaces map[uint16]*dungeonSpawnSurface
+	// extendedAuthority answers regions this validator's own tree has no
+	// surface for (the live-2026 zones; port-only, not v1.150-native).
+	// Installed once at boot by SetExtendedAuthorityRoot, before the first
+	// query; never mutated afterwards, so reads need no lock.
+	extendedAuthority *WaterValidator
 }
 
 // NewWaterValidator builds the validator over an explicit client public

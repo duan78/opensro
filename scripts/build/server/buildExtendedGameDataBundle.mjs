@@ -16,7 +16,7 @@ authority and is not touched.
 ===========================================================================
 */
 import { createHash } from "node:crypto";
-import { mkdir, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, rename, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -48,6 +48,21 @@ const SROBRO_ROOT = "C:/Users/Arnaud/Desktop/SRObro";
 
 export const defaultExtendedSourceRoot = path.join( generatedRoot, "extended", "source" );
 export const defaultExtendedGameDataRoot = extendedGameDataRoot;
+
+/*
+================
+pathExists
+================
+*/
+async function pathExists( target ) {
+	try {
+		await stat( target );
+		return true;
+	} catch ( error ) {
+		if ( error?.code === "ENOENT" ) return false;
+		throw error;
+	}
+}
 
 /*
 ================
@@ -251,9 +266,10 @@ Real placements, derived from the live-2026 client's own npcpos: every
 anchor whose region the native v1.150 npcpos never served and whose mob
 is a 91-140 NEW-content field mob becomes one population row, grouped
 into one authored area per region (the real zone). The native lab shape
-carries over (leash 140, respawn 5s, maxCount 1 per anchor); access
-stays gm until the movement lane serves the 2026 regions, when the
-zones open as public. Anchors per region are bounded; the unbounded
+carries over (leash 140, respawn 5s, maxCount 1 per anchor); the zones
+are public since the movement lane (M4 part 2) serves the 2026 regions -
+this catalog only loads behind the extended flag, so the native world's
+access grades never see it. Anchors per region are bounded; the unbounded
 zone build belongs to the world lane.
 ================
 */
@@ -333,7 +349,7 @@ async function buildExtendedAreas( sourceRoot, characters, nativeCodenames, nati
 		areas.push( {
 			slug: `extended-zone-${region.toString( 16 )}`,
 			regionId: region,
-			access: "gm",
+			access: "public",
 			entry: { x: first.x, y: 0, z: first.z, angle: 16384 },
 			population
 		} );
@@ -550,6 +566,16 @@ export async function buildExtendedGameDataBundle( options ) {
 		};
 		const manifestBytes = Buffer.from( `${JSON.stringify( manifest, null, 2 )}\n` );
 		await writeFile( path.join( temporaryRoot, "manifest.json" ), manifestBytes );
+		// The world lane (buildExtendedWorldRegionResources.mjs) owns the
+		// movement mirror and the sealed world manifest beside this data
+		// projection; move them into the swap so the tree replacement below
+		// never erases them.
+		for ( const carried of [ "movement", "world-manifest.json" ] ) {
+			const from = path.join( outputRoot, carried );
+			const to = path.join( temporaryRoot, carried );
+			if ( !(await pathExists( from )) || (await pathExists( to )) ) continue;
+			await rename( from, to );
+		}
 		await rm( outputRoot, { recursive: true, force: true } );
 		await rename( temporaryRoot, outputRoot );
 		const report = [];

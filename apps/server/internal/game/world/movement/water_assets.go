@@ -36,6 +36,12 @@ func (v *WaterValidator) surfaceForRegion(regionID uint16) *groundSurface {
 	}
 
 	resolved := v.resolveSurfaceForRegion(regionID)
+	if resolved == nil && v.extendedAuthority != nil {
+		// Extended content (port-only, not v1.150-native): the live-2026
+		// regions the native tree never served resolve from the chained
+		// mirror; a region both trees carry keeps its native surface.
+		resolved = v.extendedAuthority.surfaceForRegion(regionID)
+	}
 
 	v.mu.Lock()
 	defer v.mu.Unlock()

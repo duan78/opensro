@@ -191,7 +191,6 @@ apps/client-next/src/engine/foundation/ui/vertical-spin.ts
 apps/client-next/src/engine/foundation/ui/vital-warning.ts
 apps/client-next/src/engine/runtime/assets/worker/entry.ts
 apps/client-next/src/engine/runtime/assets/worker/model/model.ts
-apps/client-next/src/engine/runtime/assets/worker/navigation/navigation.ts
 apps/client-next/src/engine/runtime/assets/world-lease.ts
 apps/client-next/src/engine/runtime/characters/orbs/orbs.ts
 apps/client-next/src/engine/runtime/characters/state-index.ts
@@ -208,7 +207,6 @@ apps/client-next/src/engine/runtime/simulation/worker/network/codec/codec.ts
 apps/client-next/src/engine/runtime/simulation/worker/session/world/gameplay/feedback/feedback.ts
 apps/client-next/src/engine/runtime/simulation/worker/session/world/gameplay/inventory/alchemy/alchemy.ts
 apps/client-next/src/engine/runtime/ui/hud/messages.ts
-apps/client-next/src/engine/runtime/ui/hud/minimap.ts
 apps/client-next/src/engine/runtime/ui/hud/npc-panel.ts
 apps/client-next/src/engine/runtime/ui/hud/progression-bars.ts
 apps/client-next/src/engine/runtime/ui/hud/quest-banner.ts
