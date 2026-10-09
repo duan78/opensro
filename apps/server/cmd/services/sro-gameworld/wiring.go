@@ -109,6 +109,19 @@ func newGameWorldApplication(
 		dataPaths.BundleRoot,
 		dataPaths.ManifestDigest,
 	)
+	// Extended content is port-only, not native: report its state once at
+	// boot so an operator sees exactly which game is running.
+	if extendedRoot, extendedOk, extendedErr := gamedata.ResolveExtended(); extendedErr != nil {
+		return nil, fmt.Errorf("extended content: %w", extendedErr)
+	} else if extendedOk {
+		log.Infof("extended content: ON, projection=%q (not v1.150-native)", extendedRoot)
+	} else if gamedata.ExtendedContentEnabled() {
+		log.Warnf(
+			"extended content: %s is on but no projection is built at %q; the world stays native (build it with scripts/build/server/buildExtendedGameDataBundle.mjs)",
+			gamedata.EnvExtendedContent,
+			extendedRoot,
+		)
+	}
 	authoredAreas, err := worldarea.LoadAuthority(dataPaths.WorldAuthorityDir)
 	if err != nil {
 		return nil, fmt.Errorf("authored world areas: %w", err)

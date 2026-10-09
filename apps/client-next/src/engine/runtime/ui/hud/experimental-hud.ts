@@ -38,8 +38,8 @@ EXPERIMENTAL_TABS
 
 Port-only, not native. The window's tabs, Options style, at most four rows each: Image holds the
 frame-wide stages (edges, filtering, glow), World the lighting and
-atmosphere stages that deviate from the 2005 look, Chat and Developer the
-earlier additions.
+atmosphere stages that deviate from the 2005 look, Chat and Content the
+earlier additions plus the live-2026 graft, Developer the diagnostics.
 ================
 */
 export const EXPERIMENTAL_TABS: readonly {
@@ -109,6 +109,16 @@ export const EXPERIMENTAL_TABS: readonly {
 			id: "experimental-chat-timestamps",
 			label: "Chat timestamps",
 			description: "Show message time on hover."
+		} ]
+	},
+	{
+		title: "Content",
+		section: "Extended content",
+		rows: [ {
+			key: "extendedContent",
+			id: "experimental-extended-content",
+			label: "Extended content (cap 140)",
+			description: "Live-2026 data. Off stays native cap 90; needs a serving server."
 		} ]
 	},
 	{

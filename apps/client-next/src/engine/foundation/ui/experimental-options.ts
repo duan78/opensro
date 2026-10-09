@@ -28,6 +28,9 @@ export interface ExperimentalOptions {
 	readonly terrainRelief: boolean;
 	readonly texturedHorizon: boolean;
 	readonly floatBloom: boolean;
+	// Content: the live-2026 graft (cap 140), port-only and not native.
+	// The row opts in; the server still has to offer the extended set.
+	readonly extendedContent: boolean;
 }
 
 /*
@@ -60,7 +63,8 @@ export function experimentalOptions( value: unknown = null ): ExperimentalOption
 		dynamicSun: enabled( "dynamicSun" ),
 		terrainRelief: enabled( "terrainRelief" ),
 		texturedHorizon: enabled( "texturedHorizon" ),
-		floatBloom: enabled( "floatBloom" )
+		floatBloom: enabled( "floatBloom" ),
+		extendedContent: enabled( "extendedContent" )
 	};
 }
 

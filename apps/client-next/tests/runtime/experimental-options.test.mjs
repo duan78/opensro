@@ -29,7 +29,8 @@ const OFF = Object.freeze( {
 	dynamicSun: false,
 	terrainRelief: false,
 	texturedHorizon: false,
-	floatBloom: false
+	floatBloom: false,
+	extendedContent: false
 } );
 
 test("only an explicit boolean enables chat timestamps", () => {
@@ -125,7 +126,15 @@ test("every video stage defaults off and only an explicit true enables it", () =
 });
 
 test("new environment preferences persist only on Confirm and Default remains a draft", () => {
-	for ( const key of /** @type {const} */ ([ "dynamicSun", "terrainRelief", "texturedHorizon", "floatBloom" ]) ) {
+	for (
+		const key of /** @type {const} */ ([
+			"dynamicSun",
+			"terrainRelief",
+			"texturedHorizon",
+			"floatBloom",
+			"extendedContent"
+		])
+	) {
 		const hud = createExperimentalHud();
 		hud.open();
 		hud.toggle( key );
@@ -154,7 +163,7 @@ Tabs
 ================
 */
 test("the window's tabs cover every preference once and Open returns to Image", () => {
-	assert.deepEqual( EXPERIMENTAL_TABS.map( tab => tab.title ), [ "Image", "World", "Chat", "Developer" ] );
+	assert.deepEqual( EXPERIMENTAL_TABS.map( tab => tab.title ), [ "Image", "World", "Chat", "Content", "Developer" ] );
 	const keys = EXPERIMENTAL_TABS.flatMap( tab => tab.rows.map( row => row.key ) ).sort();
 	assert.deepEqual( keys, Object.keys( OFF ).sort() );
 	const ids = EXPERIMENTAL_TABS.flatMap( tab => tab.rows.map( row => row.id ) );
