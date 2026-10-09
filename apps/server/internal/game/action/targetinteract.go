@@ -325,9 +325,14 @@ func (rt *Runtime) dispatchSkillCommand(divisionID string, character, snapshot *
 				return rt.acceptPositionSkill(divisionID, character, snapshot, cast, skill)
 			}
 			// Discord Wave: a friendly-targeted hostility cut
-			// (discordwave.go).
+			// (discordwave.go); extended past 90 the Warlock's
+			// caster-centred form shares the lane untargeted.
 			if skill.Threat.Decrease {
-				return rt.acceptDiscordWave(divisionID, character, snapshot, cast, skill, rt.Now().UnixMilli())
+				if skill.TargetRequired {
+					return rt.acceptDiscordWave(divisionID, character, snapshot, cast, skill, rt.Now().UnixMilli())
+				}
+				result, _ := rt.acceptUntargetedThreatDecrease(divisionID, character, snapshot, cast, skill, rt.Now().UnixMilli(), nil)
+				return result
 			}
 			if skill.Threat.Only && !skill.TargetRequired {
 				return rt.acceptUntargetedTaunt(tauntCast{division: divisionID, character: character, snapshot: snapshot, skill: skill}, cast)

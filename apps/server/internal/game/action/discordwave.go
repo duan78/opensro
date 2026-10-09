@@ -152,3 +152,78 @@ func (rt *Runtime) discordVictims(division string, caster, target *enterworld.Ch
 	}
 	return out
 }
+
+/*
+================
+acceptUntargetedThreatDecrease
+
+Extended content (isro-live-2026), port-only, not v1.150-native (M8 s31).
+The Warlock's caster-centred hostility cut (CONFUSIONA_AGGROLOW past 90):
+a prepared untargeted cast; at release every monster the caster-centred
+efr selects loses hostility toward the CASTER - the tooltip's "confused
+monsters will reduce their hostility toward the caster" - through the
+same negative ledger event Discord Wave uses, with dtnt's flat cut plus
+the mwdt weapon term and dtnt's percent word.
+================
+*/
+func (rt *Runtime) acceptUntargetedThreatDecrease(division string, c, snapshot *enterworld.Character, cast wire.SkillAction, skill enterworld.SkillRow, now int64, pending *pendingProjectileCast) (OpResult, skillCastDecision) {
+	if !skill.Threat.Decrease || skill.TargetRequired || rt.Monsters == nil {
+		return OpResult{DiagnosticRefusal: "mirage-admission-refused"}, skillCastRefused
+	}
+	if out, decision, done := rt.beginUntargetedCast(division, c, snapshot, cast, skill, now, pending, func(p *pendingProjectileCast) { p.mirage = true }); done {
+		return out, decision
+	}
+	rt.clearCurrentSkillCommand(division, c.Name)
+	weapon, ok := rt.casterMagicalWeapon(division, snapshot)
+	if !ok {
+		return OpResult{DiagnosticRefusal: "mirage-weapon-unavailable"}, skillCastRefused
+	}
+	cut := skill.Threat.DecreaseFlat
+	if weapon.armed && skill.Threat.DecreaseWeaponPercent != 0 {
+		cut += uint32(max(0, combat.WeaponHealBonus(weapon.low, weapon.high, weapon.ratio, skill.Threat.DecreaseWeaponPercent)))
+	}
+	var refusal uint16
+	if !rt.deps.Update(c, "release-mirage", func() bool {
+		if !enterworld.CharacterAlive(c) || !enterworld.SkillLearned(c, skill.ID) {
+			return false
+		}
+		cost, code := rt.offensivePhaseCost(division, c, skill, now, pending)
+		refusal = code
+		if code != 0 {
+			return false
+		}
+		rt.commitOffensivePhaseCost(division, c, skill, cost, now, true)
+		return true
+	}) {
+		if refusal != 0 {
+			return offensiveRefusal(refusal), skillCastRefused
+		}
+		return OpResult{DiagnosticRefusal: "mirage-commit-refused"}, skillCastRefused
+	}
+	// The hate event's source is the caster, mirroring the targeted form's
+	// source at its centre character; amounts are negative through the
+	// ordinary ledger update (5473C0), which clamps at zero.
+	casterGID := enterworld.ObjectIDForCharacter(c)
+	decrease := simulation.HostilityEvent{Attacker: casterGID, Aggression: -int32(cut), Percent: -int32(skill.Threat.DecreasePercent)}
+	for _, victim := range rt.mirageVictims(division, snapshot, skill.Threat.Area, now) {
+		rt.recordSkillHostility(division, victim.Gid, []simulation.HostilityEvent{decrease}, now)
+	}
+	released := wire.SkillCastReleaseFrame(pending.token, 0)
+	rt.queueSkillCastClose(division, c.Name, casterGID, pending.token, skill, 0, now+int64(skill.ActionDurationMs))
+	vitals := wire.Frame{Opcode: simulation.OpVitalsUpdate, Payload: simulation.VitalsRefreshWithSourcePayload(casterGID, simulation.VitalsSourceSkillRecovery, rt.publishedVitals(division, c))}
+	return OpResult{Frames: []wire.Frame{released, vitals}, Broadcast: []wire.Frame{released}, ActorPrivate: []wire.Frame{vitals}}, skillCastAccepted
+}
+
+/*
+================
+mirageVictims
+
+The same selection discordVictims runs around its friendly target, centred
+here on the caster and measured against the caster's own world and
+visibility.
+================
+*/
+func (rt *Runtime) mirageVictims(division string, caster *enterworld.Character, area enterworld.SkillOffensiveArea, now int64) []monster.Instance {
+	from := rt.liveSpawn(simulation.WorldKey(division, caster.Name), caster, now)
+	return rt.discordVictims(division, caster, caster, from, area, now)
+}

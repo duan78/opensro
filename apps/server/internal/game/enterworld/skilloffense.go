@@ -396,6 +396,12 @@ func decodeSkillOffense(fields []string, row *SkillRow) string {
 		row.Threat = decrease
 		return ""
 	}
+	// Extended content (isro-live-2026): the caster-centred untargeted
+	// hostility cut, mastery-floored past the cap (M8 s31).
+	if decrease, ok := compileUntargetedThreatDecrease(fields, *row); ok {
+		row.Threat = decrease
+		return ""
+	}
 	if threat, ok := compileSkillStatusCast(fields, *row); ok {
 		// Retail initializes the generated-result count to one even without
 		// att or cm; the single record carries the status roll.

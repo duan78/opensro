@@ -167,3 +167,87 @@ func TestDiscordWaveReleasesUpToFourMonstersAroundItsTarget(t *testing.T) {
 		t.Fatalf("%d monsters lost hostility, want %d", cut, discordMaxTargets)
 	}
 }
+
+/*
+================
+TestUntargetedThreatDecreaseCutsAroundTheCaster
+
+Extended content (isro-live-2026), port-only, not v1.150-native: the
+Warlock's caster-centred form (CONFUSIONA_AGGROLOW past 90). Three
+monsters hold hostility toward the Warlock; two stand within the efr
+radius, one beyond it. The prepared untargeted cast releases and cuts
+the near ones' hostility toward the CASTER - the tooltip's "confused
+monsters will reduce their hostility toward the caster" - leaving the
+far one untouched. The envelope rides the shipped Fire Trap row (a
+prepared untargeted Wizard cast); the cut words are the measured
+AGGROLOW shape.
+================
+*/
+func TestUntargetedThreatDecreaseCutsAroundTheCaster(t *testing.T) {
+	rt, clock, c, original := newCombatTestRuntime(t, 1000)
+	skill := shippedOffense(t, "SKILL_EU_WIZARD_FIREA_TRAP_A_01")
+	skill.CombatTrap = enterworld.SkillCombatTrap{}
+	skill.Threat = enterworld.SkillThreat{Decrease: true, DecreaseFlat: 20000,
+		Area: enterworld.SkillOffensiveArea{Shape: 1, Radius: 300, MaxTargets: 8, Select: 16}}
+	rt.deps.SkillData().(staticSkillSource)[skill.ID] = skill
+	c.RaceIndex = testInt64(enterworld.RaceEurope)
+	c.ModelCodename = "CHAR_EU_MAN_NOBLE"
+	c.Skills = []uint32{skill.ID}
+	c.Intellect = testInt64(2000)
+	c.CurrentMP = testInt64(100000)
+	weapon := rt.deps.ItemReferences().(staticItemSource)[c.MissionInventory[0].Codename]
+	weapon.TypeIDs[3] = int64(skill.RequiredWeaponKinds[0])
+	c.MissionInventory[0].TypeFlags = weapon.TypeFlags()
+	gid := enterworld.ObjectIDForCharacter(c)
+	at := monster.Pose{RegionID: original.Spawn.RegionID, X: original.Spawn.X, Y: original.Spawn.Y, Z: original.Spawn.Z}
+	var mobs []monster.Instance
+	for _, offset := range []float64{10, 20, 700} {
+		pose := at
+		pose.X += offset
+		mob, err := rt.Monsters.DevelopmentCreateLeader(testDivision, original.Ref.RefObjID, pose, clock.NowMs()+100000)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !rt.Monsters.ArmRetaliation(testDivision, mob.Gid, gid) {
+			t.Fatal("no retaliation")
+		}
+		rt.commitAggression(testDivision, mob.Gid, simulation.HostilityEvent{Attacker: gid, Aggression: discordLargeHostility}, clock.NowMs())
+		mobs = append(mobs, mob)
+	}
+	rt.Worlds.Update(simulation.WorldKey(testDivision, c.Name), func() simulation.WorldState { return simulation.SeedWorldState(c) },
+		func(w *simulation.WorldState) {
+			w.Spawn = simulation.Spawn{RegionID: at.RegionID, X: at.X, Y: at.Y, Z: at.Z}
+			w.SpawnSet = true
+		})
+	*c.World.Spawn.X = at.X
+	hostility := func(mob monster.Instance) int32 {
+		live, _ := rt.Monsters.Get(testDivision, mob.Gid)
+		for _, record := range live.Opponents {
+			if record.GID == gid {
+				return record.Aggression
+			}
+		}
+		return 0
+	}
+	mp := enterworld.CurrentMP(c)
+	out := rt.HandleTargetInteract(testDivision, c, wire.SkillAction{ActionId: skill.ID}.Encode())
+	if frame, ok := findFrame(out.Frames, wire.OpSkillCastResult); !ok || frame.Payload[0] != 1 {
+		t.Fatalf("the untargeted cut was refused: %q %+v", out.DiagnosticRefusal, out.Frames)
+	}
+	release := clock.NowMs() + int64(skill.ActionCastingTimeMs) + 1
+	if len(rt.advanceProjectileCasts(release)) == 0 {
+		t.Fatal("the untargeted cut never released")
+	}
+	if enterworld.CurrentMP(c) >= mp {
+		t.Fatalf("MP not charged: %d -> %d", mp, enterworld.CurrentMP(c))
+	}
+	for i, mob := range mobs {
+		after := hostility(mob)
+		if i < 2 && after != discordLargeHostility-20000 {
+			t.Fatalf("near monster %d: hostility %d, want %d", i, after, discordLargeHostility-20000)
+		}
+		if i == 2 && after != discordLargeHostility {
+			t.Fatalf("the monster beyond the radius was touched: hostility %d", after)
+		}
+	}
+}
