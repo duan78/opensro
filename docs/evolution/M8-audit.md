@@ -1268,13 +1268,36 @@ vide (les tiers ≤90 de la famille ne pinent pas).
 **Couverture : 83,9 → 84,0 %** (2522/3002) ; joueur 2096/2146 (97,6 %).
 Reste livrable : 50 rangées.
 
+## Amorce s50 — POISONA_FIELD entièrement mesuré : prêt à écrire
+
+Probe complet (effacé) des 15 tiers, deux catalogues :
+
+- **Forme unique** : `dura[30000] puls[3000] efr{3,1,100|120,5,0,24}
+  ps{dur, 80, dmg} getv(RPDU) getv(RPTU) reqi{6,12} reqi{6,13}`,
+  handler 3, cast 2500 ms — TOUTES les rangées, natives comprises.
+- **5 tiers natifs (m=44..84)** authorisent la même forme → plancher
+  ≥ 91 OBLIGATOIRE (les past-90 : A_06 m=94, B_01..B_04 m=104..134).
+- **ps = {durée du poison, chance 80, dégâts par tick}** : dur
+  108→288 s, dmg 120→1964 — le poison SURVIT au champ (30 s) de
+  loin ; tick 2 s (le poison natif).
+- **getv RPDU/RPTU** (0x52504455/0x52505455) = les paramètres poison
+  du casteur — DÉJÀ des constantes connues (KeyPoisonDamage/
+  KeyPoisonDuration) ; le compilateur trap les tolère déjà.
+- **À écrire** : compilePoisonField (skilltrap.go — la variante sans
+  lnks/trap/att : dura+puls+efr-k3+ps+getv+reqi, plancher) ; le
+  runtime = le PLANTEUR existe (skillcombattrap.go) mais le champ
+  persiste et TICK : chaque scan 3000 ms, appliquer le ps aux
+  monstres dans le rayon (efr kind 3 = le rayon déclencheur), le
+  champ meurt à 30000 ms — UN NOUVEAU COMPORTEMENT du tick des
+  objets-posés (l'actuel explose une fois puis se retire). L'API
+  d'application du status au monstre existe (ApplyStunGuard s43 /
+  applyAbnormalLocked). Demi-session honnête.
+
 ## Le reste (carte actualisée après s49)
 
 1. **FAIT (s47-s49)** : classification, DAMAGE_DIVIDE (+4),
-   HEALSHIELD (+3). Reste livrable : 50 rangées (FRENZYA 5,
-   POISONA_FIELD 5, CONFUSIONA_ILLUSION 5, FIRE_SHIELD 3,
-   STEALTHA_POINT 3, TRANSFORMA_DUPLE 3, MINDP 4, SPELLP 2,
-   danses 2, MANADRY 10 parked, singles).
+   HEALSHIELD (+3) ; POISONA_FIELD amorcé s50 (tout décodé, prêt).
+   Reste livrable : 50 rangées — la liste s47 moins HEALSHIELD.
 2. **La traîne joueur (~270−15 rangées)** : les familles 2-5 de
    l'histogramme, une à une après les trois lanes.
 3. **Décision owner de périmètre (nouveau s39)** : ~180 rangées
