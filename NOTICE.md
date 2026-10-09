@@ -27,6 +27,13 @@ Thanks to
 [DaxterSoul](https://www.elitepvpers.com/forum/members/1084164-daxtersoul.html)
 for sharing knowledge of the game's packet and file structures.
 
+The extended-content lane (the live-2026 graft: world lane, teleport
+graft, progression journey) used the MIT-licensed SRObro project's
+extraction tables and format knowledge (`.o2` grammar, DDJ/BMS layouts,
+level curves) as a cross-check standard. No SRObro code runs here: every decoder and
+builder was rewritten in this repository's style, and the data itself
+was extracted from the owner's own client archives.
+
 ## Game assets
 
 Source licenses cover only work the contributors are entitled to license. They
