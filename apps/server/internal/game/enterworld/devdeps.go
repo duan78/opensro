@@ -197,7 +197,10 @@ func NewDevDepsWithRoster(paths DevPaths, textdata *TextdataCatalogs, roster *Ro
 		// extended areas (and M4's zone placements) can spawn them; the
 		// native row wins every shared id.
 		if paths.ExtendedTextdataDir != "" {
-			template = monster.GraftRefs(template, monster.LoadTemplate(paths.ExtendedTextdataDir).Refs)
+			// References only: the live npcpos walks through LoadTemplate
+			// would join its 23k anchors against the v1.188 evidence
+			// tables; the extended placements arrive as authored areas.
+			template = monster.GraftRefs(template, monster.LoadMonsterRefs(paths.ExtendedTextdataDir))
 		}
 		resolvedTemplate, err := appendAuthoredAreaPopulation(template, paths.AuthoredAreas)
 		if err != nil {

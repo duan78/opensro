@@ -1,14 +1,15 @@
 /*
 ===========================================================================
 
-extended_population_test.go - the 91-140 mobs spawn behind the graft
+extended_population_test.go - the 91-140 mobs spawn in their real zones
 
 Extended content (isro-live-2026, port-only, not native). Over the REAL
-sealed projection: the native template knows none of the extended mobs,
-the graft adds the live characterdata references, the seed area's
-population composes into ordinary nests, and the production monster
-registry spawns every band exemplar in the seed region. Flag off (no
-graft) resolves nothing - the native world is unchanged.
+sealed projection: the zones the build derived from the live client's
+npcpos (regions the v1.150 world never served) compose into ordinary
+authored areas, every trajectory band 91..140 is placed, the production
+monster registry spawns each zone's population in its real region, and
+none of the placed mobs exists natively - the flag-off world is
+unchanged.
 ===========================================================================
 */
 package enterworld
@@ -16,6 +17,7 @@ package enterworld
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -26,6 +28,23 @@ import (
 	"opensro.online/server/internal/gamedata"
 	"opensro.online/server/internal/testsupport/gamedatatest"
 )
+
+type extendedZoneArea struct {
+	Slug       string `json:"slug"`
+	RegionID   uint16 `json:"regionId"`
+	Population []struct {
+		Codename string `json:"codename"`
+	} `json:"population"`
+}
+
+type extendedZoneList struct {
+	RegionCount int `json:"regionCount"`
+	AnchorCount int `json:"anchorCount"`
+	Zones       map[string]struct {
+		Anchors int   `json:"anchors"`
+		Bands   []int `json:"bands"`
+	} `json:"zones"`
+}
 
 func extendedProjection(t *testing.T) gamedata.Extended {
 	t.Helper()
@@ -43,53 +62,8 @@ func extendedProjection(t *testing.T) gamedata.Extended {
 	return extended
 }
 
-func TestExtendedMobsAreAbsentFromTheNativeTemplate(t *testing.T) {
-	native := monster.LoadTemplate(gamedatatest.Paths(t).TextdataDir)
-	for _, codename := range extendedSeedCodenames(t) {
-		for id, ref := range native.Refs {
-			if ref.Codename == codename {
-				t.Fatalf("native template already knows %q (id %d); the graft must be the only way in", codename, id)
-			}
-		}
-	}
-}
-
-func TestExtendedGraftSpawnsEveryBandExemplar(t *testing.T) {
-	extended := extendedProjection(t)
-	native := monster.LoadTemplate(gamedatatest.Paths(t).TextdataDir)
-	grafted := monster.GraftRefs(native, monster.LoadTemplate(extended.TextdataDir).Refs)
-
-	areas, err := worldarea.LoadAuthority(extended.AreasAuthorityDir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	composed, err := appendAuthoredAreaPopulation(grafted, areas)
-	if err != nil {
-		t.Fatal(err)
-	}
-	seed := extendedSeedCodenames(t)
-	if len(composed.Nests) != len(grafted.Nests)+len(seed) {
-		t.Fatalf("composed nests = %d, want the grafted %d plus the %d seed rows", len(composed.Nests), len(grafted.Nests), len(seed))
-	}
-
-	registry := simulation.NewMonsterState(composed)
-	registry.StartDivision("test")
-	registry.AdvancePopulation(registry.CurrentTimeMillis())
-	instances := registry.InstancesInRegions("test", []uint16{0x62a8})
-	spawned := make(map[string]struct{}, len(instances))
-	for _, instance := range instances {
-		spawned[instance.Ref.Codename] = struct{}{}
-	}
-	for _, codename := range seed {
-		if _, ok := spawned[codename]; !ok {
-			t.Fatalf("seed mob %q did not spawn; spawned=%v", codename, spawned)
-		}
-	}
-}
-
-// extendedSeedCodenames reads the seed area's population from the built
-// projection: the deterministic band exemplars the build recorded.
-func extendedSeedCodenames(t *testing.T) []string {
+// extendedZones reads the built projection's authored areas and zone list.
+func extendedZones(t *testing.T) ([]extendedZoneArea, *extendedZoneList) {
 	t.Helper()
 	extended := extendedProjection(t)
 	raw, err := os.ReadFile(filepath.Join(extended.AreasAuthorityDir, "areas", "catalog.json"))
@@ -97,29 +71,113 @@ func extendedSeedCodenames(t *testing.T) []string {
 		t.Fatal(err)
 	}
 	var catalog struct {
-		Areas []struct {
-			Slug       string `json:"slug"`
-			Population []struct {
-				Codename string `json:"codename"`
-			} `json:"population"`
-		} `json:"areas"`
+		Areas []extendedZoneArea `json:"areas"`
 	}
 	if err := json.Unmarshal(raw, &catalog); err != nil {
 		t.Fatal(err)
 	}
-	for _, area := range catalog.Areas {
-		if area.Slug != "extended-content-lab" {
-			continue
-		}
-		codenames := make([]string, 0, len(area.Population))
-		for _, row := range area.Population {
-			codenames = append(codenames, row.Codename)
-		}
-		if len(codenames) == 0 {
-			t.Fatal("the seed area carries no population")
-		}
-		return codenames
+	zonesRaw, err := os.ReadFile(filepath.Join(extended.Root, "zones.json"))
+	if err != nil {
+		t.Fatal(err)
 	}
-	t.Fatal("the seed area extended-content-lab is absent from the built projection")
-	return nil
+	var zones extendedZoneList
+	if err := json.Unmarshal(zonesRaw, &zones); err != nil {
+		t.Fatal(err)
+	}
+	if len(catalog.Areas) != zones.RegionCount {
+		t.Fatalf("areas catalog has %d areas, the zone list records %d", len(catalog.Areas), zones.RegionCount)
+	}
+	return catalog.Areas, &zones
+}
+
+func TestExtendedZonesCoverEveryTrajectoryBand(t *testing.T) {
+	_, zones := extendedZones(t)
+	bands := map[int]bool{}
+	for _, zone := range zones.Zones {
+		for _, band := range zone.Bands {
+			if band >= 91 && band <= 140 {
+				bands[band] = true
+			}
+		}
+	}
+	for band := 91; band <= 140; band += 10 {
+		if !bands[band] {
+			t.Fatalf("trajectory band %d has no real zone", band)
+		}
+	}
+}
+
+func TestExtendedZoneMobsAreAbsentFromTheNativeTemplate(t *testing.T) {
+	areas, _ := extendedZones(t)
+	native := monster.LoadTemplate(gamedatatest.Paths(t).TextdataDir)
+	nativeCodenames := make(map[string]struct{}, len(native.Refs))
+	for _, ref := range native.Refs {
+		nativeCodenames[ref.Codename] = struct{}{}
+	}
+	checked := 0
+	for _, area := range areas {
+		for _, row := range area.Population {
+			if _, known := nativeCodenames[row.Codename]; known {
+				t.Fatalf("zone %s places %q, which the native template already ships", area.Slug, row.Codename)
+			}
+			checked++
+		}
+	}
+	if checked < 100 {
+		t.Fatalf("only %d placed rows read; the real-zone derivation is missing", checked)
+	}
+}
+
+func TestExtendedZonesSpawnInTheirRealRegions(t *testing.T) {
+	extended := extendedProjection(t)
+	areas, zones := extendedZones(t)
+	native := monster.LoadTemplate(gamedatatest.Paths(t).TextdataDir)
+	grafted := monster.GraftRefs(native, monster.LoadMonsterRefs(extended.TextdataDir))
+
+	authored, err := worldarea.LoadAuthority(extended.AreasAuthorityDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	composed, err := appendAuthoredAreaPopulation(grafted, authored)
+	if err != nil {
+		t.Fatal(err)
+	}
+	registry := simulation.NewMonsterState(composed)
+	registry.StartDivision("test")
+	registry.AdvancePopulation(registry.CurrentTimeMillis())
+
+	// Every zone's whole population spawns in its own region; the band
+	// spread comes from the zone list, the row sum from the registry.
+	spawnedInBand := map[int]bool{}
+	spawnedRows := 0
+	for _, area := range areas {
+		instances := registry.InstancesInRegions("test", []uint16{area.RegionID})
+		present := make(map[string]struct{}, len(instances))
+		for _, instance := range instances {
+			present[instance.Ref.Codename] = struct{}{}
+		}
+		for _, row := range area.Population {
+			if _, ok := present[row.Codename]; !ok {
+				t.Fatalf("zone %s (region 0x%04X): %q did not spawn", area.Slug, area.RegionID, row.Codename)
+			}
+			spawnedRows++
+		}
+		zone, ok := zones.Zones[fmt.Sprintf("0x%04x", area.RegionID)]
+		if !ok {
+			t.Fatalf("zone list lacks region 0x%04X", area.RegionID)
+		}
+		for _, band := range zone.Bands {
+			if band >= 91 && band <= 140 {
+				spawnedInBand[band] = true
+			}
+		}
+	}
+	for band := 91; band <= 140; band += 10 {
+		if !spawnedInBand[band] {
+			t.Fatalf("no spawned zone covers band %d", band)
+		}
+	}
+	if spawnedRows < 1000 {
+		t.Fatalf("only %d zone rows spawned; the real-zone population is missing", spawnedRows)
+	}
 }

@@ -132,6 +132,7 @@ cap are counted, never allowed to lift the chain.
 function censusCharacters( sourceRoot, shardNames, nativeSkip ) {
 	const bands = new Map();
 	const bandExamples = new Map();
+	const mobsById = new Map();
 	const kinds = new Map();
 	let rows = 0;
 	let maxLevel = 0;
@@ -149,6 +150,12 @@ function censusCharacters( sourceRoot, shardNames, nativeSkip ) {
 				continue;
 			}
 			maxLevel = Math.max( maxLevel, level );
+			if ( mobsById.size < 65536 ) {
+				const id = Number( cells[1]?.trim() );
+				if ( Number.isInteger( id ) && id > 0 ) {
+					mobsById.set( id, { codename, level } );
+				}
+			}
 			const band = Math.floor( (level - 1) / 10 ) * 10 + 1;
 			bands.set( band, (bands.get( band ) ?? 0) + 1 );
 			const examples = bandExamples.get( band ) ?? [];
@@ -172,7 +179,8 @@ function censusCharacters( sourceRoot, shardNames, nativeSkip ) {
 		kinds: Object.fromEntries( [ ...kinds.entries() ].sort() ),
 		maxMobLevel: maxLevel,
 		mobsPerBand: Object.fromEntries( [ ...bands.entries() ].sort( ( a, b ) => a[0] - b[0] ) ),
-		bandExamples: Object.fromEntries( [ ...bandExamples.entries() ].sort( ( a, b ) => a[0] - b[0] ) )
+		bandExamples: Object.fromEntries( [ ...bandExamples.entries() ].sort( ( a, b ) => a[0] - b[0] ) ),
+		mobsById: Object.fromEntries( [ ...mobsById.entries() ].sort( ( a, b ) => a[0] - b[0] ) )
 	};
 }
 
@@ -212,30 +220,106 @@ async function loadNativeCharacterCodenames() {
 
 /*
 ================
-buildSeedAreas
+loadNativeNpcposRegions
 
-The M3 seed: one authored GM lab area placing the deterministic exemplar
-mob of every band 91..140, the same shape and rules as the native
-manyang-lab (region-local coordinates, leash 140, respawn 5s). It proves
-the extended population mechanics behind the flag; milestone M4 replaces
-it with placements derived from the real zone data. Region 0x62a8 is a
-served native region the native catalog leaves free.
+The v1.150 npcpos region ids: the regions the native world serves. The
+live-2026 npcpos anchors outside this set are the extended zones - real
+regions the native game never populated.
 ================
 */
-async function buildSeedAreas( characters, nativeCodenames ) {
-	const population = [];
-	for ( const band of Object.keys( characters.bandExamples ).map( Number ).sort( ( a, b ) => a - b ) ) {
-		if ( band < 91 || band > 140 ) {
+async function loadNativeNpcposRegions() {
+	try {
+		const rows = readTextDataRowsSync( path.join( retailTextdataRoot, "npcpos.txt" ) );
+		const regions = new Set();
+		for ( const cells of rows ) {
+			const region = Number( cells[1]?.trim() );
+			if ( Number.isInteger( region ) && region > 0 ) {
+				regions.add( region );
+			}
+		}
+		return regions;
+	} catch {
+		return undefined;
+	}
+}
+
+/*
+================
+buildExtendedAreas
+
+Real placements, derived from the live-2026 client's own npcpos: every
+anchor whose region the native v1.150 npcpos never served and whose mob
+is a 91-140 NEW-content field mob becomes one population row, grouped
+into one authored area per region (the real zone). The native lab shape
+carries over (leash 140, respawn 5s, maxCount 1 per anchor); access
+stays gm until the movement lane serves the 2026 regions, when the
+zones open as public. Anchors per region are bounded; the unbounded
+zone build belongs to the world lane.
+================
+*/
+const EXTENDED_AREA_MAX_ANCHORS_PER_REGION = 24;
+const EXTENDED_AREA_MIN_BAND = 91;
+const EXTENDED_AREA_MAX_BAND = 140;
+
+async function buildExtendedAreas( sourceRoot, characters, nativeCodenames, nativeRegions ) {
+	const mobsById = characters.mobsById ?? {};
+	const rows = readTextDataRowsSync( path.join( sourceRoot, "npcpos.txt" ) );
+	const byRegion = new Map();
+	let anchors = 0;
+	for ( const cells of rows ) {
+		if ( cells.length < 5 ) {
 			continue;
 		}
-		// The census already filtered the candidates to new-content mobs
-		// the native v1.150 table never shipped; the first is the exemplar.
-		const example = characters.bandExamples[band][0];
-		population.push( {
-			codename: example.codename,
-			x: 900 + population.length * 40,
+		const id = Number( cells[0]?.trim() );
+		const region = Number( cells[1]?.trim() );
+		const x = Number( cells[2]?.trim() );
+		const z = Number( cells[4]?.trim() );
+		if (
+			!Number.isInteger( id ) || !Number.isInteger( region ) || !Number.isFinite( x ) || !Number.isFinite( z )
+		) {
+			continue;
+		}
+		// Dungeon regions carry the 0x8000 bit (negative as authored);
+		// the outdoor zones are this milestone's scope, the dungeon
+		// interiors follow with the indoor world lane.
+		if ( (region & 0x8000) !== 0 || region <= 0 || region > 0x7fff ) {
+			continue;
+		}
+		// The authored-area contract bounds region-local coordinates to
+		// [0,1920); the live anchors occasionally sit outside (boundary
+		// rows), and those cannot compose into a valid area entry.
+		if ( x < 0 || x >= 1920 || z < 0 || z >= 1920 ) {
+			continue;
+		}
+		if ( nativeRegions?.has( region ) ) {
+			continue;
+		}
+		const mob = mobsById[id];
+		if ( !mob || mob.level < EXTENDED_AREA_MIN_BAND || mob.level > EXTENDED_AREA_MAX_BAND ) {
+			continue;
+		}
+		if (
+			nativeCodenames?.has( mob.codename ) ||
+			NON_COMBAT_MOB_PREFIXES.some( ( prefix ) => mob.codename.startsWith( prefix ) )
+		) {
+			continue;
+		}
+		const zone = byRegion.get( region ) ?? [];
+		if ( zone.length >= EXTENDED_AREA_MAX_ANCHORS_PER_REGION ) {
+			continue;
+		}
+		zone.push( { codename: mob.codename, level: mob.level, x, z } );
+		byRegion.set( region, zone );
+		anchors += 1;
+	}
+	const areas = [];
+	const zones = {};
+	for ( const region of [ ...byRegion.keys() ].sort( ( a, b ) => a - b ) ) {
+		const population = byRegion.get( region ).map( ( anchor ) => ({
+			codename: anchor.codename,
+			x: anchor.x,
 			y: 0,
-			z: 950,
+			z: anchor.z,
 			maxCount: 1,
 			respawnDelayMinSec: 5,
 			respawnDelayMaxSec: 5,
@@ -244,21 +328,42 @@ async function buildSeedAreas( characters, nativeCodenames ) {
 			sightRange: 0,
 			leashRadius: 140,
 			generateRadius: 0
+		}) );
+		const first = byRegion.get( region )[0];
+		areas.push( {
+			slug: `extended-zone-${region.toString( 16 )}`,
+			regionId: region,
+			access: "gm",
+			entry: { x: first.x, y: 0, z: first.z, angle: 16384 },
+			population
 		} );
+		zones[`0x${region.toString( 16 )}`] = {
+			anchors: population.length,
+			bands: [
+				...new Set( byRegion.get( region ).map( ( anchor ) => Math.floor( (anchor.level - 1) / 10 ) * 10 + 1 ) )
+			].sort( ( a, b ) => a - b )
+		};
 	}
-	if ( population.length === 0 ) {
-		throw Error( "extended seed area: no band exemplars between 91 and 140" );
+	if ( areas.length === 0 ) {
+		throw Error( "extended areas: no new-zone npcpos anchors between 91 and 140 derived" );
+	}
+	const bands = {};
+	for ( const [regionId, zone] of Object.entries( zones ) ) {
+		for ( const band of zone.bands ) {
+			bands[band] = (bands[band] ?? 0) + zone.anchors;
+		}
 	}
 	return {
-		format: "sro-server-world-area-catalog",
-		version: 1,
-		areas: [ {
-			slug: "extended-content-lab",
-			regionId: 0x62a8,
-			access: "gm",
-			entry: { x: 860, y: 0, z: 950, angle: 16384 },
-			population
-		} ]
+		areasCatalog: { format: "sro-server-world-area-catalog", version: 1, areas },
+		zonesDescriptor: {
+			format: "sro-extended-zone-list",
+			version: 1,
+			derivedFrom: "live-2026 npcpos anchors in regions the v1.150 npcpos never served",
+			regionCount: areas.length,
+			anchorCount: anchors,
+			anchorsByBand: bands,
+			zones
+		}
 	};
 }
 
@@ -350,6 +455,8 @@ export async function buildExtendedGameDataBundle( options ) {
 	const items = censusItems( sourceRoot, itemShards );
 	const nativeCodenames = await loadNativeCharacterCodenames();
 	const characters = censusCharacters( sourceRoot, characterShards, nativeCodenames );
+	const nativeRegions = await loadNativeNpcposRegions();
+	const extendedWorld = await buildExtendedAreas( sourceRoot, characters, nativeCodenames, nativeRegions );
 
 	// Gear: the highest shipped degree at or under the sealed cap. A
 	// rare-only shipment is that band's playable gear (degrees 13+ ship
@@ -399,7 +506,8 @@ export async function buildExtendedGameDataBundle( options ) {
 				rows: goldcurve.rows
 			} ),
 			await write( "census.json", { items, characters } ),
-			await write( "areas/catalog.json", await buildSeedAreas( characters, nativeCodenames ) )
+			await write( "areas/catalog.json", extendedWorld.areasCatalog ),
+			await write( "zones.json", extendedWorld.zonesDescriptor )
 		];
 		// The whole extraction ships inside the projection under textdata/,
 		// sealed by the same digests: the extended catalogs (items, mobs,
@@ -433,7 +541,9 @@ export async function buildExtendedGameDataBundle( options ) {
 				goldRows: levelgold.rows.length,
 				goldCurveRows: goldcurve.rows.length,
 				itemRows: items.rows,
-				characterRows: characters.rows
+				characterRows: characters.rows,
+				extendedZones: extendedWorld.zonesDescriptor.regionCount,
+				extendedAnchors: extendedWorld.zonesDescriptor.anchorCount
 			},
 			contentDigest: digestBytes( Buffer.from( files.map( ( file ) => file.path + file.sha256 ).join( "\n" ) ) ),
 			files
@@ -455,11 +565,9 @@ export async function buildExtendedGameDataBundle( options ) {
 			`  counts: ${items.rows} item rows, ${characters.rows} character rows, ${leveldata.rows.length} levels`
 		);
 		console.log(
-			`  seed exemplars: ${
-				nativeCodenames ?
-					`chosen against ${nativeCodenames.size} native codenames` :
-					"native table unavailable, first candidates used"
-			}`
+			`  zones: ${extendedWorld.zonesDescriptor.regionCount} real regions, ${extendedWorld.zonesDescriptor.anchorCount} npcpos anchors (bands ${
+				Object.keys( extendedWorld.zonesDescriptor.anchorsByBand ).join( "," )
+			})`
 		);
 		console.log( `  manifest: ${digestBytes( manifestBytes )}` );
 		for ( const line of report ) {
