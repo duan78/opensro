@@ -383,7 +383,21 @@ POSITIONNELLE : la position du drapeau atfe dans
 prédicat d'aire passe maintenant, le parse de tête non). Lane s23.
 Aucun rang basculé (le mot admis est nécessaire, la position reste).
 
-## Le reste (carte actualisée après s22)
+## Session 23 — le drapeau atfe admis en tête ; la porte suivante est l'eshp dans la queue HoT
+
+La position du drapeau `atfe` est admise : `parseHealOverTime` saute
+un `atfe` sans argument en tête du programme parti (inférence
+enregistrée, M8 s23) avant le même contrat. La rangée REFUSE
+encore — la porte suivante est isolée au mot près : la queue du HoT
+(`healProgramTail` : `[mwhh][mwmh][getv HLRU][getv HLMD]`) ne
+contient pas **eshp**, que RECOVERYA_GROUP authorise APRÈS le bloc
+heal — un HoT parti « au plus bas ratio » par pulse. L'admettre
+exige son consommateur dans le chemin partyOverTime du runtime
+(`lowestChainHealTarget` existe) — une vraie extension sémantique,
+pas une tolérance. Aucun rang basculé (le drapeau admis est
+nécessaire, l'eshp reste).
+
+## Le reste (carte actualisée après s23)
 
 1. BINGPAN : la porte duration (preuve du vide natif d'abord).
 2. BINGBYEOK/HWABYEOK : forme timed onff/wp.

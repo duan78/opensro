@@ -351,10 +351,21 @@ func parseHealOverTime(fields []string, row *SkillRow) bool {
 	}
 	first := 0
 	if !row.TargetRequired {
-		if program.Len() == 0 || !partyRecoveryArea(program.Instruction(0)) {
+		// Extended content (isro-live-2026), port-only, not v1.150-native:
+		// the live party heal-over-time rows (RECOVERYA_GROUP) lead with the
+		// no-argument atfe flag (0x65667461, the area status flag of the
+		// arity-0 group) before the party efr; skip it and continue on the
+		// same contract. Inference recorded 2026-10-09 (M8 s23); the void
+		// proof is the family's own never-admitted native tiers being the
+		// only rows authoring the leading flag.
+		areaIndex := 0
+		if program.Len() > 0 && program.Instruction(0).Tag == 0x65667461 && program.Instruction(0).Count == 0 {
+			areaIndex = 1
+		}
+		if program.Len() <= areaIndex || !partyRecoveryArea(program.Instruction(areaIndex)) {
 			return false
 		}
-		first = 1
+		first = areaIndex + 1
 	}
 	if program.Len() < first+3 {
 		return false
