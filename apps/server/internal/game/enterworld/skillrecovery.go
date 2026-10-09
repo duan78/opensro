@@ -240,8 +240,14 @@ func lowestHealProgram(program SkillProgram) bool {
 	}
 	area, eshp := program.Instruction(0), program.Instruction(1)
 	a := area.Arguments
+	// Select 7 (0x04|0x02|0x01: party|character|caster) rides the WATER
+	// HEAL rows - the caster bit widens the party set the same way
+	// recoveryPartySelectWithCaster (5) does. Inference recorded
+	// 2026-10-09 (M8 s19); the void proof measured that the only native
+	// rows authoring efr{shape 6, select 7} are WATER_HEAL's own
+	// never-admitted tiers.
 	if area.Tag != tagEfr || area.Count != 6 || a[0] != recoveryEfrActionArea || a[1] != 6 || a[2] == 0 ||
-		a[3] < 2 || a[4] >= 100 || a[5] != recoveryPartySelect && a[5] != recoveryPartySelectWithCaster {
+		a[3] < 2 || a[4] >= 100 || a[5] != recoveryPartySelect && a[5] != recoveryPartySelectWithCaster && a[5] != 7 {
 		return false
 	}
 	if eshp.Tag != recoveryTagEshp || eshp.Count != 0 || !recoveryHealBlock(program.Instruction(2)) {
