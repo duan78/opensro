@@ -337,6 +337,15 @@ Parkés (aucun travail sans nouvel ordre owner) :
 2. Pets seconde génération / fellowship.
 3. Tout système exigeant du wire nouveau (charte §4.8, mission M5/V5).
 
+Question ouverte pour l'owner (M5, 2026-10-09) : les taux de drop des
+mobs/objets 2026 n'existent dans aucune source locale (client : non
+livrés ; vSRO188/SRObro : stats seulement). L'or et les consommables
+génériques tombent sur les courbes officielles ; l'équipement 11D+
+s'acquiert par grant. Faut-il authoriser des taux inférés explicitement
+marqués (précédent natif : les taux consommables « inferred » du
+catalogue de butin), ou l'acquisition par grant reste-t-elle la règle
+jusqu'à une source officielle ?
+
 ## Annexe A — Faits établis par l'audit du 2026-10-09
 
 | Fait | Preuve |
