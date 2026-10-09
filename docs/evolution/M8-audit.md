@@ -1184,12 +1184,46 @@ Les trois décisions owner valent plus que toute session de code :
 l'arène (~180 au dénominateur), le PvP (12), les danses (40) —
 chacune ouvre ou ferme un bloc entier.
 
-## Le reste (carte actualisée après s46)
+## Session 47 — la classification décisive : la couverture JOUEUR est 97,3 %
 
-1. **La traîne joueur (~246, carte s46 ci-dessus)** : les six
-   familles nommées décodées (~26 rangées livrables en ~5 sessions) ;
-   puis CLASSIFIER les ~190 singles (beaucoup seront hors joueur)
-   avant d'en implémenter quoi que ce soit.
+Classification par préfixe de codename (probe effacé) de tout le
+reste non-admis past-90 : **379 rangées monstre/arène** (P2SKILL +
+MSKILL — hors périmètre joueur), **0 événement/boutique**, et **57
+rangées JOUEUR sur 19 familles** — dont 12 PvP parked (MANADRY 10,
+STEALTHA_CHANGE 2) et 2 danses. **Le reste joueur livrable est 43
+rangées.**
+
+**LE NOMBRE** : sur le périmètre joueur (SKILL_CH_/SKILL_EU past-90),
+**2089 rangées admises sur 2146 = 97,3 %**. Les « 83,8 % » du
+dénominateur global mélangent 856 rangées monstre/arène/événement
+past-90 au dénominateur — dont 379 non-admises qui n'ont aucun sens
+côté « le jeu est jouable jusqu'à 140 ».
+
+### Les 43 livrables restants (15 familles actives)
+
+FRENZYA ruée (5), POISONA_FIELD trap poison (5), CONFUSIONA_ILLUSION
+msch-3 (5), TRANSFORMA_MASK Death-Essence (5, feature V5), STEALTHA_
+POINT (3), HEALSHIELD (3), FIRE_SHIELD (3), TRANSFORMA_DUPLE (3),
+MINDP ×2 familles (4), SPELLP_PARTY_HWAN_UP (2), DAMAGE_DIVIDE
+arme ×4 (4), WATER_CANCEL2 tier isolé (1), GUARDA_DIVIDE (1).
+
+### Les trois décisions owner (formellement soumise, chacune ouvre/ferme un bloc)
+
+1. **ARÈNE** : 856 rangées monstre/événement past-30 au dénominateur
+   (379 non admises). Les exclure → le mesure devient le périmètre
+   joueur : **97,3 % → plafond 99,3 %** (les 43 livrables + les
+   décisions). L'arène elle-même = V5.
+2. **PvP** : 12 rangées (MANADRY, STEALTHA_CHANGE) — PvP-seules selon
+   leurs tooltips. Les implémenter = un runtime hostile-joueur.
+3. **DANSES V5** : 2 rangées past-90 visibles ici (40 au total avec
+   les tiers ≤90) — « sans preuve : pas d'implémentation » tant que
+   la décision V5 n'est pas reçue.
+
+## Le reste (carte actualisée après s47)
+
+1. **FAIT (s47)** : la classification est livrée — 43 rangées
+   livrables sur 15 familles (liste ci-dessus), 379 hors joueur,
+   12 PvP parked, 2 danses. La couverture JOUEUR mesurée : 97,3 %.
 2. **La traîne joueur (~270−15 rangées)** : les familles 2-5 de
    l'histogramme, une à une après les trois lanes.
 3. **Décision owner de périmètre (nouveau s39)** : ~180 rangées
