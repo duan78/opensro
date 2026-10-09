@@ -123,7 +123,7 @@ def main() -> int:
 		"rareRate": INFERRED_RARE_RATE,
 		"windows": windows,
 	}
-	OUTPUT.write_text(json.dumps(evidence, indent=1, sort_keys=False) + "\n", encoding="utf-8")
+	OUTPUT.write_text(json.dumps(evidence, indent=1, sort_keys=False) + "\n", encoding="utf-8", newline="\n")
 	by_degree = {}
 	for row in rows:
 		key = f"DG{(row['group'] + 3) // 3}{'R' if row['rare'] else 'N'}"
