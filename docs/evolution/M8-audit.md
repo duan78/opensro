@@ -240,7 +240,26 @@ garde dans la marche groupe de la lane timed (le chemin du HoT
 parti) + les tests deux réglages. C'est une session complète de code
 — pas tentée à bout de contexte. Aucun rang basculé.
 
-## Le reste (carte actualisée après s14)
+## Session 15 — correction de cadrage : l'efr kind 3 d'HARMONY est la PORTE DE CAST Efr3, pas une aire de groupe
+
+La relecture croisée avant d'écrire le code referme la lecture
+« aire de groupe » de s12-s14 : la marche offense documente déjà l'efr
+kind 3 — `skilloffense.go:200` : kind 1 = aire d'action, kind 2 =
+aire d'aura persistante, **kind 3 = `CastGate.Efr3Present/Efr3Radius`
+— une porte de cast** (une exigence de proximité au moment du cast),
+PAS une sélection de victimes. WATER_HARMONY est donc une **garde
+préventive self avec taux de récupération et une porte de cast Efr3**
+— pas une aura de groupe. Conséquence : la marche timed refuse la
+rangée AVANT même d'évaluer pola (sa case efr n'admet que kind 1,
+shape 1) ; la lane s16 est d'admettre l'efr kind 3 dans la marche
+timed COMME PORTE (pas comme aire), ce qui laisse la case preemptive
+self-only INTACTE (la garde reste au lanceur — conforme à son
+contrat et à son consommateur noise.go). Plus simple et plus sûr que
+la relaxation s14 : aucune clause native ne bouge, une seule case efr
+s'élargit d'un kind documenté. La preuve du vide (21/21 = HARMONY)
+reste valable pour ce périmètre. Aucun rang basculé.
+
+## Le reste (carte actualisée après s15)
 
 1. BINGPAN : la porte duration (preuve du vide natif d'abord).
 2. BINGBYEOK/HWABYEOK : forme timed onff/wp.
