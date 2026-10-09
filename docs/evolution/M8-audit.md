@@ -413,7 +413,23 @@ porte 300 384 ms de durée, l'enveloppe peut la porter différemment) —
 peut pas régresser : elle ne s'active QUE si Aura.Eshp && HoT parti,
 une forme que seules les rangées 2026 portent).
 
-## Le reste (carte actualisée après s24)
+## Session 25 — l'écart de durée 2026 mesuré et toléré ; la rangée refuse encore, la sonde ligne-à-ligne reste
+
+Mesuré : le client live authorise le mot `dura` **384 ms au-dessus de
+la colonne durée d'enveloppe** (programme 300 384 vs envelopne 300
+000 sur `RECOVERYA_GROUP_B_05`) — les paliers natifs authorisent
+l'égalité exacte (8×300000 vérifiés). La tolérance (≤4096 ms) est
+admise UNIQUEMENT sur la forme atfe-en-tête (aucune rangée native ne
+peut entrer dans la branche — le vide est structurel), inférence
+enregistrée. La rangée REFUSE toujours : une porte subsiste après
+dura (les candidats restants : Consumption.Pinned/TimingPinned vus
+vrais au sondage s3 mais jamais re-vérifiés depuis les edits, ou une
+colonne hors liste) — la sonde s26 est un pas-à-pas ligne à ligne
+du parse sur la rangée, pas une hypothèse de plus. Aucun rang
+basculé ; golangci a attrapé un delta signé impossible sur uint32
+(corrigé en int64 — cité en leçon).
+
+## Le reste (carte actualisée après s25)
 
 1. BINGPAN : la porte duration (preuve du vide natif d'abord).
 2. BINGBYEOK/HWABYEOK : forme timed onff/wp.
