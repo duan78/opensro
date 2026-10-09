@@ -461,14 +461,72 @@ instrumenter en tête de s28 avec un print par case). La voie sûre est
 prouvée : prédicat dédié + contrat natif intact = zéro test natif
 cassé, contrairement à la restructuration s26.
 
-## Le reste (carte actualisée après s27)
+## Session 28 — la porte fautive ÉTAIT la re-visite de la queue ; la vraie leçon : le test licencié tournait en SKIP depuis des sessions
 
-1. BINGPAN : la porte duration (preuve du vide natif d'abord).
-2. BINGBYEOK/HWABYEOK : forme timed onff/wp.
-3. WATER_HARMONY : forme timed pola (aura régén).
-4. MANATRANS : la porte lifetime du parse recovery.
-5. **Danses de barde** (40 rangs) : le rythme 2026 — décision owner V5.
-6. INVISIBLE/MANADRY/traps/JIPJUNG et la traîne : une à une.
+Le probe par case (probe jetable, effacé avant commit) a nommé la porte
+en dix minutes : chaque rangée RECOVERYA_GROUP étendue est
+`atfe, dura(300000), puls(5000), efr[2,1,rayon,1,0,5], eshp, heal(n),
+mwhh(105), getv, getv`. Les cinq mots de tête marchent tous jusqu'à
+op[5], `healProgramTail(6)` dit **true** — puis la marche RE-VISITE
+op[6] (`mwhh`, le terme d'arme du heal) et meurt dans `default`. La
+queue appartient au vérificateur de queue, exactement comme le contrat
+natif consomme `first+3` sans re-marcher : le `break` étiqueté sur le
+cas heal est le correctif entier. Couverture : **+8 rangs, 78,7 %**
+(2364/3002).
+
+**Mais** — le test licencié natif
+`TestHealOverTimeRowsAreAdmittedByCompleteProgram` a FAILI à ce
+précis moment, et pour la bonne raison : il mesurait que le catalogue
+v1.150 porte les RECOVERYA_GROUP cap-90 AVEC le même programme
+interleavé (atfe en tête, efr kind 2 en position 3), et que le contrat
+natif reconstruit les refuse — mon prédicat les admettait donc AUSSI
+en natif. Deux découvertes en une :
+
+1. **Les preuves du vide s23/s25/s27 (« les natifs ne mènent jamais un
+   HoT par atfe ») étaient fausses** — mesurées sur le seul catalogue
+   étendu. Le vide-réel de s22–s25 : l'ORDRE interleavé fait refuser
+   les rangées natives à la demande d'aire (partyRecoveryArea voit
+   dura, pas efr). Les trois commentaires corrigés dans
+   skillrecovery.go : la sûreté vient de l'ordre, jamais de
+   l'absence du mot.
+2. **Ce test licencié tournait en SKIP silencieux depuis au moins s22**
+   — `SRO_GENERATED_ROOT` pointé sur l'arbre evolution-data (dont
+   client-public/assets est vide) cache le manifest packs et le test
+   saute au lieu d'échouer ; un SKIP imprime quand même « ok ». La
+   bonne porte : PAS de SRO_GENERATED_ROOT pour les tests — le
+   résolveur worktree suit le .git vers le .generated du checkout
+   principal. Toutes les re-vérifications natifs de s28 ont tourné
+   AVEC le test licencié réel (1,8 s de vrai travail, 28 rangs
+   comptés).
+
+Le règlement : l'ensemble d'admission natif reste figé (aucune preuve
+binaire pour l'élargir — décision owner, comme les danses) ; le
+prédicat dédié reçoit un PLANCHER DE MAÎTRISE ≥ 91 lu dans les
+cellules brutes (colonnes 36/37 — `row.Masteries` est encore zéro à
+cet instant du parse, la première version du plancher lisait le champ
+et refusait tout, la couverture retombait à 78,5 %) ; le catalogue
+natif n'a AUCUNE rangée ≥ 91 (« native past-90 total: 0 rows ») donc
+le plancher est une preuve du vide hermétique. Ouvert pour l'owner :
+les tiers cap-90 de RECOVERYA_GROUP restent non-admis en natif —
+élargir exige la preuve du binaire (58D8F0/5830B0) que le serveur
+original acceptait les programmes interleavés.
+
+## Le reste (carte actualisée après s28)
+
+1. FIREA_TRAP (12) : le trap périodique lié — distinct du lane
+   quest-trap ; preuve du vide natif d'abord.
+2. MANADRY (10) : drain de mana ciblé `pmsc tnat getv×2`.
+3. JIPJUNG (9) : buff d'un mot `dura re{…}`.
+4. AGGROLOW (9) / FORGETA_AGGRO (8) : coupes d'aggro de zone
+   `efr tntd tdwm`.
+5. SWORD_SHIELDPD (8) : debuff de parade temporisé `dura adps iqer`.
+6. WATER_CANCEL (7) : purge temporisée `bbuf dura drht tnat`.
+7. La dispersion (~110 rangs sur les petites familles) : une à une.
+8. **Danses de barde** (40 rangs) : le rythme 2026 — décision owner V5,
+   jamais reçue ; sans preuve : pas d'implémentation.
+9. **Ouvert pour l'owner (nouveau s28)** : élargir l'admission HoT
+   native aux tiers cap-90 RECOVERYA_GROUP (interleavé) exige la
+   preuve du binaire (58D8F0/5830B0).
 
 ## Tests et gates (sorties de session 2)
 

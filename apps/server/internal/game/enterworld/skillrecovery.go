@@ -350,9 +350,10 @@ func parseHealOverTime(fields []string, row *SkillRow) bool {
 	// first and only on the interleaved shape; the native contract runs
 	// untouched for every other row (the s26 restructure that changed it
 	// broke four native tests and was reverted - this side-by-side is the
-	// lane). Inference recorded 2026-10-09 (M8 s27); the void proof is
-	// the family's own never-admitted native tiers being the only rows
-	// authoring the interleaving (natives never lead a HoT with atfe).
+	// lane). Recorded 2026-10-09 (M8 s27), corrected s28: the v1.150
+	// catalogue authors the same interleave on the family's cap-90 tiers,
+	// so the predicate's void proof is its mastery floor - no v1.150 row
+	// reaches level 91 - never a claim about which words natives author.
 	if !row.TargetRequired && interleavedPartyHoT(fields, row) {
 		row.Recovery = SkillRecovery{HealOverTimePinned: true, PulseMs: interleavedPartyHoTPulseMs}
 		return true
@@ -380,9 +381,11 @@ func parseHealOverTime(fields []string, row *SkillRow) bool {
 		// the live party heal-over-time rows (RECOVERYA_GROUP) lead with the
 		// no-argument atfe flag (0x65667461, the area status flag of the
 		// arity-0 group) before the party efr; skip it and continue on the
-		// same contract. Inference recorded 2026-10-09 (M8 s23); the void
-		// proof is the family's own never-admitted native tiers being the
-		// only rows authoring the leading flag.
+		// same contract. Recorded 2026-10-09 (M8 s23), corrected s28: the
+		// v1.150 catalogue authors this leading flag too, on the family's
+		// cap-90 tiers - the void proof is their interleaved order (the
+		// party efr sits third, so the area demand below meets the dura
+		// word and refuses), never the flag's absence.
 		areaIndex := 0
 		if program.Len() > 0 && program.Instruction(0).Tag == 0x65667461 && program.Instruction(0).Count == 0 {
 			areaIndex = 1
@@ -404,8 +407,10 @@ func parseHealOverTime(fields []string, row *SkillRow) bool {
 		// duration column (measured: program 300384 vs envelope 300000 on
 		// RECOVERYA_GROUP_B_05; every native tier authors the exact
 		// equality). Tolerate the offset ONLY on the atfe-leading shape -
-		// no native row can enter this branch (void proof: natives never
-		// lead a HoT with atfe), so the exact contract stays theirs.
+		// the one native family that leads with atfe (the cap-90
+		// RECOVERYA_GROUP tiers, measured s28) interleaves its area word
+		// third and refuses at the area demand above, so no native row
+		// reaches this branch and the exact contract stays theirs.
 		left, right := int64(dura.Arguments[0]), int64(row.EffectDurationMs)
 		if left < right {
 			left, right = right, left
@@ -433,8 +438,28 @@ word is checked; the duration tolerance is the live client's measured
 */
 var interleavedPartyHoTPulseMs uint32
 
+// extendedPastCapMastery is the extended lane's floor: the first mastery
+// level past the v1.150 cap of 90. The v1.150 catalogue authors no row
+// this high (measured: the coverage test's native past-90 total is 0),
+// so a gate on it is a void proof no native row can pass.
+const extendedPastCapMastery = 91
+
 func interleavedPartyHoT(fields []string, row *SkillRow) bool {
 	interleavedPartyHoTPulseMs = 0
+	// Extended content (isro-live-2026), port-only, not v1.150-native.
+	// Measured 2026-10-09 (M8 s28): the v1.150 catalogue authors the SAME
+	// interleaved program on this family's own cap-90 tiers (atfe, dura,
+	// puls, party efr kind 2, eshp, heal, mwhh, getv x2), and the licensed
+	// TestHealOverTimeRowsAreAdmittedByCompleteProgram freezes their
+	// non-admission - the efr-leading contract keeps them, exactly as
+	// reconstructed. Widening the native set is the owner's call on binary
+	// evidence, not this lane's; the mastery floor is what keeps the
+	// predicate off every native row. The floor reads the raw cells -
+	// row.Masteries is still zero this early in the row's parse.
+	if textdataNonNegative(fields[skilldataColReqMasteryLv1]) < extendedPastCapMastery &&
+		textdataNonNegative(fields[skilldataColReqMasteryLv2]) < extendedPastCapMastery {
+		return false
+	}
 	program, err := CompileSkillProgram(fields)
 	if err != nil || program.Len() < 6 {
 		return false
@@ -444,6 +469,7 @@ func interleavedPartyHoT(fields []string, row *SkillRow) bool {
 	}
 	var duraMS, pulsMS uint32
 	seen := map[uint32]bool{}
+walk:
 	for i := 1; i < program.Len(); i++ {
 		op := program.Instruction(i)
 		switch {
@@ -462,6 +488,11 @@ func interleavedPartyHoT(fields []string, row *SkillRow) bool {
 			if !healProgramTail(program, i+1) {
 				return false
 			}
+			// The words after the heal block - measured on RECOVERYA_GROUP:
+			// mwhh's weapon term and its two getv keys - are the tail
+			// checker's authority, exactly as the native contract consumes
+			// first+3 without re-walking them; the head walk ends here.
+			break walk
 		default:
 			return false
 		}
