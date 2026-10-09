@@ -882,11 +882,58 @@ périmètre PvE.
 - La dispersion (~110) : une à une.
 - Parked-owner : danses (V5), MANADRY (PvP), STEALTHA_CHANGE (PvP).
 
-## Le reste (carte actualisée après s38)
+## Amorces s39 — les trois mots DÉCODÉS par les tooltips ; la vraie carte de la dispersion
 
-1. GUARDA_PHYSICAL (lkdr), SOULA_STUNLINK (lien+Stun),
-   REBIRTHA_SPECIAL (tmur) : mots à décoder ; puis la dispersion
-   (~110).
+Les trois tooltips ont nommé les effets (probe effacé) :
+
+1. **GUARDA_PHYSICAL / lkdr{4,72,0}** : « you divert part of physical
+   damage from one member to yourself » — un lien de REDIRECTION DE
+   DÉGÂTS (le guerrier prend une part des dégâts physiques du protégé,
+   30 min, disparaît hors de portée — la description du lnks distance
+   word). lkdr est le frère trois-mots de lkdh (le lien qui PAIE le
+   source) : ici le lien DÉTOURNE vers le source. Lane : intégration
+   au chemin de dégâts quand la cible liée encaisse — taille s34.
+2. **SOULA_STUNLINK / abnb{150} + st{5000,35,10}** : « covers one
+   member with a mask of horror... enemies who are weak lose
+   consciousness » — une GARDE RÉACTIVE sur un allié : les attaquants
+   subissent l'horreur, les faibles le STUN ({durée 5000, chance 35,
+   niveau 10}). Lane : crochet dans le chemin monstre-attaque-joueur —
+   taille s34.
+3. **REBIRTHA_SPECIAL_B / tmur{10276} + heal{0,100} + resu{120,30}** :
+   « the dead is raised to life with a crippled soul... reduced attack
+   power and greatly increased defense... when the state ends, HP and
+   MP drastically decrease » — une résurrection à état mutilé : le
+   tmur porte l'état (attaque ↓ défense ↑, à l'expiration HP/MP
+   chutent — le clamp d'expiration du lane item est le précédent).
+   Lane : variante resu + effet temporisé avec chute à l'expiration —
+   taille s34. Pas d'implémentation partielle (ressusciter sans
+   l'état serait un mensonge).
+
+### La dispersion mesurée (l'histogramme, top-20)
+
+**451 rangées non admises sur 230 familles** — mais ~180 sont
+**P2SKILL_INNATE_*** (les innates des monstres d'arène/événement :
+ASS/PRO/ENC ×020..140 par paliers) — des rangées de MONSTRES
+d'événement, pas des skills joueurs : le dénominateur de la
+jouabilité joueur les exclut naturellement (l'arène est du domaine
+V5/owner, comme la forteresse). La dispersion JOUEUR réelle est
+~270 rangées : les 2-5-rang familles du top-20 (FRENZYA_TOUNT_SPRINT,
+GUARDA_MAGIC, POISONA_FIELD, TRANSFORMA_MASK, CONFUSIONA_ILLUSION,
+FIRE_SHIELD…) plus la traîne. Parked-owner : danses (V5), MANADRY
+(PvP), STEALTHA_CHANGE (PvP) — 52 rangées.
+
+## Le reste (carte actualisée après s39)
+
+1. **Les trois amorces s39 ci-dessus** (lkdr redirection, garde
+   réactive à stun, résurrection mutilée) : une par session, taille
+   s34 chacune.
+2. **La traîne joueur (~270−15 rangées)** : les familles 2-5 de
+   l'histogramme, une à une après les trois lanes.
+3. **Décision owner de périmètre (nouveau s39)** : ~180 rangées
+   P2SKILL_INNATE (monstres d'arène/événement) gonflent le
+   dénominateur — la jouabilité joueur les exclut-elle du compte ?
+   (L'arène est V5.) Sans décision, elles restent dans le dénominateur
+   et le plafond de couverture joueur est ~88 %.
 4. **Danses de barde** (40 rangs) : le rythme 2026 — décision owner V5,
    jamais reçue ; sans preuve : pas d'implémentation.
 5. **MANADRY (10, parked-owner s31)** : PvP-seul — EnemyP sans EnemyM,
