@@ -389,6 +389,12 @@ func encodedPassiveParameters(fields []string) SkillPassiveParameters {
 			}
 			out.DamageReturn = rule
 		case 0x72657169, 0x7265716e: // reqi/reqn: row.Reqi
+		case 0x70736f67, 0x7265706c, 0x72706373:
+			// Extended content (isro-live-2026), port-only, not v1.150-native:
+			// the live client's added one-word riders (psog rides every 2026
+			// attack/defense row, repl and srpc the bard dances). The v1.150
+			// engine has no reader for them; tolerated so a live row pins
+			// through its setv blocks exactly as its native ancestor does.
 		default:
 			return SkillPassiveParameters{}
 		}

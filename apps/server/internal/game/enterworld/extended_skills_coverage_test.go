@@ -72,7 +72,21 @@ func skillCoveragePast90(t *testing.T, source *TextdataSkills) map[int]map[strin
 			bands[band]["chain-stage"] += 1
 			continue
 		}
+		// The production admission is the union of the compiled plan kinds
+		// and the runtime's own dispatch (resolveOffensiveSkill admits
+		// Periodic.Pinned rows; applySkillRecovery admits targeted heals,
+		// cures and lowest-ratio heals its shape flags pin). Measure what
+		// actually casts.
 		kind := kindName(source.plans[row.ID].kind)
+		if kind == "unsupported" && row.TimedEffect.Periodic.Pinned {
+			kind = "periodic"
+		}
+		if kind == "unsupported" && (row.Recovery.SelfFlatPinned || row.Recovery.PartyHealPinned ||
+			row.Recovery.LowestHealPinned || row.Recovery.PartyResurrectPinned || row.Recovery.HealOverTimePinned ||
+			row.Abnormal.CurePresent() ||
+			(row.Heal.Present && !row.Aura.Eshp && row.TargetRequired)) {
+			kind = "recovery"
+		}
 		if kind == "unsupported" {
 			// The unsupported split the M7 budget turns on: chain roots
 			// whose chain failed validation, versus plain rows no parser
@@ -125,7 +139,7 @@ func TestExtendedSkillsExecutionCoveragePastLevel90(t *testing.T) {
 			total += bandTotal
 			routed += bandRouted
 			summary := ""
-			for _, kind := range []string{"offense", "recovery", "instant", "passive", "timed", "position", "threat", "unsupported-unpinned", "unsupported-chain", "chain-stage"} {
+			for _, kind := range []string{"offense", "recovery", "instant", "passive", "timed", "periodic", "position", "threat", "unsupported-unpinned", "unsupported-chain", "chain-stage"} {
 				if counts[kind] > 0 {
 					summary += fmt.Sprintf(" %s=%d", kind, counts[kind])
 				}
