@@ -322,7 +322,24 @@ programmes exacts + drapeaux parsés :
 Chaque famille a maintenant sa lane nommée. Aucun rang basculé cette
 session (contexte) — les cibles s19+ sont prêtes.
 
-## Le reste (carte actualisée après s18)
+## Session 19 — WATER_HEAL : le mot de sélection admis, la seconde porte nommée
+
+Le vide natif mesuré : **9/9 rangées natives** avec `efr{forme 6,
+sélection 7}` sont WATER_HEAL elle-même (paliers D 1-90, jamais
+admis). Le mot de sélection 7 (0x04|0x02|0x01 = parti|personnages|
+lanceur) est admis dans `lowestHealProgram` avec l'inférence
+enregistrée. Mais le sondage suivant a nommé la porte suivante :
+`lowestHealProgram` PASSE maintenant — le refus est la porte
+d'enveloppe de `parseSkillRecovery` elle-même (`row.TargetRequired`
+→ return) : WATER_HEAL est un soin eshp **ciblé** (l'efr kind 1
+centré sur la cible primaire), une forme que le contrat recovery
+refuse par construction (ses spreads eshp sont non ciblés). La lane
+s20 : admettre le soin eshp ciblé-centre (efr kind 1 comme les
+aires offense) dans le parse + le dispatch runtime. Aucun rang
+basculé cette session (le mot admis est nécessaire mais la porte
+d'enveloppe reste).
+
+## Le reste (carte actualisée après s19)
 
 1. BINGPAN : la porte duration (preuve du vide natif d'abord).
 2. BINGBYEOK/HWABYEOK : forme timed onff/wp.
