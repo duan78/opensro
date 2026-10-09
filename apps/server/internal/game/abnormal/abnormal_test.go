@@ -704,3 +704,45 @@ func TestCurseRollVectors(t *testing.T) {
 		}
 	}
 }
+
+/*
+================
+TestRatioDebuffLivesAndExpiresWithoutASlot
+
+Extended content (isro-live-2026), port-only, not v1.150-native (M8
+s33): a slotless ratio write survives Update with no status slot, is
+replaced (not stacked) by a second application, and expires on its own
+clock - the ElectricShock arithmetic: remaining factor, factor-product
+channel, parameter 9.
+================
+*/
+func TestRatioDebuffLivesAndExpiresWithoutASlot(t *testing.T) {
+	var block Block
+	block.ApplyRatioDebuff(9, 10, 11_000)
+	if !block.HasTimedModifiers() {
+		t.Fatal("the slotless write is not live")
+	}
+	if writes := block.ModifiersFor(9); len(writes) != 1 || writes[0].Channel != ratioChannel ||
+		writes[0].Value != 10 || writes[0].Source != abnormalSource {
+		t.Fatalf("write: %+v", writes)
+	}
+	// A second application refreshes the one entry, never a stack.
+	block.ApplyRatioDebuff(9, 4, 12_000)
+	if writes := block.ModifiersFor(9); len(writes) != 1 || writes[0].Value != 4 || writes[0].Until != 12_000 {
+		t.Fatalf("refresh: %+v", writes)
+	}
+	owner := &fakeOwner{alive: true, monster: true, block: &block, now: 11_999}
+	if result := block.Update(owner, 11_999); result.Changed || !block.HasTimedModifiers() {
+		t.Fatalf("expired early: %+v %+v", result, block.ModifiersFor(9))
+	}
+	if result := block.Update(owner, 12_000); !result.Changed || block.HasTimedModifiers() {
+		t.Fatalf("did not expire: %+v %+v", result, block.ModifiersFor(9))
+	}
+	// The native writes carry no clock: Until zero never expires by itself.
+	var native Block
+	native.applyModifier(9, ratioChannel, abnormalSource, 50)
+	native.Update(owner, 1_000_000)
+	if !native.ModifiersFor(9)[0].Used || native.ModifiersFor(9)[0].Until != 0 {
+		t.Fatalf("a slot-owned write was touched: %+v", native.ModifiersFor(9))
+	}
+}

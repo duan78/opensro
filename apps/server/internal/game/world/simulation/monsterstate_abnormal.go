@@ -180,7 +180,9 @@ func (o *monsterAbnormalOwner) finish() {
 	if o.fx.SpeedChanged {
 		o.refreshMovementSpeed()
 	}
-	if !o.block.Active() && o.block.Mask == 0 {
+	// A live slotless ratio write (extended, M8 s33) keeps the block
+	// installed with no active status slot.
+	if !o.block.Active() && o.block.Mask == 0 && !o.block.HasTimedModifiers() {
 		o.instance.Abnormal = nil
 	}
 }
@@ -466,6 +468,53 @@ func (s *MonsterState) applyAbnormalLocked(input monsterAbnormalInput, hit abnor
 	state.queueAIEvents(instance.Gid, o.ai)
 	state.trackAbnormal(instance.Gid, instance.Abnormal)
 	return o.fx
+}
+
+// RatioWrite is one slotless timed ratio write installed on a monster
+// (extended, M8 s33): the parameter id and its remaining factor.
+/*
+================
+RatioWrite
+================
+*/
+type RatioWrite struct {
+	Param            uint16
+	RemainingPercent float32
+	Until            int64
+}
+
+/*
+==================
+ApplyRatioDebuff
+
+Extended content (isro-live-2026), port-only, not v1.150-native (M8
+s33): install slotless timed ratio writes on one living monster. The
+block the writes live in keeps the abnormal tick alive through
+trackAbnormal, so Update expires them on their own clock.
+==================
+*/
+func (s *MonsterState) ApplyRatioDebuff(division string, gid uint32, writes []RatioWrite) bool {
+	if len(writes) == 0 {
+		return false
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	state := s.populationForObject(division, gid)
+	instance, ok := state.instances.lookup(gid)
+	if !ok || instance.CurrentHP == 0 {
+		return false
+	}
+	var block abnormal.Block
+	if instance.Abnormal != nil {
+		block = *instance.Abnormal
+	}
+	for _, write := range writes {
+		block.ApplyRatioDebuff(write.Param, write.RemainingPercent, write.Until)
+	}
+	instance.Abnormal = &block
+	state.instances.set(gid, instance)
+	state.trackAbnormal(gid, instance.Abnormal)
+	return true
 }
 
 /*

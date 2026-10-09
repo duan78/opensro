@@ -34,7 +34,10 @@ Modifier
 
 Modifier is one parameter-keeper write owned by the abnormal block.
 Channel follows paramkeeper (0 flat, 1 percent sum, 2 percent product,
-3 factor product); Source is the native source key (5 for abnormal state).
+3 factor product); Source is the native source key (5 for abnormal
+state). Until is the slotless expiry instant (ms): zero marks a write
+whose lifetime a status slot owns, exactly as before; nonzero is the
+extended ratio debuff's own clock (M8 s33), expired by Update.
 ==================
 */
 type Modifier struct {
@@ -43,11 +46,16 @@ type Modifier struct {
 	Channel uint8
 	Source  uint32
 	Value   float32
+	Until   int64
 }
 
 // MaxModifiers bounds the fixed modifier table. Every status installs at
 // most three writes; all 23 statuses fit well below this bound.
 const MaxModifiers = 48
+
+// ratioChannel is the factor-product channel of the slotless ratio cut,
+// the channel ElectricShock's native evasion write uses (callbacks.go:97).
+const ratioChannel uint8 = 3
 
 // Block is tagAbnormalStateBlock. It is a plain value: owners store it in
 // their snapshot and copy it without aliasing.
@@ -89,9 +97,9 @@ Has
 func (b *Block) Has(s Status) bool { return b.Slots[s].Active }
 
 /*
-================
+==================
 applyModifier
-================
+==================
 */
 func (b *Block) applyModifier(param uint16, channel uint8, source uint32, value float32) {
 	free := -1
@@ -109,6 +117,74 @@ func (b *Block) applyModifier(param uint16, channel uint8, source uint32, value 
 		panic("abnormal: modifier table exhausted")
 	}
 	b.Modifiers[free] = Modifier{Used: true, Param: param, Channel: channel, Source: source, Value: value}
+}
+
+/*
+==================
+ApplyRatioDebuff
+
+Extended content (isro-live-2026), port-only, not v1.150-native (M8
+s33): a ratio cut owned by the block alone - no status slot, no mask
+bit - with its own expiry clock. The write is the remaining factor
+(cut 90 stores 10) in the factor-product channel, the arithmetic
+ElectricShock's evasion cut uses natively (callbacks.go:97). A second
+application of the same parameter refreshes the one entry: one live
+cut per parameter per source, never a stack. Inference recorded
+2026-10-09; the void proof is the field's own emptiness - no native
+writer exists, so Until stays zero for every native write.
+==================
+*/
+func (b *Block) ApplyRatioDebuff(param uint16, remainingPercent float32, until int64) {
+	free := -1
+	for i := range b.Modifiers {
+		m := &b.Modifiers[i]
+		if m.Used && m.Param == param && m.Channel == ratioChannel && m.Source == abnormalSource {
+			m.Value, m.Until = remainingPercent, until
+			return
+		}
+		if !m.Used && free < 0 {
+			free = i
+		}
+	}
+	if free < 0 {
+		panic("abnormal: modifier table exhausted")
+	}
+	b.Modifiers[free] = Modifier{Used: true, Param: param, Channel: ratioChannel, Source: abnormalSource, Value: remainingPercent, Until: until}
+}
+
+// HasTimedModifiers reports a live slotless write: the block stays
+// installed with no active slot while one remains.
+/*
+================
+HasTimedModifiers
+================
+*/
+func (b *Block) HasTimedModifiers() bool {
+	for i := range b.Modifiers {
+		if b.Modifiers[i].Used && b.Modifiers[i].Until != 0 {
+			return true
+		}
+	}
+	return false
+}
+
+/*
+================
+expireTimedModifiers
+
+Retire the slotless writes whose clock passed. Update owns the call.
+================
+*/
+func (b *Block) expireTimedModifiers(now int64) bool {
+	expired := false
+	for i := range b.Modifiers {
+		m := &b.Modifiers[i]
+		if m.Used && m.Until != 0 && now >= m.Until {
+			*m = Modifier{}
+			expired = true
+		}
+	}
+	return expired
 }
 
 // removeModifier removes every channel entry of one source (4B31A0).
@@ -204,7 +280,13 @@ also wakes sleep and root, and breaks stun with a 25 % roll.
 ==================
 */
 func (b *Block) Update(o Owner, now int64) Result {
+	// The slotless ratio writes expire on their own clock even when no
+	// status slot is active (extended, M8 s33).
+	expired := b.expireTimedModifiers(now)
 	if b.Mask == 0 {
+		if expired {
+			return Result{Changed: true}
+		}
 		return Result{}
 	}
 	var mask uint32
@@ -242,7 +324,7 @@ func (b *Block) Update(o Owner, now int64) Result {
 		}
 		callback(b, o, 1, slot)
 	}
-	if !flagged && b.Mask == mask {
+	if !flagged && b.Mask == mask && !expired {
 		return Result{}
 	}
 	b.Mask = mask
