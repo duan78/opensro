@@ -550,6 +550,23 @@ RAZEA INT/STR/PHYSICAL (certains tiers), STEALTHA_CHANGE,
 BATTLAA_GUARD, GUARDA_PHYSICAL, REBIRTHA_SPECIAL — plus les P2SKILL/
 INNATE (rangées d'arène/innées) et les danses (owner V5).
 
+## Amorce s31 — MANADRY sondé (résultats du probe, l'implémentation reste à faire)
+
+Sondé en fin de nuit 30 (probe effacé) : **les 10 tiers natifs
+(A_01–A_08, B_01–B_02, maîtrises 16–86) sont AUSSI non-admis** —
+famille frontière-moteur, pas un écart étendu. L'admission devra donc
+porter le plancher maîtrise ≥ 91 (motif s28) : les rangées natives ne
+doivent pas basculer. Formes mesurées : A_10 (maîtrise 106) =
+`pmsc[30000,80,11,50,50,5] tnat[4519] getv(1464421700)
+getv(1464422997)`, f68=0 (handler instant), effectDur=0, ciblé ;
+B_07 (136) mène par `efr[1,2,80,3,0,8]` (aire, 3 cibles, select 8)
+avant le même corps. Les deux getv sont les clés que le trap
+compileCombatPtrap connaît déjà. pmsc[0]=30000 porte la durée (30 s)
+dans le programme, pas dans l'enveloppe ; tnat porte le montant par
+palier. C'est un VRAI lane runtime (drain MP périodique sur la cible
++ restitution au lanceur) : parser + exécuteur + preuves du vide —
+budget d'une session entière, pas une queue de nuit.
+
 ## Le reste (carte actualisée après s30)
 
 1. MANADRY (10) : drain de mana ciblé `pmsc tnat getv×2` (bandes
