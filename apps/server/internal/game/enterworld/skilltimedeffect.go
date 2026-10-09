@@ -32,6 +32,7 @@ const (
 	tagTimedLinkedDamage       = 0x6c6b6468
 	tagTimedLinkedRedirect     = 0x6c6b6472
 	tagTimedStunOverride       = 0x61626e62
+	tagTimedLinkedDisperse     = 0x6c6b6464
 	tagTimedHPRecovery         = 0x63686372
 	tagTimedMPRecovery         = 0x636d6372
 	tagTimedStateChange        = 0x6d736368
@@ -302,6 +303,10 @@ type SkillEffectLink struct {
 	Redirect        bool
 	RedirectMask    uint32
 	RedirectPercent uint32
+	// Disperse is lkdd: the share of the recipient's TAKEN damage spread
+	// evenly among all party members (the CH weapon lines' divide, M8 s48).
+	Disperse        bool
+	DispersePercent uint32
 	// StunGuard is the extended reactive stun link past the cap (M8 s43):
 	// while the link holds, an attacker of the covered member below
 	// CeilingLevel rolls the st block. Inferences recorded in the walk.
@@ -390,6 +395,9 @@ func parseSkillTimedEffect(fields []string, row *SkillRow) {
 	// The one targeted shape is Required+Animal+Ally+Party with a range.
 	// Self (column 26) may join it.
 	targeted := fields[21] != "0" && fields[22] == "1" && fields[23] == "1" && fields[27] == "1" && fields[28] == "1"
+	// partyTargeted is the live divide rows' narrower shape (M8 s48):
+	// the party column without the ally column.
+	partyTargeted := fields[21] != "0" && fields[22] == "1" && fields[23] == "1" && fields[28] == "1"
 	var result SkillTimedEffect
 	program, err := CompileSkillProgram(fields)
 	if err != nil {
@@ -435,6 +443,11 @@ func parseSkillTimedEffect(fields []string, row *SkillRow) {
 	for _, col := range []int{15, 16, 17, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 56} {
 		if targeted && (col == 21 || col == 22 || col == 23 || col == 26 || col == 27 || col == 28) {
 			continue
+		}
+		if partyTargeted && (col == 21 || col == 22 || col == 23 || col == 28) {
+			continue // the divide rows' own target words: range, required,
+			// animal and party (the ally column stays refused - only the
+			// native shape authors it)
 		}
 		if targeted && damageLink && (col == 29 || col == 30) {
 			continue
@@ -597,9 +610,13 @@ func parseSkillTimedEffect(fields []string, row *SkillRow) {
 			// (M8 s43): the live SOULA_STUNLINK tiers author an ANONYMOUS
 			// link (group 0) - the native contract demands a group; the
 			// tolerance carries the mastery floor, so no native row rides it.
-			anonymous := op.Count == 4 && op.Arguments[0] == 0 && (textdataNonNegative(fields[skilldataColReqMasteryLv1]) >= extendedPastCapMastery ||
-				textdataNonNegative(fields[skilldataColReqMasteryLv2]) >= extendedPastCapMastery)
-			if result.Link.Present || op.Count != 4 || !targeted || op.Arguments[0] == 0 && !anonymous {
+			// The live divide rows (M8 s48) target the party WITHOUT the ally
+			// column (the native guard shape authors both): the anonymous
+			// tolerance admits that narrower shape too, still under the floor.
+			anonymous := op.Count == 4 && op.Arguments[0] == 0 && partyTargeted &&
+				(textdataNonNegative(fields[skilldataColReqMasteryLv1]) >= extendedPastCapMastery ||
+					textdataNonNegative(fields[skilldataColReqMasteryLv2]) >= extendedPastCapMastery)
+			if result.Link.Present || op.Count != 4 || !targeted && !anonymous || op.Arguments[0] == 0 && !anonymous {
 				return
 			}
 			result.Link = SkillEffectLink{Present: true, Group: op.Arguments[0], MaxDistance: op.Arguments[1], MaxOutgoing: op.Arguments[2], Board: op.Arguments[3]}
@@ -627,6 +644,22 @@ func parseSkillTimedEffect(fields []string, row *SkillRow) {
 			}
 			linkDamage = true
 			linkDamageWords = [3]uint32{op.Arguments[0], op.Arguments[1], op.Arguments[2]}
+		case tagTimedLinkedDisperse:
+			// Extended content (isro-live-2026), port-only, not v1.150-native
+			// (M8 s48): lkdd {percent} - the live DAMAGE_DIVIDE tiers past the
+			// cap disperse the connected member's taken damage evenly among
+			// all party members ("the damage received by the connected target
+			// is dispersed among all party members"). The anonymous-link
+			// tolerance (s43) admits these rows' group-0 lnks; the floor keeps
+			// every native row out, void by construction as the redirect.
+			if !result.Link.Present || result.Link.Disperse || op.Count != 1 ||
+				op.Arguments[0] == 0 || op.Arguments[0] > 100 ||
+				textdataNonNegative(fields[skilldataColReqMasteryLv1]) < extendedPastCapMastery &&
+					textdataNonNegative(fields[skilldataColReqMasteryLv2]) < extendedPastCapMastery {
+				return
+			}
+			result.Link.Disperse = true
+			result.Link.DispersePercent = op.Arguments[0]
 		case tagTimedLinkedRedirect:
 			// Extended content (isro-live-2026), port-only, not v1.150-native
 			// (M8 s41): lkdr {laneMask, sharePercent, 0} - the live GUARDA
@@ -869,7 +902,7 @@ func parseSkillTimedEffect(fields []string, row *SkillRow) {
 	}
 	result.Pinned = duration && (attributes || defense || movement || result.Block.Present || result.Strength.Present ||
 		result.Intellect.Present || result.IncomingReduction || result.HitRate || result.Range || result.Hawk.Present ||
-		result.Link.Present && (result.Link.Threat || result.Link.Mana || result.Link.Redirect || result.Link.StunGuard.Present) || result.Preemptive.Present ||
+		result.Link.Present && (result.Link.Threat || result.Link.Mana || result.Link.Redirect || result.Link.Disperse || result.Link.StunGuard.Present) || result.Preemptive.Present ||
 		result.DamageReturn.Present || result.Evasion.Present || result.Stance.Present || result.Recovery.Present ||
 		result.DamageToMP || result.Reat.Mask != 0 || result.Real.Mask != 0)
 	result.Targeted = targeted

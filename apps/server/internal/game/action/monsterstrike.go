@@ -142,6 +142,10 @@ func (rt *Runtime) monsterStrikePlayer(in monsterStrikeInput, character, snapsho
 	// redirect link's share BEFORE the commit; a strike that never lands
 	// diverts nothing (the debits wait for the commit).
 	redirects := rt.scaleLinkedRedirect(divisionID, character, &strike, nowMs)
+	// Extended (isro-live-2026, M8 s48): the lkdd disperse link - the
+	// victim's share spreads evenly among the party once the strike
+	// commits, exactly as the redirect feeds the warrior.
+	dispersions := rt.scaleLinkedDisperse(divisionID, character, &strike, nowMs)
 	var struck playerStruck
 	committed := rt.deps.Update(character, "monster-basic-attack", func() bool {
 		// The detached admission snapshot can predate a status transition.
@@ -168,6 +172,9 @@ func (rt *Runtime) monsterStrikePlayer(in monsterStrikeInput, character, snapsho
 	}
 	for _, debit := range redirects {
 		rt.commitLinkedRedirect(divisionID, debit, nowMs)
+	}
+	for _, share := range dispersions {
+		rt.commitLinkedDisperse(divisionID, character, share, nowMs)
 	}
 	// Extended content (isro-live-2026), port-only, not v1.150-native
 	// (M8 s43): the reactive stun guard rolls on the attacker once the

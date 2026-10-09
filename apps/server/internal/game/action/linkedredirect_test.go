@@ -74,3 +74,43 @@ func TestLinkedRedirectScalesMaskedLaneAndDebitsWarrior(t *testing.T) {
 		t.Fatalf("the protector died to a redirect: %d", enterworld.CurrentHP(warrior))
 	}
 }
+
+/*
+================
+TestLinkedDisperseSpreadsTheShareAmongParty
+
+Extended content (isro-live-2026), port-only, not v1.150-native (M8
+s48): the lkdd link scales the victim's formulas down by its share and
+spreads the dispersed amount evenly among the other party members -
+each held at one HP (the recorded v1 boundary).
+================
+*/
+func TestLinkedDisperseSpreadsTheShareAmongParty(t *testing.T) {
+	rt, clock, c, _ := newCombatTestRuntime(t, 1000)
+	mate1 := nearbyCharacter(rt, c, 31, "mate1", 30)
+	mate2 := nearbyCharacter(rt, c, 32, "mate2", 60)
+	hp1, hp2 := int64(100000), int64(100000)
+	mate1.CurrentHP, mate2.CurrentHP = &hp1, &hp2
+	gids := []uint32{enterworld.ObjectIDForCharacter(c), enterworld.ObjectIDForCharacter(mate1), enterworld.ObjectIDForCharacter(mate2)}
+	rt.RewardParties = func(string) []RewardParty { return []RewardParty{{Members: gids}} }
+	now := clock.NowMs()
+	if code := rt.effects.ApplyLink(statuseffect.Link{
+		DivisionID: testDivision, SourceName: mate1.Name, TargetName: c.Name,
+		SourceGID: enterworld.ObjectIDForCharacter(mate1), TargetGID: enterworld.ObjectIDForCharacter(c),
+		SourceToken: 1, TargetToken: 2, SkillID: 100, SkillGroup: 9, Group: 0,
+		Disperse: true, DispersePercent: 50,
+		ExpiresAtMs: now + 300_000, StartedAtMs: now,
+	}); code != 0 {
+		t.Fatalf("ApplyLink refused: %x", code)
+	}
+	strike := playerStrike{division: testDivision, victim: c, now: now}
+	strike.formulas = []combat.Result{{Damage: 1000}}
+	shares := rt.scaleLinkedDisperse(testDivision, c, &strike, now)
+	if len(shares) != 1 || shares[0].amount != 500 || strike.formulas[0].Damage != 500 {
+		t.Fatalf("shares %+v formulas %+v", shares, strike.formulas)
+	}
+	rt.commitLinkedDisperse(testDivision, c, shares[0], now)
+	if hp1 != 100000-250 || hp2 != 100000-250 {
+		t.Fatalf("members hp %d %d, want 250 each", hp1, hp2)
+	}
+}
