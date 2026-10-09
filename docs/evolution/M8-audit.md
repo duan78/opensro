@@ -1073,11 +1073,40 @@ encore dans les échantillons non-admis), (b) le mécanisme rmut
 d'expiration. Deux sessions de machinerie mort-résurrection pour deux
 rangées — derrière elle ne reste que la traîne (~245).
 
-## Le reste (carte actualisée après s44)
+## Session 45 (ouverture) — la carte REBIRTHA révisée : la famille est à 90 % faite par les lanes existants
 
-1. **REBIRTHA_SPECIAL (2)** : amorce s44 ci-dessus — entièrement
-   décodée (rmut=10276 vérifié, les cinq mots de l'état nommés) ;
-   deux sessions de machinerie. Puis la traîne joueur (~245).
+Sondage d'ouverture (probe effacé) — deux découvertes majeures :
+
+1. **B_02 est DÉJÀ admise et comptée** : `admitted=true` — la
+   résurrection ciblée vit depuis toujours par le chemin
+   Abnormal.AdmitDeadParty + Heal (resu{120,30} = plafond 120, EXP
+   30 %). Sixième correction de carte : la famille n'a jamais été « 2
+   rangées à livrer » mais UNE (l'aura).
+2. **Le mécanisme rmut est entièrement porté** : resurrection.go
+   implémente la proposition 0x3393 type 8 (la REBIRTH_MUTATION box)
+   et le « revive… then start the rmut skill » de 46CB30 — B_02
+   ressuscite sa cible et DÉMARRE le skill 10276 par la machinerie
+   existante. Le seul trou : le skill 10276 (l'aura d'âme mutilée)
+   n'est pas admis — démarré, il ne s'installe pas.
+
+**Le travail restant, révisé à la demi-session** : l'admission de
+B_BUFF_02 dans le walk timed — `dura ✓ odar ✓(IncomingReduction)
+pmdg ✓(DamagePenalty 50/50)` passent DÉJÀ ; manquent cinq cas de
+mots : **hpi{0,75}** (PV max +75 % — paramètre 3 en percent, le
+lane item est le précédent), **chrch{50}/crmc{50}** (récupérations
+HP/MP +50 — paramètres 25/26 en flat), **msch{4,0}** (le mot de
+changement d'état — rider ici), **cks{0,18,0}** (le mot de clé de
+cast — rider), et **la chute HP/PM à l'expiration** (« drastically »
+sans nombre dans le tooltip — inférence à enregistrer ; le clamp
+d'expiration du lane item est le précédent). Plancher ≥91 requis
+(les BUFF_01/02 natives ≤90 authorisent la même forme).
+
+## Le reste (carte actualisée après s45)
+
+1. **REBIRTHA_SPECIAL — l'aura seule (1 rangée, demi-session)** :
+   voir la révision s45 — B_02 admise, rmut porté ; restent cinq cas
+   de mots (hpi/chrch/crmc/msch/cks) + la chute d'expiration.
+   Puis la traîne joueur (~245).
 2. **La traîne joueur (~270−15 rangées)** : les familles 2-5 de
    l'histogramme, une à une après les trois lanes.
 3. **Décision owner de périmètre (nouveau s39)** : ~180 rangées
