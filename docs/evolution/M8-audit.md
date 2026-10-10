@@ -1437,12 +1437,43 @@ natif (la famille ≤90 n'épingle pas).
 **Couverture : 84,5 → 84,6 %** (2540/3002, +3 exact) ; joueur
 2112/2146 (98,5 %). Reste livrable : 29 rangées.
 
-## Le reste (carte actualisée après s56)
+## Amorces s57 — SPELLP et MINDP_MAINTAIN mesurés jusqu'au bout
 
-1. **FAIT (s47-s56)** : dix grappes livrées/comptées/reclassées.
-   Reste livrable : 29 rangées (CONFUSIONA_ILLUSION 5, MINDP_MAINTAIN
-   2, SPELLP 2, singles ~10) ; parked : PvP 15, danses 2 ; arène ~379
-   (owner).
+**SPELLP_PARTY_HWAN_UP = « Aura of Blood » (2 rangées, m=124/134)** :
+`dura[300000] efr{1,1,300,8,0,5} heal{30|35,0,0,0}` — une aura de
+groupe de 5 minutes (rayon 300, 8 cibles, select party+casteur) avec
+un bloc heal à mot unique. **AUCUN TT_DESC n'existe pour cette rangée
+dans le texte client** (seul le nom s'y trouve) — le nom HWAN_UP et
+les chaînes mall « Pill » pointent vers une hausse de l'effet des
+pilules HP ; la sémantique exacte (30 % de récupération de potion ?
+30 plat par … ?) est INDÉTERMINÉE par les preuves disponibles. Le
+chemin d'aire existe (le walk timed, l'install par destinataire) ;
+manque le cas heal dans le walk + le consommateur du côté des
+potions. INFÉRENCE À NE PAS INVENTER : livrer exige de trancher la
+sémantique du mot — question owner ou preuve binaire.
+
+**MINDP_MAINTAIN (2 rangées, m=95/120)** : `setv{DRIR 0x44524952,
+80|100, 0} hwir{275|300} reqi{6,10}` — handler 4 passif. Le tooltip :
+« attack time longer + gain berserker energy better with Dark
+Mentalist skills ». DEUX consommateurs : (1) **hwir = l'énergie
+berserk par cast** — la machinerie berserk existe (BerserkPoints,
+grantBerserkForKill) ; il faut le hook par-cast borné à la ligne
+Dark Mentalist (l'identification de la ligne = par maîtrise) ;
+(2) **DRIR = l'allongement du temps d'attaque** — de l'ENNEMI
+contrôlé (le « mind control » du tooltip) : un consommateur dans
+l'intervalle d'attaque du monstre, ancrage flou (quels monstres,
+quand, quelle mesure). Livrable proprement moitié par moitié : hwir
+exécuté, DRIR porté non-exécuté (le précédent DSCR) avec la borne
+enregistrée — une session honnête.
+
+## Le reste (carte actualisée après s57)
+
+1. **FAIT (s47-s57)** : dix grappes livrées ; SPELLP et
+   MINDP_MAINTAIN amorcés s57 (sémantiques mesurées, les questions
+   nommées). Reste livrable : 29 rangées (CONFUSIONA_ILLUSION 5
+   [par spectateur], MINDP_MAINTAIN 2 [hwir exécutable, DRIR porté],
+   SPELLP 2 [sémantique du mot à trancher — owner ou binaire],
+   singles ~10) ; parked : PvP 15, danses 2 ; arène ~379 (owner).
 2. **La traîne joueur (~270−15 rangées)** : les familles 2-5 de
    l'histogramme, une à une après les trois lanes.
 3. **Décision owner de périmètre (nouveau s39)** : ~180 rangées
