@@ -51,6 +51,39 @@ export function monsterMaximumHp( entity: EntityState ) {
 }
 // 5814d0 selects one child, centers its actual width and uses y=7. Child
 // layout mutations are values; authored resources remain immutable.
+// The TypeID word: TID1 in bits 2..4, TID2 in 5..6, TID3 in 7..10 and TID4
+// from bit 11, so the low mask holds TID1..TID3.
+const TID_LOW_MASK = 0x7fc;
+const TID_1_2_4 = 0x244;
+const TID_1_2_5 = 0x2c4;
+// iftw_fortressstructure.txt's window after 516BC0 resizes it: the root
+// 236x51 (the frame's authored UVs span 236 texels), HP 195x4, name 177x12.
+const FORTRESS_TARGET_WIDTH = 236;
+const FORTRESS_TARGET_GAUGE_WIDTH = 195;
+const FORTRESS_TARGET_NAME_WIDTH = 177;
+
+/*
+================
+fortressTargetKind
+
+CIFTargetStatusPanel_UpdateContent (5814D0) gives these targets the
+fortress-structure window (layout kind +0x384) instead of the creature one:
+a guard NPC (1/2/4/4 or 1/2/4/1) kind 1, a barricade structure (1/2/5/6)
+kind 2, a fortress-war object (1/2/4/3) kind 3. Zero for every other target.
+================
+*/
+export function fortressTargetKind( entity: Pick<EntityState, "kind" | "tidWord"> ): number {
+	const tid = entity.tidWord ?? 0, low = tid & TID_LOW_MASK, tid4 = tid >>> 11;
+	if ( entity.kind === "structure" ) {
+		if ( low === TID_1_2_5 && tid4 === 6 ) return 2;
+		if ( low === TID_1_2_4 && tid4 === 3 ) return 3;
+	} else if ( entity.kind === "npc" && low === TID_1_2_4 ) {
+		if ( tid4 === 4 || tid4 === 1 ) return 1;
+		if ( tid4 === 3 ) return 3;
+	}
+	return 0;
+}
+
 /*
 ================
 targetStatus
@@ -69,6 +102,7 @@ export function targetStatus(
 		texts: { node: AuthoredControl; value: string; }[] = [];
 	const roots = layouts.iftargetwindow!;
 	let width = 196, height = 51, frame = roots.GDR_TW_COMMONENEMY!, gradeIcon = previousGradeIcon;
+	let remove: AuthoredControl | undefined;
 	/*
  ================
  change
@@ -143,7 +177,32 @@ export function targetStatus(
 				put( p.GDR_TWJP_JOB_GRADE!, grade + copy( "UIIT_STT_GRADE" ) );
 			}
 		}
-	} else if ( entity.kind === "npc" || entity.kind === "cos" ) {
+	} else if ( fortressTargetKind( entity ) ) {
+		// 516BC0 resizes the fortress-structure child; 5814D0 gives a structure
+		// the normal gem and a guard NPC the player gem.
+		const p = layouts.iftw_fortressstructure!;
+		width = FORTRESS_TARGET_WIDTH;
+		frame = roots.GDR_TW_FORTRESSSTRUCTER!;
+		images.push( {
+			node: texture(
+				p.GDR_TWFS_GEM!,
+				"targetwindow/tw_gem_" + (entity.kind === "structure" ? "normal" : "player")
+			)
+		} );
+		put( change( p.GDR_TWFS_TEXT_ID!, { rect: [ 34, 10, FORTRESS_TARGET_NAME_WIDTH, 12 ] } ), entity.name );
+		// OnCreate (517250) gives the delete button the dark close glyph; the
+		// caller shows it when 516BC0's eligibility allows (fortressDeleteAction).
+		remove = texture( p.GDR_TWFS_D_BUTTON!, "ifcommon/com_d_windowclose" );
+		if ( hp !== undefined && entity.maxHp ) {
+			images.push( {
+				node: change( p.GDR_TWFS_GAUGE_HPGAUGE!, { rect: [ 14, 37, FORTRESS_TARGET_GAUGE_WIDTH, 4 ] } ),
+				fraction: Math.max( 0, Math.min( 1, hp / entity.maxHp ) )
+			} );
+		}
+	} else if ( entity.kind === "npc" || entity.kind === "cos" || entity.kind === "structure" ) {
+		// A structure (CICATStruct, BB0EE0) is a CICNonuser beside CICNPC, not
+		// one: 5823B0's NPC cast fails and it takes the standard frame, while
+		// 5814D0's ATStruct arm gives it the normal gem.
 		const p = layouts.iftw_commonenemy!,
 			flags = entity.tidWord ?? 0,
 			compact = entity.kind === "cos" && (flags & 0x7fe) === 0x1c6 && [ 3, 4, 5 ].includes( flags >>> 11 );
@@ -161,7 +220,11 @@ export function targetStatus(
 			frame = change( frame, { uv: [ .53027302, .644531012, .721678972 - .53027302, .714842975 - .644531012 ] } );
 		}
 		images.push( {
-			node: texture( p.GDR_TWCE_GEM!, "targetwindow/tw_gem_" + (entity.kind === "cos" ? "animal" : "player") )
+			node: texture(
+				p.GDR_TWCE_GEM!,
+				"targetwindow/tw_gem_" +
+					(entity.kind === "cos" ? "animal" : entity.kind === "structure" ? "normal" : "player")
+			)
 		} );
 		put( change( p.GDR_TWCE_TEXT_ID!, { rect: [ 34, 10, nameWidth, 12 ] } ), entity.name );
 		if ( !compact && hp !== undefined && entity.maxHp ) {
@@ -177,7 +240,7 @@ export function targetStatus(
 		texture: root + "ifcommon/com_windowclose.png",
 		uv: [ 0, 0, 1, 1 ]
 	} );
-	return { width, height, images, texts, close, gradeIcon };
+	return { width, height, images, texts, close, gradeIcon, ...(remove ? { remove } : {}) };
 }
 
 const COMPACT_TARGET_WIDTH = 196;
