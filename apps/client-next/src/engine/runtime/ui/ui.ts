@@ -6117,6 +6117,29 @@ export function createUi(
 					dirty = true;
 					return;
 				}
+				// Ctrl+click moves an item across the open pet bag as To Pet / From
+				// Pet do with no slot chosen, so the worker picks the destination
+				// (cosQuickDestination); the bag side is the inventory window's
+				// slot: rows, as the Alt+click sibling reads them. Port-only, not
+				// native: the warehouse rule extended to the pet (owner decision
+				// 2026-10-10).
+				if (
+					event.ctrl && panel === "COS inventory" && view?.gameplay &&
+					(event.id.startsWith( "cos-slot:" ) ||
+						event.id.startsWith( "slot:" ) &&
+							Number( event.id.slice( 5 ) ) >= (view.gameplay.equipmentSlotCount ?? 13))
+				) {
+					const toCos = event.id.startsWith( "slot:" ),
+						slot = Number( event.id.slice( event.id.indexOf( ":" ) + 1 ) );
+					inventorySlot = toCos ? slot : -1;
+					cosSlot = toCos ? -1 : slot;
+					activate( toCos ? "to-cos" : "from-cos" );
+					carriedItem = null;
+					inventorySlot = -1;
+					cosSlot = -1;
+					dirty = true;
+					return;
+				}
 				// Ctrl+click puts a bag item into the open alchemy window as
 				// double-click does: port-only, not native (owner decision 2026-10-10).
 				if ( event.ctrl && panel === "Alchemy" && event.id.startsWith( "slot:" ) ) {
