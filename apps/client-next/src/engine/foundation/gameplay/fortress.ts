@@ -12,6 +12,13 @@ the fortress official's protocol: 0x71E1 requests
 
 ===========================================================================
 */
+import {
+	FORTRESS_ROLE_COMMANDER,
+	type FortressForgeItem,
+	type FortressProductionState,
+	fortressForgeCatalog,
+	fortressProductionSnapshot
+} from "./fortress-production";
 import type { WireFrame } from "@/engine/contracts/network";
 import type { SystemNotice } from "./system-notices";
 import {
@@ -91,6 +98,9 @@ export interface FortressState {
 	readonly worldId: number;
 	readonly worlds: readonly { id: number; code: string; }[];
 	readonly fortresses: readonly FortressRow[];
+	// The smith's and trainer's producible items (fortress-production.ts).
+	readonly forge?: readonly FortressForgeItem[];
+	readonly production?: FortressProductionState;
 	readonly wars: readonly {
 		id: number;
 		name: string;
@@ -149,7 +159,7 @@ export function fortressBootstrap( value: unknown ): FortressState {
 	if ( !Number.isInteger( worldId ) || worldId < 0 || worldId > 0xffffffff ) {
 		throw Error( "Invalid packed fortress world" );
 	}
-	return { worldId, worlds, fortresses, wars: [], registered: [], listId: 0 };
+	return { worldId, worlds, fortresses, forge: fortressForgeCatalog( value ), wars: [], registered: [], listId: 0 };
 }
 
 const FORTRESS_TIMER_PERIOD_MS = 1000;
@@ -171,6 +181,12 @@ export function fortressPacket( state: FortressState, frame: WireFrame, now = 0 
 				...state,
 				service,
 				serviceSequence: (state.serviceSequence ?? 0) + 1,
+				production: fortressProductionSnapshot(
+					state.production,
+					service,
+					(state.serviceSequence ?? 0) + 1,
+					now
+				),
 				...(service.result === 1 && (service.action === 3 || service.action === 4) ?
 					{ staffFlags: service.flags } :
 					{})
@@ -423,7 +439,6 @@ export const FORTRESS_DISMISS = 0x16;
 export const FORTRESS_DEMOLISH = 0x17;
 // Guild member fortress roles; 827DB0, 827DE0 and 827E10 compare the
 // member's role (+0x5C) for equality.
-const ROLE_COMMANDER = 1;
 const ROLE_SUB_COMMANDER = 2;
 const ROLE_BATTLE_COMMANDER = 4;
 
@@ -450,7 +465,7 @@ export function fortressDeleteAction( kind: number, context: {
 	readonly ownObject: boolean;
 } ): number {
 	const { war, holder, role, ownObject } = context;
-	const commander = role === ROLE_COMMANDER, battle = role === ROLE_BATTLE_COMMANDER;
+	const commander = role === FORTRESS_ROLE_COMMANDER, battle = role === ROLE_BATTLE_COMMANDER;
 	if ( kind === 1 && !war && holder && (commander || battle) ) return FORTRESS_DISMISS;
 	if ( kind === 2 && war && holder && (commander || role === ROLE_SUB_COMMANDER || battle) ) return FORTRESS_DEMOLISH;
 	if ( kind === 3 && war && commander && ownObject ) return FORTRESS_DISMISS;

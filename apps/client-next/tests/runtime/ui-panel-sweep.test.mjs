@@ -19,6 +19,8 @@ import assert from "node:assert/strict";
 import { uiFixture } from "../helpers/ui-fixture.mjs";
 const { uiPanels } = await import( "../../src/engine/foundation/ui/panels.ts" );
 const { emptyStall, stallRequest } = await import( "../../src/engine/foundation/gameplay/stall.ts" );
+const { fortressPacket } = await import( "../../src/engine/foundation/gameplay/fortress.ts" );
+const { fortressProductionQuery } = await import( "../../src/engine/foundation/gameplay/fortress-production.ts" );
 
 const OFFICIAL = 17;
 // A type word isGlobalChatItem accepts (global-chat.ts): TID 3/3/5/2.
@@ -146,6 +148,30 @@ const OPENERS = {
 			serviceSequence: 1,
 			service: { action: 0, result: 1, fortress: 1, taxRate: 10, gold: "1234" }
 		};
+	},
+	"Fortress production"( f, step ) {
+		// The trainer's row queries; the answer opens the window (754A40 0x11).
+		talkTo( f );
+		Object.assign( f.state.gameplay, {
+			targetCapabilities: 0x4000000,
+			fortressForge: [ { refObjId: 9001, gold: 1, gp: 1, minutes: 1, staff: "trainer", name: "Cart" } ],
+			fortress: {
+				...f.state.gameplay.fortress,
+				worldId: 7,
+				worlds: [ { id: 7, code: "FORTRESS_JANGAN" } ],
+				fortresses: [ { id: 1, code: "FORTRESS_JANGAN", nameStrId: "FORTRESS_NAME", taxTargets: 63 } ],
+				wars: [],
+				registered: [],
+				serviceSequence: 0
+			}
+		} );
+		step();
+		f.ui.event( { kind: "activate", id: "npc-fortress-production:trainer" } );
+		f.state.gameplay.fortress.production = fortressProductionQuery( undefined, "trainer", 1, 1 );
+		f.state.gameplay.fortress = fortressPacket( f.state.gameplay.fortress, {
+			opcode: 0xb1e1,
+			payload: Uint8Array.from( [ 0x11, 1, 1, 0, 0, 0, 0 ] )
+		} );
 	}
 };
 

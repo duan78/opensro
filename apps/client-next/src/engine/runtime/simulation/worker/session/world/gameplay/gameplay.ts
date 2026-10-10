@@ -128,6 +128,13 @@ import {
 } from "@/engine/foundation/gameplay/fortress";
 import { fortressServiceRequest } from "@/engine/foundation/gameplay/fortress-services";
 import {
+	type FortressForgeItem,
+	FORTRESS_PRODUCTION_QUERY,
+	fortressProductionAction,
+	fortressProductionQuery,
+	fortressProductionStaff
+} from "@/engine/foundation/gameplay/fortress-production";
+import {
 	cosTimerPacket,
 	cosTimerReference,
 	type CosItemWindowReference,
@@ -531,6 +538,26 @@ The open storage room with its rows named and drawn like the bag's.
 	}
 	/*
 ================
+presentedForge
+
+The forge rows with their names, icons and stack limits, rebuilt only when
+the bootstrap or the references change.
+================
+	*/
+	function presentedForge() {
+		const rows = fortress.forge ?? [];
+		if ( rows !== forgeSource ) {
+			forgeSource = rows;
+			forgePresented = rows.map( row => ({
+				...row,
+				...inventory.reference( row.refObjId ),
+				maxStack: cosItemCaps.get( row.refObjId )
+			}) );
+		}
+		return forgePresented;
+	}
+	/*
+================
 cancelActionForMovement
 
 Cancel continuation before waiting on presentation. Otherwise a new basic
@@ -558,6 +585,8 @@ attack can arrive in the same batch as the previous close and starve the walk.
 	let progression: Progression = { masteries: [] };
 	const skillGroups = new Map<number, { group: number; level: number; }>();
 	let fortress = fortressBootstrap( {} ), musicMode = 0;
+	// presentedForge's cache: the bootstrap rows it last named.
+	let forgeSource: readonly FortressForgeItem[] | undefined, forgePresented: readonly FortressForgeItem[] = [];
 	let fortressApplication: (FortressApplication & { readonly sequence: number; }) | null = null;
 	// The fortress the last tax query answered for: 665730 names it in the
 	// rate change message.
@@ -1471,6 +1500,31 @@ state here before a command can claim a native wire conversation.
 						fortress: command.fortress
 					} )
 				);
+			}
+			if ( command.kind === "fortress-production" ) {
+				// 5D8C86 action 0x36 row 1 (smith) / 0x37 row 1 (trainer) and the
+				// production window's start, cancel and collect: the NPC must offer
+				// the staff member's function (0x1A smith, 0x1B trainer).
+				const staff = fortressProductionStaff( command.action );
+				const target = targeting.state(), bit = staff === "trainer" ? 0x4000000 : 0x2000000;
+				if (
+					!staff || !localGid || target.target !== command.gid || !((target.targetCapabilities ?? 0) & bit)
+				) {
+					throw Error( "Select a fortress smith or trainer" );
+				}
+				const production = command.action === fortressProductionAction( staff, FORTRESS_PRODUCTION_QUERY ) ?
+					fortressProductionQuery( fortress.production, staff, command.queryId, command.fortress ) :
+					fortress.production;
+				const frame = sendFrame( fortressServiceRequest( {
+					target: command.gid,
+					action: command.action,
+					fortress: command.fortress,
+					reference: command.reference,
+					word: command.count,
+					stackLimit: command.stackLimit
+				} ) );
+				fortress = { ...fortress, production };
+				return frame;
 			}
 			if ( command.kind === "fortress-war-status" || command.kind === "fortress-war-apply" ) {
 				// The official's row exists only on the selected official (0x800000).
@@ -2411,6 +2465,7 @@ references
 		*/
 		references( rows: readonly import("@/engine/foundation/gameplay/commerce").CommerceItemReference[] ) {
 			inventory.references( rows );
+			forgeSource = undefined;
 			for ( const row of rows ) {
 				cosItemRefs.set( row.refObjId, row.typeFlags );
 				if ( row.maxStack !== undefined ) cosItemCaps.set( row.refObjId, row.maxStack );
@@ -3812,6 +3867,7 @@ The published plane when something changed since the last take, else null.
 				...training.state(),
 				social,
 				fortress,
+				fortressForge: presentedForge(),
 				...(fortressApplication ? { fortressApplication } : {}),
 				...(fortressPortalUntilMs ? { fortressPortalUntilMs } : {}),
 				skillCatalog: catalog,
