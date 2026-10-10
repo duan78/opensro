@@ -248,7 +248,13 @@ func newGameWorldApplication(
 		ownedShard,
 		accountIDs,
 		application.readiness,
-		devPaths,
+		// The pointer matters: the authority plane grafts the extended
+		// item/skill overlays onto these paths and the gameplay plane
+		// built next must see them - by value the overlay died with the
+		// callee and every extended item id resolved native-only (the
+		// peer-reference boot error the first extended boot caught, M8
+		// s68).
+		&devPaths,
 		characterRoster,
 		sessionVerifier,
 		enterWorldSecret,

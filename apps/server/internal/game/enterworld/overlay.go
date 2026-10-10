@@ -158,6 +158,31 @@ type OverlaySkills struct {
 	extended *TextdataSkills
 }
 
+// SpawnSkillRows implements the browser reference catalogue's face
+// (skillcatalogue.go): native rows first, byte-identical to the native
+// boot, then the extended table's own rows - an id shared by both
+// answers natively, never twice (M8 s68: without this face the extended
+// boot's public skill catalogue measured zero rows).
+/*
+================
+OverlaySkills.SpawnSkillRows
+================
+*/
+func (o *OverlaySkills) SpawnSkillRows() []SpawnSkillRow {
+	rows := o.native.SpawnSkillRows()
+	nativeIDs := make(map[uint32]bool, len(rows))
+	for _, row := range rows {
+		nativeIDs[row.ID] = true
+	}
+	for _, row := range o.extended.SpawnSkillRows() {
+		if nativeIDs[row.ID] {
+			continue
+		}
+		rows = append(rows, row)
+	}
+	return rows
+}
+
 /*
 ================
 NewOverlaySkills
