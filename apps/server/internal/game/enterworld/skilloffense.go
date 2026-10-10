@@ -470,7 +470,18 @@ func decodeSkillOffense(fields []string, row *SkillRow) string {
 				}
 			}
 			if seen[int64(tagPositionCharge)] && seen[tagEfr] {
-				return "offense:charge-area"
+				// Extended content (isro-live-2026), port-only, not
+				// v1.150-native (M8 s52): the live FRENZYA B tiers past the
+				// cap author the rush's landing as an AREA (tel3 AND a kind-1
+				// efr together - the charge hits up to its word's targets
+				// around the landing point). Void proof measured 2026-10-10:
+				// FIVE extended rows carry the pair, ZERO native rows do -
+				// the key is absent from the v1.150 data entirely, so the
+				// tolerance can admit only live rows.
+				if textdataNonNegative(fields[skilldataColReqMasteryLv1]) < extendedPastCapMastery &&
+					textdataNonNegative(fields[skilldataColReqMasteryLv2]) < extendedPastCapMastery {
+					return "offense:charge-area"
+				}
 			}
 			// Crossbow stages own their cnsm debit (585FB6), including
 			// zero-preparation linked shots. Keep other weapon families on
