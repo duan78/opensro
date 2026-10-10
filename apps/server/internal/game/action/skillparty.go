@@ -140,8 +140,12 @@ stats ride its own burst only; observers see the cast and the instance.
 func (rt *Runtime) acceptPartyBuff(division string, c, snapshot *enterworld.Character, cast wire.SkillAction, skill enterworld.SkillRow) OpResult {
 	now := rt.Now().UnixMilli()
 
-	payload := skill.BuffModifiers.Present() || skill.Aura.Eshp
-	if !skill.Aura.Present || !payload || cast.HasGroundTarget {
+	// The live dance toggle (M8 s66) rides this lane with no efr and no
+	// modifier block: its payload IS the toggle - the pulse rhythm, the
+	// pulse MP the engine already drains, and the setv area slots the row
+	// carries (recorded; their stats fold is the lane's recorded boundary).
+	payload := skill.BuffModifiers.Present() || skill.Aura.Eshp || skill.TimedEffect.Dance.Pinned
+	if !skill.Aura.Present && !skill.TimedEffect.Dance.Pinned || !payload || cast.HasGroundTarget {
 		return OpResult{DiagnosticRefusal: "party-buff-admission-refused"}
 	}
 	if !enterworld.CharacterAlive(snapshot) || !enterworld.SkillLearned(snapshot, skill.ID) {

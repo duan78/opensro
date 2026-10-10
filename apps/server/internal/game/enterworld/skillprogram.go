@@ -54,6 +54,14 @@ func CompileSkillProgram(fields []string) (SkillProgram, error) {
 		if !known && n == 0x68776475 {
 			arity, known = 1, true
 		}
+		// Extended content (isro-live-2026), port-only, not v1.150-native
+		// (M8 s66): ycdc - the live "Dance with Music" programs' header
+		// word, absent from the v1.150 data and from spawnParamSpec's
+		// hash-pinned table. Zero arguments: the walk consistency of every
+		// live dance tier (ycdc then scls {n}) leaves no other reading.
+		if !known && n == 0x79636463 {
+			arity, known = 0, true
+		}
 		if !known {
 			return SkillProgram{}, fmt.Errorf("skill program: unknown instruction %x at %d", n, col)
 		}

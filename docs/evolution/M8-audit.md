@@ -1729,17 +1729,76 @@ non exécutable doit appartenir à un bloc décidé par l'owner (PvP parked
 15, danses ordonnées 2, MASK ordonné 5), toute autre ratée fait échouer
 le test. Mesure s65 : pvp 15, danses 2, mask 5, aucune inexpliquée.
 
-## Le reste (carte actualisée après s65)
+## Session 66 — LES DANSES « WITH MUSIC » LIVRÉES (ordre owner Q3 ; joueur 2576 → 2578, ratées 22 → 20)
 
-1. **FAIT (s47-s64)** : QUINZE grappes ; l'Aura of Blood (+2) ; les
-   51 chaînes projectile (s64, correction native). Le reste joueur SANS
-   décision owner : **ZÉRO, vérifié cette fois avec le filtre du
-   global** (racines incluses) — les 22 rangées restantes (danses 2,
-   PvP 15 — MANADRY 10, STEALTHA_CHANGE 2, STEALTHA_POINT 3 — et
-   TRANSFORMA_MASK 5) sont TOUTES derrière une décision owner, plus
-   l'arène : 404 rangées non-joueur au dénominateur dont 379 non
+L'ordre owner du 2026-10-10 lève le gel « sans preuve : pas
+d'implémentation » sur BARD_DANCEA_WITH_MUSIC_A_05/_06. Le diagnostic a
+d'abord réglé la question de la preuve : le rythme N'ÉTAIT PAS inconnu —
+les 26 danses natives v1.150 portent le MÊME mot onff {5000, X}, X
+scalé par tier (natif 109→527, live 16→546). Le mot inconnu était
+ailleurs : les rangées live autorsent le programme ycdc / scls{2} /
+reqc{128} / onff{5000, X} / setv{MUER, v} / setv{DSER, v} — SANS efr et
+SANS dru (les native dansent via l'aura efr-2 + dru). Scls, reqc, onff
+et setv sont des mots NATIFS (arités dans spawnParamSpec, le fichier
+hash-pinné) ; seul ycdc est live-only (arité 0, par cohérence de la
+marche sur les six tiers). Les clés setv sont les slots ENREGISTRÉS :
+MUER = ParameterMusicRange (addende de rayon +0x544), DSER =
+ParameterDanceRange (+0x54C) — les slots que les danses natives LISSENT
+(getv) comme addendes de rayon, la danse live les ÉCRIT (setv) : danser
+élargit sa propre zone de musique de +2..5 m et sa portée de danse de
++2..4 m.
+
+L'inférence enregistrée (skilldance.go) : le toggle vit par sa pulsation
+(585277 : retraite à court de MP — la règle du moteur d'aura party,
+déjà porté), jamais par une durée ; l'exécuteur est acceptPartyBuff, la
+voie danse dont les règles de remplacement connaissent déjà « un barde
+qui change sa propre danse ».reqc{128} : bit 7 sans propriétaire dans
+l'un ou l'autre binaire — porté non interprété (précédent DSCR) ;
+reqc{32} natif est le bit « sélecteur de danse » (58DFF4), pas le nôtre.
+Les valeurs d'aire setv voyagent sur la rangée ; leur pli vivant dans
+les stats de combat est la frontière enregistrée (précédent Hwir).
+
+Implémentation : ycdc admis arity-0 dans CompileSkillProgram (la liste
+des riders live, motif s57/s63) — ce qui répare AUSSI Consumption.Pinned
+et ReplacementPinned (le compilateur refusait la rangée entière avant la
+ligne 391 de decodeSkillOffense) ; la marche timed gagne les cas
+onff/setv/riders avec plancher de maîtrise ≥91 (A_01..A_04 ≤90 restent
+non épinglées, discipline de lane) ; pinDanceToggle dans skilldance.go ;
+l'union d'admission et le kind « dance » ; le dispatch et le gate
+d'acceptPartyBuff étendus au pin danse. skilltimedeffect.go dépassait
+1000 lignes : deux vraies frontières extraites — skilldance.go (la voie
+danse) et skilldamagereturn.go (le bloc dmgr) — 994 lignes, pas de
+baseline.
+
+Tests durables : TestDanceWithMusicPinsOnlyPastCap (A_05/A_06 épinglées,
+rythme 5000, aire 5, portée 3/4, pulsations 310/546 ; les quatre tiers
+≤90 non épinglés),
+TestDanceHeaderWordAbsentFromNativePrograms (ycdc absent de tout
+programme v1.150 ; aucune rangée native n'épingle la danse),
+TestDanceToggleInstallsAndPulsesOnThePartyAuraEngine (runtime :
+installation sur le moteur de pulsation au rythme authorisé, rayon
+authorisé nul — l'effet est la musique élargie du lanceur — et une
+pulsation charge le MP authorisé). Mesure : **joueur 2578/2598 (ratées :
+PvP 15 + MASK 5)**, global 2603/3002 = 86,7 %. enterworld+action ok,
+source PASSED (après les deux extractions), gate serveur forcée PASS.
+
+Leçons : (1) la « preuve manquante » du rythme était dans la table
+native — mesurer les mots de la famille AVANT de parler de preuve
+manquante ; (2) offensiveRefusal remplit des FRAMES, pas un
+DiagnosticRefusal — un test runtime doit aussi inspecter les frames de
+résultat ; (3) clampKeeperVital borne le MP courant au maxMP dérivé —
+les rangées statiques de test doivent garder coûts et pulsations sous
+les vitales du personnage de test.
+
+## Le reste (carte actualisée après s66)
+
+1. **FAIT (s47-s66)** : QUINZE grappes ; l'Aura de Sang (+2) ; les 51
+   chaînes projectile (s64, correction native) ; les danses WITH_MUSIC
+   (s66, ordre owner Q3). Reste joueur : les 15 PvP parked définitif
+   (décision owner Q2) et les 5 TRANSFORMA_MASK (ordre owner Q4, s67),
+   plus l'arène : 404 rangées non-joueur au dénominateur dont 379 non
    exécutables (P2SKILL_INNATE 188, ASS 72, PRO 72, ENC 72 ; 25
-   exécutables).
+   exécutables) — exclues du critère par la décision owner Q1.
 2. **La traîne joueur (~270−15 rangées)** : les familles 2-5 de
    l'histogramme, une à une après les trois lanes.
 3. **Décision owner de périmètre (nouveau s39)** : ~180 rangées
