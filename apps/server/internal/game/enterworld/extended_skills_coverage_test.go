@@ -97,6 +97,11 @@ func skillCoveragePast90(t *testing.T, source *TextdataSkills) map[int]map[strin
 			// measured s38 - BATTLAA_GUARD was already pinned there.
 			kind = "aura"
 		}
+		if kind == "unsupported" && row.Illusion.Pinned {
+			// The msch-3 random-player disguise (acceptIllusion, action/
+			// illusion.go): measured s59 - live-only family.
+			kind = "illusion"
+		}
 		if kind == "unsupported" && row.Duplicate.Pinned {
 			// The msch-2 duplicate (acceptDuplicate copies the allied
 			// target's model and equipment, action/duplicate.go) - measured
@@ -181,7 +186,7 @@ func TestExtendedSkillsExecutionCoveragePastLevel90(t *testing.T) {
 			total += bandTotal
 			routed += bandRouted
 			summary := ""
-			for _, kind := range []string{"offense", "recovery", "instant", "passive", "timed", "periodic", "wall", "concealment", "position", "threat", "aura", "debuff", "trap", "field", "duplicate", "unsupported-unpinned", "unsupported-chain", "chain-stage"} {
+			for _, kind := range []string{"offense", "recovery", "instant", "passive", "timed", "periodic", "wall", "concealment", "position", "threat", "aura", "debuff", "trap", "field", "duplicate", "illusion", "unsupported-unpinned", "unsupported-chain", "chain-stage"} {
 				if counts[kind] > 0 {
 					summary += fmt.Sprintf(" %s=%d", kind, counts[kind])
 				}

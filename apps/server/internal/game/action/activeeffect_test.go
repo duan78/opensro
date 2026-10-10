@@ -303,3 +303,55 @@ func TestShieldStanceEffectWritesTheTradeOff(t *testing.T) {
 		t.Fatalf("writes: attack=%d defense=%d among %+v", attack, defense, writes)
 	}
 }
+
+/*
+================
+TestIllusionCopiesARandomLowerLevelLook
+
+Extended content (isro-live-2026), port-only, not v1.150-native (M8
+s59): the untargeted cast picks a live lower-level character of the
+division and installs the Duplicate's look under msch mode 3 - the
+transform block carries the picked player's model. With no candidate
+the cast refuses rather than invent a disguise.
+================
+*/
+func TestIllusionPicksALowerLevelCandidate(t *testing.T) {
+	rt, character := newActiveEffectTestRuntime(t, staticSkillSource{})
+	low := testCharacter()
+	low.Name = "lowlevel"
+	low.ID = 41
+	level := int64(10)
+	low.Level = &level
+	own := int64(50)
+	character.Level = &own
+	peer := testCharacter()
+	peer.Name = "peer"
+	peer.ID = 42
+	peer.Level = &own // the caster's own level: no longer "lower"
+	rt.deps = &enterworld.Deps{Characters: enterworld.StaticCharacterSource{testDivision: {character, low, peer}}}
+	picked := rt.illusionCandidate(testDivision, character, 110, 1_000_000)
+	if picked == nil || picked.Name != "lowlevel" {
+		t.Fatalf("picked %+v, want the lone lower-level character", picked)
+	}
+	// The tooltip's ceiling: a word below the candidate's level excludes it.
+	if picked := rt.illusionCandidate(testDivision, character, 5, 1_000_000); picked != nil {
+		t.Fatalf("a word below the candidate admitted %+v", picked)
+	}
+}
+
+/*
+================
+TestIllusionRefusesWithoutACandidate
+
+A disguise the roster cannot build is refused, never invented.
+================
+*/
+func TestIllusionRefusesWithoutACandidate(t *testing.T) {
+	rt, character := newActiveEffectTestRuntime(t, staticSkillSource{})
+	own := int64(50)
+	character.Level = &own
+	rt.deps = &enterworld.Deps{Characters: enterworld.StaticCharacterSource{testDivision: {character}}}
+	if picked := rt.illusionCandidate(testDivision, character, 110, 1_000_000); picked != nil {
+		t.Fatalf("a lone caster picked %+v", picked)
+	}
+}

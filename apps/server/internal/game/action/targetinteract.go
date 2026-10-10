@@ -313,6 +313,11 @@ func (rt *Runtime) dispatchSkillCommand(divisionID string, character, snapshot *
 		if skill, ok := source.SkillByID(cast.ActionId); ok &&
 			!isPinnedBaseAttack(snapshot, skill.Codename) {
 
+			// Extended (isro-live-2026): the Warlock's random-player
+			// disguise (illusion.go).
+			if skill.Illusion.Pinned {
+				return rt.acceptIllusion(divisionID, character, snapshot, cast, skill, rt.Now().UnixMilli())
+			}
 			if skill.Duplicate.Pinned {
 				return rt.acceptDuplicate(divisionID, character, snapshot, cast, skill, rt.Now().UnixMilli())
 			}
