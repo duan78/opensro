@@ -1651,6 +1651,19 @@ mot absent de tout programme natif (gel du vide), le runtime (le mode
 en cours étendu de 30 s, le destinataire hors mode intact — avec le
 stub RewardParties, leçon s48). **Joueur : 2122/2146 = 99,0 %.**
 
+## Session 63c — la mesure à double périmètre dans le test canonique
+
+Le test de couverture imprime désormais LES DEUX périmètres à chaque
+passée : `extended past-90 total: 3002 rows, 2550 executable (84.9%)`
+ET `player-scope past-90 total: 2146 rows, 2124 executable (99.0%)` —
+la mise à jour s63 avait porté le périmètre joueur à 2124 (les deux
+rangées hwdu), le chiffre cité depuis s58 (2122) datait d'avant. Le
+critère d'acceptation reste le dénominateur global tant que l'owner
+n'a pas tranché la question 1 de la charte §8 (~379 rangées
+monstre/arène dans le global, aucune n'étant un skill joueur) ; la
+ligne joueur est un rapport, pas une décision. Source PASSED, gate
+serveur forcée PASS.
+
 ## Le reste (carte actualisée après s63)
 
 1. **FAIT (s47-s63)** : QUINZE grappes ; l'Aura of Blood LIVRÉE
