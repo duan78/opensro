@@ -59,6 +59,11 @@ const (
 	parameterWizardMP          = 0x57494d44
 	parameterBardMP            = 0x42444d44
 	parameterMusicArea         = 0x4d554552
+	parameterDanceRange        = 0x44534552
+	tagDanceHeader             = 0x79636463 // ycdc
+	tagDanceScls               = 0x73636c73 // scls
+	tagTimedRequireCond        = 0x72657163 // reqc
+	tagDanceToggle             = 0x6f6e6666 // onff
 	parameterBlessingPhysical  = 0x484c4250
 	parameterBlessingMagical   = 0x484c534d
 	parameterBlessingStrength  = 0x484c4653
@@ -144,6 +149,9 @@ type SkillTimedEffect struct {
 	// HwanDurationMs is hwdu, the extended party aura's word (M8 s63):
 	// the seconds the aura extends each party member's berserk mode.
 	HwanDurationMs uint32
+	// Dance is the live "Dance with Music" toggle (M8 s66): the lane's
+	// type and provenance live in skilldance.go.
+	Dance SkillDance
 }
 
 /*
@@ -158,38 +166,6 @@ type SkillShieldStance struct {
 	Present           bool
 	AttackPercent     uint32
 	DefenseCutPercent uint32
-}
-
-/*
-================
-SkillDamageReturn
-
-dmgr {chance, physical %, magical %, range} (+0x204 on a passive, +0x208
-on a buff). CSkillManager_ProcessDamageEffects (5A0C2D) runs on the
-defender of every hit SkillCombat_CalculateHitOutcome resolves: an
-attacker within range (range > distance) takes back, with chance percent,
-trunc(physical% of the hit's physical lane) + trunc(magical% of its
-magical lane). The defender's own damage is not reduced.
-================
-*/
-type SkillDamageReturn struct {
-	Present                          bool
-	Chance, Physical, Magical, Range uint32
-}
-
-/*
-================
-parseDamageReturn
-
-One dmgr block: four words, a chance, a range and at least one lane.
-================
-*/
-func parseDamageReturn(op SkillInstruction) (SkillDamageReturn, bool) {
-	if op.Count != 4 || op.Arguments[0] == 0 || op.Arguments[3] == 0 || op.Arguments[1] == 0 && op.Arguments[2] == 0 {
-		return SkillDamageReturn{}, false
-	}
-	return SkillDamageReturn{Present: true, Chance: op.Arguments[0], Physical: op.Arguments[1],
-		Magical: op.Arguments[2], Range: op.Arguments[3]}, true
 }
 
 /*
@@ -416,6 +392,9 @@ func parseSkillTimedEffect(fields []string, row *SkillRow) {
 	for i := 0; i < program.Len(); i++ {
 		damageLink = damageLink || program.Instruction(i).Tag == tagTimedLinkedDamage
 	}
+	// The live dance toggle's evidence (M8 s66): onff's rhythm and the
+	// setv writes into the music-area slots.
+	var danceRhythmMs, danceMusicArea, danceDanceRange uint32
 	for i := 0; i < program.Len(); i++ {
 		if op := program.Instruction(i); op.Tag == tagEfr {
 			kind, shape, radius, most, reduction, sel := op.Arguments[0], op.Arguments[1], op.Arguments[2], op.Arguments[3], op.Arguments[4], op.Arguments[5]
@@ -873,6 +852,33 @@ func parseSkillTimedEffect(fields []string, row *SkillRow) {
 		case tagNbuf, tagBbuf: // cancellation policy and secondary board, already projected
 		case tagReqi, tagTimedRequireNot: // 58D480 admits, 59F0E0 re-checks on equipment change
 		case tagEfr: // read above
+		case tagDanceHeader, tagDanceScls, tagTimedRequireCond:
+			// The live dance's riders (M8 s66; provenance in skilldance.go):
+			// floor-gated like msch/cks (s45), no reader invented.
+			if textdataNonNegative(fields[skilldataColReqMasteryLv1]) < extendedPastCapMastery &&
+				textdataNonNegative(fields[skilldataColReqMasteryLv2]) < extendedPastCapMastery {
+				return
+			}
+		case tagDanceToggle: // onff {period, pulseMP}
+			// The shared row parser already files both words as
+			// Aura.PulseMs/PulseMP (skilloffense.go); the walk keeps the
+			// rhythm as the toggle's own pin evidence.
+			danceRhythmMs = op.Arguments[0]
+		case 0x73657476: // setv {key, value, spare}
+			// The live dance's area writes (M8 s66; provenance in
+			// skilldance.go): only the two registered music keys ride.
+			if textdataNonNegative(fields[skilldataColReqMasteryLv1]) < extendedPastCapMastery &&
+				textdataNonNegative(fields[skilldataColReqMasteryLv2]) < extendedPastCapMastery {
+				return
+			}
+			switch op.Arguments[0] {
+			case parameterMusicArea:
+				danceMusicArea = op.Arguments[1]
+			case parameterDanceRange:
+				danceDanceRange = op.Arguments[1]
+			default:
+				return
+			}
 		case tagGetv:
 			switch op.Arguments[0] {
 			case parameterBardMP, parameterMusicArea:
@@ -952,6 +958,7 @@ func parseSkillTimedEffect(fields []string, row *SkillRow) {
 		musicParameters && !movement && !result.Preemptive.Present && !result.Link.Mana {
 		return
 	}
+	pinDanceToggle(&result, danceRhythmMs, danceMusicArea, danceDanceRange, targeted)
 	result.Defense = defense
 	attributes := result.Attributes.MaxHP || result.Attributes.Attack || result.Attributes.DamagePenalty ||
 		result.Attributes.DamageRate || result.Attributes.MaxHPPenalty || result.Attributes.DefensePenalty
@@ -963,7 +970,8 @@ func parseSkillTimedEffect(fields []string, row *SkillRow) {
 		result.Intellect.Present || result.IncomingReduction || result.HitRate || result.Range || result.Hawk.Present ||
 		result.Link.Present && (result.Link.Threat || result.Link.Mana || result.Link.Redirect || result.Link.Disperse || result.Link.StunGuard.Present) || result.Preemptive.Present ||
 		result.DamageReturn.Present || result.Evasion.Present || result.Stance.Present || result.Recovery.Present || result.HwanDurationMs != 0 ||
-		result.DamageToMP || result.Reat.Mask != 0 || result.Real.Mask != 0)
+		result.DamageToMP || result.Reat.Mask != 0 || result.Real.Mask != 0) ||
+		result.Dance.Pinned
 	result.Targeted = targeted
 	row.TimedEffect = result
 	if result.Pinned && movement {

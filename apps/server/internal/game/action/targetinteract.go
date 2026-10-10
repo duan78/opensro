@@ -390,7 +390,10 @@ func (rt *Runtime) dispatchSkillCommand(divisionID string, character, snapshot *
 				return result
 			}
 
-			if skill.Aura.Present && (skill.BuffModifiers.Present() || skill.Aura.Eshp) {
+			if skill.Aura.Present && (skill.BuffModifiers.Present() || skill.Aura.Eshp) ||
+				// The live dance toggle (M8 s66): the pulse-owned party-aura
+				// lane the native dances already run on.
+				skill.TimedEffect.Dance.Pinned {
 				return rt.acceptPartyBuff(divisionID, character, snapshot, cast, skill)
 			}
 
