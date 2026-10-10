@@ -197,15 +197,15 @@ func TestExtendedSkillsExecutionCoveragePastLevel90(t *testing.T) {
 			name, total, routed, 100*float64(routed)/float64(max(total, 1)))
 	}
 
-	// Extended (isro-live-2026, M8): the mission's own perimeter beside the
-	// global denominator - the player rows (SKILL_CH_/SKILL_EU_) measured
-	// with the SAME filter the global uses (chain roots cast, their ChainSub
-	// stages are counted inside the root's plan; s64 fixed an earlier draft
-	// that dropped the roots). Reported for both scopes; the acceptance
-	// criterion stays the global denominator until the owner rules on the
-	// arena block (charter section 8, question 1 - ~379 monster/arena rows
-	// sit in the global number and none of them is a player skill).
+	// Extended (isro-live-2026, M8): the mission's ACCEPTANCE criterion is
+	// the player perimeter (owner decision 2026-10-10, charter section 8:
+	// the ~379 monster/arena rows leave the criterion - none of them is a
+	// player skill; the global stays printed as a report). The player rows
+	// (SKILL_CH_/SKILL_EU_) are measured with the SAME filter the global
+	// uses (chain roots cast, their ChainSub stages are counted inside the
+	// root's plan; s64 fixed an earlier draft that dropped the roots).
 	playerTotal, playerRouted := 0, 0
+	var playerMisses []string
 	for _, row := range skills.rows.values() {
 		mastery := row.Masteries[0].Level
 		if row.Masteries[1].Level > mastery {
@@ -220,10 +220,34 @@ func TestExtendedSkillsExecutionCoveragePastLevel90(t *testing.T) {
 		playerTotal++
 		if rowRuntimeAdmitted(skills, row) {
 			playerRouted++
+		} else {
+			playerMisses = append(playerMisses, row.Codename)
 		}
 	}
-	t.Logf("player-scope past-90 total: %d rows, %d executable (%.1f%%)",
+	t.Logf("acceptance (player scope, owner 2026-10-10): %d rows, %d executable (%.1f%%)",
 		playerTotal, playerRouted, 100*float64(playerRouted)/float64(max(playerTotal, 1)))
+
+	// The criterion's theorem: every miss belongs to an owner-decided
+	// block (charter section 8, 2026-10-10). The 15 player-targeting PvP
+	// rows are PARKED DEFINITIVELY by the owner - they may miss forever.
+	// The 2 bard dances and the 5 TRANSFORMA_MASK rows carry
+	// implementation orders: while s66/s67 are pending they may miss, and
+	// the block comments here are relaxed by those deliveries. A miss
+	// outside these blocks is a regression this test exists to catch.
+	parkedPvP, orderedDances, orderedMask := 0, 0, 0
+	for _, codename := range playerMisses {
+		switch {
+		case strings.Contains(codename, "DANCEA_WITH_MUSIC"):
+			orderedDances++
+		case strings.Contains(codename, "TRANSFORMA_MASK"):
+			orderedMask++
+		case strings.Contains(codename, "MANADRY"), strings.Contains(codename, "STEALTHA_"):
+			parkedPvP++
+		default:
+			t.Fatalf("player row %s is not executable and belongs to no owner-decided block", codename)
+		}
+	}
+	t.Logf("misses by owner block: pvp parked %d, dances ordered %d, mask ordered %d", parkedPvP, orderedDances, orderedMask)
 
 	// What the unpinned rows ARE (the M7 budget's denominator): sample
 	// codenames per band - player-family variants, monster skills or
