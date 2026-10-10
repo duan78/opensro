@@ -1361,14 +1361,40 @@ FRENZYA-A, duplicate). L'union des deux tests le compte désormais
 **Couverture : 84,3 → 84,4 %** (2535/3002, +3 exact) ; joueur
 2107/2146 (98,3 %). Reste livrable : 37 rangées.
 
-## Le reste (carte actualisée après s53)
+## Session 54 — STEALTHA_POINT reclassé parked PvP sur tooltip ; le reste affiné
 
-1. **FAIT (s47-s53)** : classification, DAMAGE_DIVIDE (+4),
-   HEALSHIELD (+3), POISONA_FIELD (+5), FRENZYA B (+5), TRANSFORMA_
-   DUPLE (+3, comptée). Reste livrable : 37 rangées
-   (CONFUSIONA_ILLUSION 5 [par spectateur — la plus lourde],
-   FIRE_SHIELD 3, STEALTHA_POINT 3, MINDP 4, SPELLP 2, singles ~10 ;
-   parked : MANADRY 10 PvP, danses 2).
+Probe des trois grappes candidates (effacé) :
+
+1. **STEALTHA_POINT (3) → PARKED PvP** : le tooltip dit mot pour mot
+   « **This skill cannot be used on monsters.** » — la trace de
+   repérage posée sur des JOUEURS (visible minimap/carte monde, un
+   lien lnks{13,35000} de 30 min avec le mot htnp). Même classe de
+   preuve que MANADRY et STEALTHA_CHANGE : un runtime hostile-joueur
+   = du PvP, hors périmètre. La famille PvP parked passe à 15 rangées
+   (MANADRY 10, STEALTHA_CHANGE 2, STEALTHA_POINT 3).
+2. **MINDP_DAMAGE past-90 : DÉJÀ admis** (passiveParams=true — le lane
+   passif setv les prend ; dixième correction de carte : le
+   classificateur s47 comptait « MINDP 4 » mais seule la moitié
+   refusait). Restent MINDP_MAINTAIN (2, le mot hwir inconnu) et
+   MINDP_MANA_DECREASE (2, setv-DMIR seul, handler 4).
+3. **FIRE_SHIELD (3) : amorce complétée** — `dura + bgra{63,N} +
+   reqi{4,1=bouclier} + heal{25145280, 30, N}` : la résistance aux
+   statuts du bouclier ; bgra n'est décodé NULLE part et le bloc heal
+   à 3 mots avec la constante 25145280 exige le décodage — une
+   session entière.
+
+Reste livrable après reclassification : **34 rangées** (CONFUSIONA_
+ILLUSION 5, FIRE_SHIELD 3, MINDP_MAINTAIN 2, MINDP_MANA_DECREASE 2,
+SPELLP 2, singles ~10, moins les MINDP_DAMAGE déjà admis) ; parked :
+PvP 15, danses 2 ; hors joueur : arène ~379 (décision owner).
+
+## Le reste (carte actualisée après s54)
+
+1. **FAIT (s47-s54)** : huit grappes livrées ou comptées ;
+   STEALTHA_POINT reclassé parked PvP (tooltip). Reste livrable :
+   34 rangées (CONFUSIONA_ILLUSION 5, FIRE_SHIELD 3, MINDP_MAINTAIN
+   2, MINDP_MANA_DECREASE 2, SPELLP 2, singles ~10) ; parked : PvP 15
+   (MANADRY, STEALTHA_CHANGE, STEALTHA_POINT), danses 2.
 2. **La traîne joueur (~270−15 rangées)** : les familles 2-5 de
    l'histogramme, une à une après les trois lanes.
 3. **Décision owner de périmètre (nouveau s39)** : ~180 rangées
