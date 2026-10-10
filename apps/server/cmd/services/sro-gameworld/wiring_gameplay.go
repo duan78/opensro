@@ -118,12 +118,11 @@ func newGameplayPlane(
 	// Extended content (isro-live-2026), port-only, not v1.150-native: the
 	// live teleport plane merged behind the native catalogue - native rows
 	// win every shared identity, the post-1.150 zones' destinations enter.
+	// The extended SHOP merge runs after ConfigureCommerce below: it merges
+	// into the installed native catalogue, and before that install the
+	// merge rightly refuses ("commerce catalogue is not configured") - an
+	// order the first extended boot (M8 s68) caught.
 	if devPaths.ExtendedTextdataDir != "" {
-		shopTabs, shopErr := items.MergeExtendedCommerce(devPaths.ExtendedTextdataDir)
-		if shopErr != nil {
-			return nil, fmt.Errorf("extended commerce: %w", shopErr)
-		}
-		log.Infof("commerce: extended shop plane merged, +%d tabs (not v1.150-native)", shopTabs)
 		merged, mergeErr := items.MergeExtendedPortalDir(devPaths.ExtendedTextdataDir)
 		if mergeErr != nil {
 			return nil, fmt.Errorf("extended portal catalogue: %w", mergeErr)
@@ -161,6 +160,16 @@ func newGameplayPlane(
 	}
 	if err := items.ConfigureCommerce(devPaths.TextdataDir); err != nil {
 		return nil, fmt.Errorf("commerce catalogue: %w", err)
+	}
+	// The extended shop plane rides the INSTALLED native catalogue (M7),
+	// so it merges here, after ConfigureCommerce - see the portals note
+	// above for the order the first extended boot caught.
+	if devPaths.ExtendedTextdataDir != "" {
+		shopTabs, shopErr := items.MergeExtendedCommerce(devPaths.ExtendedTextdataDir)
+		if shopErr != nil {
+			return nil, fmt.Errorf("extended commerce: %w", shopErr)
+		}
+		log.Infof("commerce: extended shop plane merged, +%d tabs (not v1.150-native)", shopTabs)
 	}
 	items.ConfigureStorage(authorityStore)
 	if err := items.ConfigureMall(devPaths.TextdataDir, authorityStore); err != nil {

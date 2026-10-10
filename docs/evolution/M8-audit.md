@@ -1825,6 +1825,51 @@ dispatch, et il a maintenant pris trois sessions de retard sur lui.
 Avant de cadrer un bloc comme « à construire », grepper le mot contre
 le code.
 
+## Session 68 — LE PREMIER BOOT ÉTENDU COMPLET (demande owner de test) : trois défauts de composition réparés
+
+L'owner a demandé à tester le jeu ; aucun GameWorld étendu n'avait
+jamais booté (M6 : « il manque l'image »). Pile montée : Agent étendu
+autonome sur 8890 (catalogue temp/extended-shards.json, shard
+« extended », comptes/cléring du bootstrap du worktree, identité Nomad
+du dev-agent 4646) + job Nomad `sro-gameworld-extended` (raw_exec, le
+binaire du worktree, transport 8798 / contrôle 8799, état dans le
+worktree, projection étendue ON) sur le Nomad existant — la pile native
+(8787/8788) et le client 5180 restent intacts. TROIS défauts réels du
+boot étendu sont tombés, tous invisibles aux tests (la composition ne
+boote jamais dans un test) :
+
+1. **L'ordre du merge commerce** (wiring_gameplay.go) :
+   MergeExtendedCommerce s'exécutait AVANT ConfigureCommerce qui
+   installe le catalogue de base — « commerce catalogue is not
+   configured » à chaque boot étendu. Le merge vit désormais après
+   l'installation (+16 onglets mesurés).
+2. **devPaths passé par valeur** (wiring.go / wiring_authority.go) :
+   l'overlay items/skills était greffé sur une COPIE locale dans
+   openAuthorityPlane et mourait avec elle — le plan gameplay recevait
+   un ItemOverlay nil, deps.Items restait natif, et toute référence
+   d'item étendue (id 59 = ITEM_ETC_CURE_ALL_05) échouait au contrôle
+   d'exhaustivité des peer references. devPaths passe désormais par
+   pointeur.
+3. **La face SpawnSkillRows manquante à OverlaySkills** (overlay.go) :
+   le catalogue public de skills du navigateur (spawnSkillSnapshot)
+   mesurait 0 rangée — « invalid public skill catalogue size: 0 ». La
+   face est implémentée : rangées natives d'abord à l'identique, puis
+   les rangées propres de l'étendu (id partagé → réponse native).
+
+Boot final mesuré : « extended content: ON, cap 140, 21529 items,
+36008 skills », 340 PNJ de service live greffés, 78 portes, +61
+destinations / +236 liens / +86 bâtiments, +16 onglets de boutique,
+population 8761 nids, transport à l'écoute ws/wt sur 8798, readyz
+`ready`, bail Agent pris. Une erreur d'exploration à noter : j'ai tué
+le process de provisioning de l'Agent principal (8789, que je croyais
+zombie) — Nomad l'a relancé en dizaines de secondes, pile native
+intacte ; leçon : vérifier le port AVANT le taskkill, 8789 était
+occupé depuis le début.
+
+Gates : enterworld + action + cmd/services/sro-gameworld ok, source
+PASSED, gate serveur forcée PASS. Livré avec le serveur de test TOURNANT
+(la pile reste en place pour la session de jeu de l'owner).
+
 ## Le reste (carte actualisée après s67 — ÉTAT FINAL)
 
 1. **ÉTAT FINAL (s65-s67, décisions owner du 2026-10-10)** : QUINZE

@@ -124,7 +124,7 @@ func openAuthorityPlane(
 	ownedShard shard.Definition,
 	accountIDs []string,
 	ready *readiness.Gate,
-	devPaths enterworld.DevPaths,
+	devPaths *enterworld.DevPaths,
 	characterRoster *enterworld.Roster,
 	sessionVerifier *auth.AgentSessionVerifier,
 	enterWorldSecret []byte,
