@@ -158,6 +158,7 @@ func noteParameterIndex(fields []string, row *SkillRow) {
 				if slot, known := SkillParameterFromKey(key); known &&
 					(slot == ParameterWizardMPDecrease || slot == ParameterBardMPDecrease || slot == ParameterHealerMPDecrease ||
 						slot == ParameterMusicRange || slot == ParameterDanceRange || slot == ParameterHealRecoveryUp ||
+						slot == ParameterWarlockMPDecrease ||
 						slot == ParameterWizardRange || slot == ParameterCrossbowRange ||
 						slot == ParameterMusicCutResist || slot == ParameterDanceCutResist) {
 					row.Attack.Parameters |= SkillParameterMask(1) << slot
