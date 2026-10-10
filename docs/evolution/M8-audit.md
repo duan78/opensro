@@ -1466,14 +1466,49 @@ quand, quelle mesure). Livrable proprement moitié par moitié : hwir
 exécuté, DRIR porté non-exécuté (le précédent DSCR) avec la borne
 enregistrée — une session honnête.
 
-## Le reste (carte actualisée après s57)
+## Session 58 — le dernier single livré (CANCEL2_A_02, +1, 84,6 %) ; la carte FINALE du reste joueur
 
-1. **FAIT (s47-s57)** : dix grappes livrées ; SPELLP et
-   MINDP_MAINTAIN amorcés s57 (sémantiques mesurées, les questions
-   nommées). Reste livrable : 29 rangées (CONFUSIONA_ILLUSION 5
-   [par spectateur], MINDP_MAINTAIN 2 [hwir exécutable, DRIR porté],
-   SPELLP 2 [sémantique du mot à trancher — owner ou binaire],
-   singles ~10) ; parked : PvP 15, danses 2 ; arène ~379 (owner).
+Probe des « singles ~10 » : ils sont **6, pas 10** — TRANSFORMA_MASK
+(5, le feature V5 Death-Essence déjà classé) + **WATER_CANCEL2_A_02**
+(m=132, un tier). Ce tier est la forme ratio-debuff du lane s33
+(`bbuf dura terd drht tant`) avec ses mots à **105/105** — refusé par
+la borne ≤100 du prédicat s33 (les tiers mesurés alors plafonnaient à
+100). Le rebalance live authorise les coupes au-delà de cent ; la
+borne passe à 200 (un mot de pourcent, jamais un u32 arbitraire).
++1 rangée (neuf timed tiers), le vide natif inchangé (le plancher
+protège toujours les tiers ≤90).
+
+**MINDP_MAINTAIN reclassé QUESTION OWNER (correction de l'amorce
+s57)** : « hwir exécutable » était optimiste — le mot hwir{275|300}
+n'a AUCUN mappage évident vers la jauge berserk (un entier 0..5 :
+`ModifyBerserkPoints` clampe à 5 ; 275/300 ne s'y projettent pas
+proprement) et DRIR reste flou. Les DEUX mots sont indéterminés :
+aucune implémentation sans preuve.
+
+### La carte FINALE du reste joueur (mesurée, pas estimée)
+
+- **CONFUSIONA_ILLUSION (5)** : le modèle joueur aléatoire PAR
+  SPECTATEUR — une réplication dépendante du regard, jamais
+  construite dans ce port. LA plus lourde, une à deux sessions.
+- **TRANSFORMA_MASK (5)** : le système Death-Essence (récolter sur
+  cadavres, se transformer en monstre avec SES skills) — un FEATURE
+  V5 complet, décision owner.
+- **SPELLP « Aura of Blood » (2)** : le mot heal{30|35} sans TT_DESC
+  client — sémantique à trancher (owner ou binaire).
+- **MINDP_MAINTAIN (2)** : les mots hwir/DRIR indéterminés (owner ou
+  binaire).
+- **Plus rien d'autre** : tout le reste du périmètre joueur past-90
+  est ADMIS (2113/2146 = 98,6 %).
+
+## Le reste (carte actualisée après s58)
+
+1. **FAIT (s47-s58)** : onze grappes livrées/comptées/reclassées ;
+   le dernier single livré. Le reste joueur = 14 rangées TOUTES
+   bloquées sur une décision ou une preuve : CONFUSIONA_ILLUSION 5
+   (lourd, constructible), TRANSFORMA_MASK 5 (feature V5, owner),
+   SPELLP 2 (sémantique, owner/binaire), MINDP_MAINTAIN 2 (mots
+   indéterminés, owner/binaire) ; parked : PvP 15, danses 2 ; arène
+   ~379 (owner).
 2. **La traîne joueur (~270−15 rangées)** : les familles 2-5 de
    l'histogramme, une à une après les trois lanes.
 3. **Décision owner de périmètre (nouveau s39)** : ~180 rangées

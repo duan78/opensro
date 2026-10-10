@@ -43,7 +43,7 @@ func TestRatioDebuffPinsOnlyPastCap(t *testing.T) {
 		if row.Masteries[1].Level > mastery {
 			mastery = row.Masteries[1].Level
 		}
-		if mastery < extendedPastCapMastery || !row.TargetRequired || row.RatioDebuff.DurationMs != 10000 {
+		if mastery < extendedPastCapMastery || !row.TargetRequired || row.RatioDebuff.DurationMs != 10000 || row.RatioDebuff.EvasionDown > 200 || row.RatioDebuff.HitDown > 200 {
 			t.Fatalf("%s (mastery %d): %+v", row.Codename, mastery, row.RatioDebuff)
 		}
 		// The A and B lines carry one cut word; CANCEL2_A carries both.
@@ -54,8 +54,8 @@ func TestRatioDebuffPinsOnlyPastCap(t *testing.T) {
 			t.Fatalf("%s: unexpected shape %+v", row.Codename, row.RatioDebuff)
 		}
 	}
-	if pinned != 8 {
-		t.Fatalf("pinned %d ratio debuffs, want the eight timed tiers", pinned)
+	if pinned != 9 {
+		t.Fatalf("pinned %d ratio debuffs, want the nine timed tiers", pinned)
 	}
 }
 
