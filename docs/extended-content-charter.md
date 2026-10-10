@@ -353,6 +353,32 @@ Question d'origine (M5, 2026-10-09, résolue ci-dessus) : les taux de
 drop des mobs/objets 2026 n'existent dans aucune source locale
 (client : non livrés ; vSRO188/SRObro : stats seulement).
 
+### Questions ouvertes M8 (posées le 2026-10-10, sessions 59/60/63 — aucune réponse reçue ; le reste joueur sans décision est ZÉRO)
+
+Le périmètre joueur 91-140 est mesuré à **99,0 %** (2122/2146 rangées
+admissibles ; audit M8 s28-s63). Chacune des quatre questions ci-dessous
+porte sur un bloc entier ; la recommandation de l'agent est enregistrée,
+la décision lui appartient :
+
+1. **Arène (dénominateur)** : ~379 rangées monstre/événement past-90
+   restent au dénominateur global (2550/3002 = 85,0 %). Les exclure fait
+   de la mesure le périmètre joueur : 99,0 %. *Recommandation : exclure
+   (ce sont des innates de monstres d'arène, pas des skills joueurs ;
+   l'arène elle-même reste V5).*
+2. **PvP (15 rangées)** : MANADRY (10), STEALTHA_CHANGE (2),
+   STEALTHA_POINT (3) — leurs tooltips disent « not effective on
+   monsters » / « cannot be used on monsters » : des skills de ciblage
+   JOUEUR. Les implémenter exige un runtime hostile-joueur.
+   *Recommandation : parked définitif pour ce cap (hors PvE
+   « jouable jusqu'à 140 »), documentées et apprenables côté client.*
+3. **Danses V5 (2 rangées past-90)** : la charte gèle sans preuve du
+   rythme 2026. *Recommandation : parked jusqu'à décision V5 explicite
+   ou fourniture de la preuve.*
+4. **TRANSFORMA_MASK (5 rangées)** : le système Death-Essence complet
+   (récolter sur cadavres, se transformer en monstre avec SES skills) —
+   un feature V5 entier, pas un buff. *Recommandation : parked
+   (plusieurs sessions de construction ; à lancer sur ordre owner).*
+
 ## Annexe A — Faits établis par l'audit du 2026-10-09
 
 | Fait | Preuve |
