@@ -1592,12 +1592,41 @@ dans sa liste sous plancher, soit comprendre son refus d'enveloppe).
 AUCUNE rangée n'a changé (84,9 % inchangé) — l'inférence est écrite,
 la livraison attend la porte de remplacement.
 
-## Le reste (carte actualisée après s61)
+## Session 62 — LA CORRECTION honnête : le mot n'était PAS heal, c'est « hwdu » — le cas s61 est REVERTÉ
 
-1. **FAIT (s47-s61)** : quatorze grappes. L'inférence SPELLP est
-   ÉCRITE (le cas install-heal) ; sa dernière porte est le PIN DE
-   REMPLACEMENT (bissectrice s62). Les blocs décision : TRANSFORMA_
-   MASK 5 (V5), PvP 15, danses 2, arène ~379.
+La bissectrice a atteint le chargeur lui-même et la vérité est une
+correction : le refus du pin de remplacement venait de
+**CompileSkillProgram** — `unknown instruction 0x68776475 at 78` : la
+valeur à cette position (1752654965) n'est **PAS le tag heal
+(0x6865616c)** — l'amorce s57 l'avait mal étiquetée « heal{30} » et
+l'inférence s61 était bâtie sur ce mauvais décodage. **Le cas
+install-heal est REVERTÉ** (aucune rangée ne l'atteignait : la mesure
+n'a jamais bougé, rien à rattraper). SIXIÈME piège de lecture du
+lane — et le premier où un TAG entier avait été mal identifié, pas
+juste inversé.
+
+**Le vrai mot : `hwdu` (0x68776475, un argument {30|35})** — et les
+preuves de nommage s'alignent enfin TROIS fois : le nom du skill
+**HWAN_UP**, le wire qui appelle BerserkPoints « the persistent Hwan
+gauge », et les pilules mall **« Pill Duration 10 seconds Increase
+Pill »** — la famille HWAN des pilules agit sur la DURÉE. Inference
+enregistrée : **hwdu{30|35} étend la durée du mode berserk des
+membres du groupe de 30/35 secondes** — le consommateur est
+l'arithmétique de durée du mode berserk (HandleBerserk/le corps
+berserk), à câbler proprement : une session de soin (lire toute la
+durée du mode, l'extension par destinataire, l'expiration), pas une
+queue de nuit de 40 sessions.
+
+Le reste est inchangé : joueur 98,9 %, la porte du mot hwdu est la
+dernière sans décision owner.
+
+## Le reste (carte actualisée après s62)
+
+1. **FAIT (s47-s62)** : le mot hwdu décodé (Hwan-duration, triple
+   preuve de nommage) ; le cas s61 bâti sur le mauvais tag est
+   REVERTÉ. La dernière grappe sans décision = câbler le consommateur
+   hwdu (la durée du mode berserk, une session de soin). Les blocs
+   décision : TRANSFORMA_MASK 5 (V5), PvP 15, danses 2, arène ~379.
 2. **La traîne joueur (~270−15 rangées)** : les familles 2-5 de
    l'histogramme, une à une après les trois lanes.
 3. **Décision owner de périmètre (nouveau s39)** : ~180 rangées
