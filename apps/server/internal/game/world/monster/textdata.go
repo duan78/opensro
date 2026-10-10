@@ -54,6 +54,14 @@ type MonsterRef struct {
 	TidWord uint16
 	// Structure is a fortress structure (structureTidGate).
 	Structure bool
+	// CostRepair and CostRevive are _RefObjCommon columns 27 and 28, the
+	// reference's +0xA4 and +0xA8: a structure's full-repair price
+	// (CGObjSiegeStruct_ComputeRepairCost 4CFD50; the item repair 496E60
+	// reads the same field) and the base a destroyed one pays first
+	// (634950). CanRevive is column 23, bit 7 of the packed flags at +0x8C
+	// (4CECF0).
+	CostRepair, CostRevive uint32
+	CanRevive              bool
 	// TypeID4 is characterdata column 12. The client classification gates
 	// ignore it, but the GameServer spawn routine reads the full TypeID word:
 	// monster TID4 4 (the MOB_QT_* quest monsters) never becomes a party
@@ -183,6 +191,11 @@ const (
 	colKORecoverMs   = 88
 	colDefaultSkill1 = 89
 	colDefaultSkillN = 98
+
+	// _RefObjCommon's CanRevive, CostRepair and CostRevive.
+	colCanRevive  = 23
+	colCostRepair = 27
+	colCostRevive = 28
 )
 
 /*
@@ -361,10 +374,20 @@ func LoadMonsterRefs(textdataDir string) map[uint32]MonsterRef {
 				displayName = strings.TrimSpace(cols[colCodename])
 			}
 			codename := strings.TrimSpace(cols[colCodename])
+			var costRepair, costRevive uint32
+			var canRevive bool
+			if structure && len(cols) > colCostRevive {
+				costRepair, _ = columnUint32(cols, colCostRepair)
+				costRevive, _ = columnUint32(cols, colCostRevive)
+				canRevive = strings.TrimSpace(cols[colCanRevive]) == "1"
+			}
 			refs[refObjID] = MonsterRef{
 				RefObjID:           refObjID,
 				TidWord:            word,
 				Structure:          structure,
+				CostRepair:         costRepair,
+				CostRevive:         costRevive,
+				CanRevive:          canRevive,
 				TypeID4:            uint8(tid4),
 				Codename:           codename,
 				OriginalCodename:   strings.TrimSpace(cols[4]),
