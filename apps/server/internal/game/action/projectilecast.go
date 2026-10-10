@@ -39,6 +39,7 @@ type pendingProjectileCast struct {
 	trap                      bool        // untargeted; the release plants a combat trap (skillcombattrap.go)
 	statusArea                bool        // untargeted; the release rolls a caster-centred status area
 	mirage                    bool        // untargeted; the release cuts monster hostility around the caster (discordwave.go)
+	poisonField               bool        // untargeted; the release plants a persisting poison field (poisonfield.go)
 	divisionID, characterName string
 	characterID               int64
 	cast                      wire.SkillAction
@@ -144,7 +145,7 @@ func (rt *Runtime) advanceProjectileCasts(now int64) []simulation.DivisionFrames
 			snapshot = rt.characterSnapshot(p.divisionID, c)
 		}
 		valid := snapshot != nil && !snapshot.DeletePending && enterworld.CharacterAlive(snapshot)
-		if !p.supportCast && !p.selfEffect && !p.trap && !p.statusArea && !p.mirage {
+		if !p.supportCast && !p.selfEffect && !p.trap && !p.statusArea && !p.mirage && !p.poisonField {
 			_, exists := rt.resolveCombatTarget(p.divisionID, snapshot, p.cast.TargetGid, now)
 			valid = valid && exists
 		}
@@ -190,6 +191,10 @@ func (rt *Runtime) advanceProjectileCasts(now int64) []simulation.DivisionFrames
 			} else if p.trap {
 				if skill, ok := rt.deps.SkillData().SkillByID(p.cast.ActionId); ok {
 					result, decision = rt.acceptCombatTrap(p.divisionID, c, snapshot, p.cast, skill, now, &p)
+				}
+			} else if p.poisonField {
+				if skill, ok := rt.deps.SkillData().SkillByID(p.cast.ActionId); ok {
+					result, decision = rt.acceptPoisonField(p.divisionID, c, snapshot, p.cast, skill, now, &p)
 				}
 			} else if p.mirage {
 				if skill, ok := rt.deps.SkillData().SkillByID(p.cast.ActionId); ok {

@@ -153,3 +153,39 @@ func TestCombatTrapMatchesAnyLivingVictimAndReplicatesToObservers(t *testing.T) 
 		t.Fatal("hidden trap hidden from its owner")
 	}
 }
+
+/*
+================
+TestPersistFieldScansAllAndRetiresOnExpiry
+
+Extended content (isro-live-2026), port-only, not v1.150-native (M8
+s51): a persisting field reports every matching monster at each due
+scan and stays alive until its own duration passes.
+================
+*/
+func TestPersistFieldScansAllAndRetiresOnExpiry(t *testing.T) {
+	r := &Registry{}
+	r.nextGID = 900
+	object, err := r.Create(Object{Division: "d", OwnerGID: 7, OwnerName: "rog", Population: instance.Lease{ID: 4},
+		Program: Program{SkillID: 1, DurationMs: 30000, ScanMs: 3000, Radius: 100, Combat: true, Persist: true},
+		Spawn:   wire.SkillObjectSpawn{Region: 1, X: 0, Y: 0, Z: 0}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := int64(3000)
+	targets := []Target{{GID: 11, RefID: 1, Alive: true, Region: 1}, {GID: 12, RefID: 1, Alive: true, Region: 1, X: 500}}
+	t.Logf("object gid=%d spawn=%+v matches11=%v matches12=%v", object.Spawn.GID, object.Spawn, Matches(object, targets[0]), Matches(object, targets[1]))
+	if matched, retired := r.ScanPersist(object.Spawn.GID, now, true, targets); retired || len(matched) != 1 || matched[0] != 11 {
+		t.Fatalf("first scan: matched %v retired %v", matched, retired)
+	}
+	// Not due yet: the next scan window waits.
+	if matched, retired := r.ScanPersist(object.Spawn.GID, now+1000, true, targets); retired || matched != nil {
+		t.Fatalf("early scan: matched %v retired %v", matched, retired)
+	}
+	if matched, retired := r.ScanPersist(object.Spawn.GID, now+3000, true, targets); retired || len(matched) != 1 {
+		t.Fatalf("second scan: matched %v retired %v", matched, retired)
+	}
+	if _, retired := r.ScanPersist(object.Spawn.GID, now+31000, true, targets); !retired {
+		t.Fatal("the field outlived its duration")
+	}
+}

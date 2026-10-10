@@ -216,6 +216,21 @@ func (rt *Runtime) advanceSkillObject(object skillobject.Object, nowMs int64) []
 	if object.Program.Combat && ownerPresent {
 		ownerPresent = combatTrapOwnerNear(object, rt.liveSpawn(simulation.WorldKey(object.Division, object.OwnerName), snapshot, nowMs))
 	}
+	// Extended content (isro-live-2026), port-only, not v1.150-native
+	// (M8 s51): a persisting poison field reports every match and keeps
+	// scanning until its own dura passes.
+	if object.Program.Persist {
+		victims, fieldRetired := rt.SkillObjects.ScanPersist(object.Spawn.GID, nowMs, ownerPresent, targets)
+		if len(victims) > 0 {
+			if skill, known := rt.deps.SkillData().SkillByID(object.Program.SkillID); known && skill.PoisonField.Pinned {
+				rt.applyPoisonFieldScan(object.Division, c, skill.PoisonField, victims, nowMs)
+			}
+		}
+		if fieldRetired {
+			rt.retireCombatTrapEffect(object.Division, c, object, nowMs)
+		}
+		return nil
+	}
 	_, targetGID, retired := rt.SkillObjects.Scan(object.Spawn.GID, nowMs, ownerPresent, targets)
 	if retired && object.Program.Combat {
 		rt.retireCombatTrapEffect(object.Division, c, object, nowMs)

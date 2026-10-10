@@ -827,3 +827,46 @@ MonsterCorrectionPayload
 func MonsterCorrectionPayload(gid uint32, pose monster.Pose) []byte {
 	return correctionFrame(gid, pose).Payload
 }
+
+/*
+==================
+ApplyPoisonField
+
+Extended content (isro-live-2026), port-only, not v1.150-native (M8
+s51): one scan victim of a planted poison field rolls the ps block on
+the native chance stream and, on a pass, receives the poison record
+through the ordinary block transaction - whose 2-second update owns
+the damage ticks afterwards (the Poison callback of callbacks.go).
+==================
+*/
+func (s *MonsterState) ApplyPoisonField(division string, gid uint32, sourceGID uint32, sourceName string, poisonMs, chance uint32, damage uint32, now int64) bool {
+	if s == nil || s.abnormalContext == nil {
+		return false
+	}
+	// Inference recorded (M8 s51): the ps block carries no level or grade
+	// word, and a zero-level record needs a nonzero grade for the slot to
+	// admit it (4A4270) - the field's poison is grade one.
+	records := []abnormal.Record{{Status: abnormal.Poison, DurationMs: poisonMs, Chance: chance, Grade: 1, Param38: damage,
+		SourceGID: sourceGID, SourceName: sourceName}}
+	sources := s.PrepareAbnormalSources(division, records)
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	state := s.populationForObject(division, gid)
+	instance, ok := state.instances.lookup(gid)
+	if !ok || instance.CurrentHP == 0 {
+		return false
+	}
+	if !s.abnormalContext.Roll(division, gid, 0x10000000, int32(chance)) {
+		return false
+	}
+	effects := s.applyAbnormalLocked(monsterAbnormalInput{division: division, ctx: s.abnormalContext,
+		state: state, instance: &instance, now: now, sources: sources},
+		abnormal.HitContext{}, records)
+	if instance.Abnormal == nil || !instance.Abnormal.Has(abnormal.Poison) {
+		return false
+	}
+	state.instances.set(gid, instance)
+	state.trackAbnormal(gid, instance.Abnormal)
+	_ = effects
+	return true
+}
