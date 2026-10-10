@@ -353,9 +353,9 @@ Question d'origine (M5, 2026-10-09, résolue ci-dessus) : les taux de
 drop des mobs/objets 2026 n'existent dans aucune source locale
 (client : non livrés ; vSRO188/SRObro : stats seulement).
 
-### Questions ouvertes M8 (posées le 2026-10-10, sessions 59/60/63/64 — aucune réponse reçue ; le reste joueur sans décision est ZÉRO)
+### Décisions M8 actées par l'owner le 2026-10-10 (quatre réponses reçues via le prompt de session, après ~40 demandes)
 
-Le périmètre joueur 91-140 est mesuré à **99,2 %** (2576/2598 rangées
+Le périmètre joueur 91-140 était mesuré à **99,2 %** (2576/2598 rangées
 admissibles, racines de chaîne incluses comme le dénominateur global ;
 audit M8 s28-s64 — la session 64 a corrigé une déviation native de
 l'enveloppe projectile qui refusait 51 chaînes, et le filtre de la
@@ -363,9 +363,36 @@ mesure joueur). Les 22 ratées joueur, énumérées rangée par rangée :
 BARD_DANCEA_WITH_MUSIC_A_05/_06 (danses, 2) ; ROG_STEALTHA_CHANGE_A_05,
 CHANGE_B_03, STEALTHA_POINT_B_02/B_03/B_04 (PvP, 5) ;
 WIZARD_COLDA_MANADRY_A_09/A_10/A_11, B_03..B_07, C_01/C_02 (PvP, 10) ;
-ROG_TRANSFORMA_MASK_B_04/B_05/B_06, C_01/C_02 (5). Chacune des quatre
-questions ci-dessous porte sur un bloc entier ; la recommandation de
-l'agent est enregistrée, la décision lui appartient :
+ROG_TRANSFORMA_MASK_B_04/B_05/B_06, C_01/C_02 (5). Les quatre blocs
+sont tranchés :
+
+1. **Arène (dénominateur) — EXCLUE.** Le critère d'acceptation de la
+   mission devient le périmètre joueur (`SKILL_CH_`/`SKILL_EU_`, filtre
+   du dénominateur global). Les 404 rangées non-joueur past-90 — dont
+   379 non exécutables : P2SKILL_INNATE 188, P2SKILL_ASS 72,
+   P2SKILL_PRO 72, P2SKILL_ENC 72, 25 exécutables — quittent le
+   critère ; le global reste imprimé à titre de rapport. L'arène
+   elle-même reste V5.
+2. **PvP (15 rangées) — PARKED DÉFINITIF.** MANADRY (10),
+   STEALTHA_CHANGE (2), STEALTHA_POINT (3) restent non exécutées : un
+   runtime hostile-joueur est hors du cap « jouable jusqu'à 140 ». Les
+   rangées restent dans les données, apprenables côté client ; aucune
+   session ne sera ouverte pour elles sans nouvel ordre owner.
+3. **Danses V5 (2 rangées) — ORDRE D'IMPLÉMENTATION.** Le bloc
+   « sans preuve : pas d'implémentation » est levé par ordre owner
+   explicite : implémenter BARD_DANCEA_WITH_MUSIC_A_05/_06 par inférence
+   enregistrée, sans preuve du rythme 2026 (livraison s66).
+4. **TRANSFORMA_MASK (5 rangées) — LANCER DEATH-ESSENCE.** Ordre owner
+   explicite de construire la feature V5 — drapeau/masque off par
+   défaut, valeur off = natif, code marqué « port-only, not native »,
+   les deux réglages testés — et les 5 rangées MASK (livraison s67).
+
+Historique (avant décision, pour la trace) : la recommandation de
+l'agent était exclure / parked / parked / parked ; l'owner a suivi les
+deux premières recommandations et a ordonné l'implémentation des deux
+dernières.
+
+#### Questions d'origine (posées les sessions 59/60/63/64, formulation conservée)
 
 1. **Arène (dénominateur)** : 404 rangées non-joueur past-90 restent
    au dénominateur global (2601/3002 = 86,6 %), dont 379 non

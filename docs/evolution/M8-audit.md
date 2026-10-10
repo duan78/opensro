@@ -1711,7 +1711,25 @@ comparer ; (3) la restriction d'une enveloppe écrite sur les seules
 formes v1.150 connues peut être une déviation : mesurer la table native
 avant d'invoquer un plancher past-cap.
 
-## Le reste (carte actualisée après s64)
+## Session 65 — LES QUATRE DÉCISIONS OWNER REÇUES ; le critère devient le périmètre joueur
+
+Après ~40 demandes, l'owner a répondu aux quatre questions de la charte
+§8 (2026-10-10, via le prompt de session) : (1) l'arène est EXCLUE du
+critère — l'acceptation devient le périmètre joueur ; (2) le PvP
+(15 rangées) est PARKED DÉFINITIF ; (3) ORDRE D'IMPLÉMENTATION pour les
+2 danses du barde (s66) ; (4) LANCER la feature Death-Essence V5 et les
+5 rangées MASK (s67). Les décisions sont actées dans la charte §8 avec
+la trace des recommandations (l'owner a suivi les deux premières, ordonné
+les deux dernières).
+
+Le test canonique porte désormais LE critère : la ligne
+« acceptance (player scope, owner 2026-10-10) » (2576/2598 = 99,2 %)
+et le théorème « aucune ratée non autorisée » — chaque rangée joueur
+non exécutable doit appartenir à un bloc décidé par l'owner (PvP parked
+15, danses ordonnées 2, MASK ordonné 5), toute autre ratée fait échouer
+le test. Mesure s65 : pvp 15, danses 2, mask 5, aucune inexpliquée.
+
+## Le reste (carte actualisée après s65)
 
 1. **FAIT (s47-s64)** : QUINZE grappes ; l'Aura of Blood (+2) ; les
    51 chaînes projectile (s64, correction native). Le reste joueur SANS
