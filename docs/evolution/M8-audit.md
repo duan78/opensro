@@ -1571,13 +1571,33 @@ s59). **Couverture : 84,8 → 84,9 %** (2548/3002, +2) ; joueur
 - **Parked/décision** : TRANSFORMA_MASK 5 (V5), PvP 15, danses 2,
   arène ~379 (dénominateur).
 
-## Le reste (carte actualisée après s60)
+## Session 61 — l'inférence Aura of Blood tranchée et écrite ; la porte suivante nommée : le PIN DE REMPLACEMENT
 
-1. **FAIT (s47-s60)** : treize grappes livrées/comptées/reclassées ;
-   MINDP_MAINTAIN livré (DTDR exécuté, hwir porté). Reste SANS
-   décision : SPELLP 2 (inférence à enregistrer — deux lectures). Les
-   blocs décision : TRANSFORMA_MASK 5 (V5), PvP 15, danses 2, arène
-   ~379.
+L'AGENTS.md a tranché l'inférence et elle est ÉCRITE : **le mot est
+le bloc heal natif (+0x324), un mot unique sur une rangée persistante
+SANS puls — l'installation est le seul point d'application natif
+possible** : chaque destinataire du groupe reçoit le mot plat UNE FOIS
+à l'installation. Le nom HWAN_UP nomme la FANTAISIE berserk ; le bloc
+exécuté est le heal, le mot du wire lui-même. Le cas
+`tagTimedInstallHeal` (plancher ≥91, aire obligatoire, les mots 2-4 à
+zéro) est dans le walk timed avec le champ InstallHeal — inert tant
+qu'aucune rangée ne l'atteint, donc sans effet sur la mesure.
+
+**La porte suivante, nommée par le probe** : les deux rangées refusent
+AVANT le walk — `consPin=false` ET `replPin=false` : **le compilateur
+de REMPLACEMENT refuse la forme** (sa liste
+`replacementExecutionInstruction` ne connaît pas le mot heal — la
+bissectrice de s62 vise `compileSkillReplacement` : soit admettre heal
+dans sa liste sous plancher, soit comprendre son refus d'enveloppe).
+AUCUNE rangée n'a changé (84,9 % inchangé) — l'inférence est écrite,
+la livraison attend la porte de remplacement.
+
+## Le reste (carte actualisée après s61)
+
+1. **FAIT (s47-s61)** : quatorze grappes. L'inférence SPELLP est
+   ÉCRITE (le cas install-heal) ; sa dernière porte est le PIN DE
+   REMPLACEMENT (bissectrice s62). Les blocs décision : TRANSFORMA_
+   MASK 5 (V5), PvP 15, danses 2, arène ~379.
 2. **La traîne joueur (~270−15 rangées)** : les familles 2-5 de
    l'histogramme, une à une après les trois lanes.
 3. **Décision owner de périmètre (nouveau s39)** : ~180 rangées
