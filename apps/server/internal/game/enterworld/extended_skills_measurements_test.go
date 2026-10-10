@@ -170,6 +170,7 @@ func rowRuntimeAdmitted(source *TextdataSkills, row SkillRow) bool {
 		row.Aura.Present && (row.BuffModifiers.Present() || row.Aura.Eshp) ||
 		row.TimedEffect.Periodic.Pinned ||
 		row.TimedEffect.Dance.Pinned ||
+		row.MonsterCapture.Pinned ||
 		row.Recovery.SelfFlatPinned || row.Recovery.PartyHealPinned ||
 		row.Recovery.LowestHealPinned || row.Recovery.PartyResurrectPinned ||
 		row.Recovery.HealOverTimePinned || row.Abnormal.CurePresent() ||
