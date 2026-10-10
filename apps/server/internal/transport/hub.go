@@ -76,6 +76,9 @@ type Hub struct {
 	admission helloAdmissionGate
 	handlers  handlerRegistry
 	hooks     sessionHooks
+	// closeHooks reserves one completion per admitted session under mu.
+	// Retirement releases it only after all synchronous or async hooks finish.
+	closeHooks sync.WaitGroup
 
 	// handshakeSlots bounds connections waiting for their first HELLO.
 	// Admission is non-blocking: a full server rejects new work instead of
@@ -644,6 +647,9 @@ func (h *Hub) createSession() (*Session, error) {
 		h.mu.Unlock()
 		return nil, ErrSessionCapacity
 	}
+	// Reserve before publication; shutdown closes admission under this lock
+	// before waiting, so no new Add can race a zero-count Wait.
+	h.closeHooks.Add(1)
 	id := h.nextID.Add(1)
 	sess := newSession(h, id, token)
 	h.sessions[id] = sess
@@ -935,8 +941,8 @@ func (h *Hub) refuseEnterWorldAuth(s *Session, denyCode uint32, decodeErr error)
 	}))
 }
 
-// shutdown says BYE to every session and waits for them to drain, capped by
-// ctx.
+// shutdown caps network draining by ctx, then joins every admitted session
+// through hook completion before callers can release shared gameplay resources.
 /*
 ================
 shutdown
@@ -961,4 +967,5 @@ func (h *Hub) shutdown(ctx context.Context) {
 			h.closeSession(s, errors.New("transport: shutdown deadline"))
 		}
 	}
+	h.closeHooks.Wait()
 }
