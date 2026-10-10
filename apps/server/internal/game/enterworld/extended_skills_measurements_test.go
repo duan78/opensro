@@ -164,6 +164,7 @@ func rowRuntimeAdmitted(source *TextdataSkills, row SkillRow) bool {
 		row.CombatTrap.Pinned ||
 		row.RatioDebuff.Pinned ||
 		row.PoisonField.Pinned ||
+		row.Duplicate.Pinned ||
 		row.Threat.Decrease ||
 		row.Aura.Present && (row.BuffModifiers.Present() || row.Aura.Eshp) ||
 		row.TimedEffect.Periodic.Pinned ||

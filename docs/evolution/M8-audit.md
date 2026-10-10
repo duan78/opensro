@@ -1346,14 +1346,29 @@ reste absente du natif.
 **Couverture : 84,2 → 84,3 %** (2532/3002, +5 exact) ; joueur
 2104/2146 (98,1 %). Reste livrable : 40 rangées.
 
-## Le reste (carte actualisée après s52)
+## Session 53 — TRANSFORMA_DUPLE : DÉJÀ jouable, compté (+3, 84,4 %) — neuvième écart de mesure
 
-1. **FAIT (s47-s52)** : classification, DAMAGE_DIVIDE (+4),
-   HEALSHIELD (+3), POISONA_FIELD (+5), FRENZYA B (+5). Reste
-   livrable : 40 rangées (CONFUSIONA_ILLUSION 5 [msch-3 = le modèle
-   joueur aléatoire PAR SPECTATEUR — la plus lourde], FIRE_SHIELD 3,
-   STEALTHA_POINT 3, TRANSFORMA_DUPLE 3 [msch-2 ciblé], MINDP 4,
-   SPELLP 2, singles ~10 ; parked : MANADRY 10 PvP, danses 2).
+Le probe d'une ligne : les trois tiers B past-90 (m=100/120/140,
+mschLevel 120→160) sont **dupPinned=true** — le prédicat Duplicate
+(msch-2 ciblé allié) les admet depuis toujours, avec leur exécuteur
+(acceptDuplicate copie le modèle et l'équipement porté de l'allié).
+Le lane n'a jamais été en retard : l'UNION ne comptait pas
+`Duplicate.Pinned` — le NEUVIÈME écart de mesure du M8 (murs,
+dissimulation, pièges, coupes d'hostilité, auras, REBIRTHA-B_02,
+FRENZYA-A, duplicate). L'union des deux tests le compte désormais
+(bucket « duplicate »).
+
+**Couverture : 84,3 → 84,4 %** (2535/3002, +3 exact) ; joueur
+2107/2146 (98,3 %). Reste livrable : 37 rangées.
+
+## Le reste (carte actualisée après s53)
+
+1. **FAIT (s47-s53)** : classification, DAMAGE_DIVIDE (+4),
+   HEALSHIELD (+3), POISONA_FIELD (+5), FRENZYA B (+5), TRANSFORMA_
+   DUPLE (+3, comptée). Reste livrable : 37 rangées
+   (CONFUSIONA_ILLUSION 5 [par spectateur — la plus lourde],
+   FIRE_SHIELD 3, STEALTHA_POINT 3, MINDP 4, SPELLP 2, singles ~10 ;
+   parked : MANADRY 10 PvP, danses 2).
 2. **La traîne joueur (~270−15 rangées)** : les familles 2-5 de
    l'histogramme, une à une après les trois lanes.
 3. **Décision owner de périmètre (nouveau s39)** : ~180 rangées
