@@ -1790,15 +1790,50 @@ résultat ; (3) clampKeeperVital borne le MP courant au maxMP dérivé —
 les rangées statiques de test doivent garder coûts et pulsations sous
 les vitales du personnage de test.
 
-## Le reste (carte actualisée après s66)
+## Session 67 — L'ORDRE MASK SATISFAIT SANS CONSTRUCTION : la voie capture était déjà livrée (joueur 2583/2598 = 99,4 % ; le seul reste = les 15 PvP parked)
 
-1. **FAIT (s47-s66)** : QUINZE grappes ; l'Aura de Sang (+2) ; les 51
-   chaînes projectile (s64, correction native) ; les danses WITH_MUSIC
-   (s66, ordre owner Q3). Reste joueur : les 15 PvP parked définitif
-   (décision owner Q2) et les 5 TRANSFORMA_MASK (ordre owner Q4, s67),
-   plus l'arène : 404 rangées non-joueur au dénominateur dont 379 non
-   exécutables (P2SKILL_INNATE 188, ASS 72, PRO 72, ENC 72 ; 25
-   exécutables) — exclues du critère par la décision owner Q1.
+Exécution de l'ordre owner Q4 (« lancer Death-Essence ») : le diagnostic
+a d'abord regardé les rangées. Toutes (natif A/B 20-90 ET live B_04-C_02
+100-140) portent le mot mcap {niveau max, item RefObj} — un mot NATIF
+(spawnParamSpec) que le parseur skillcapture.go épingle déjà, et les
+cinq rangées live épinglent (`capture=true` mesuré). Le runtime existe
+et est testé de bout en bout : acceptMonsterCapture (cadavre, marche à
+portée, admission 58D2F4, essence du mort au sol avec le RefObj du
+monstre), transform.go (la capsule ITEM_ETC_TRANS_MONSTER = « 정수 du
+mort », 180 s, peau et vitesses du monstre, les SKILLS du monstre, fin
+au chargement/mort/monture, non-persistée). Le « feature V5 entière,
+multi-sessions » du cadrage s63 était un artefact : l'union d'admission
+ne comptait pas MonsterCapture.Pinned, donc la mesure appelait
+« non exécutables » des rangées que le dispatch exécutait déjà.
+
+s67 = la correction de mesure : MonsterCapture.Pinned entre dans
+l'union, le kind « capture » dans le test canonique (1 par bande, 5
+rangées), et le théorème du critère resserré à l'état final — les blocs
+livrés (danses, mask) doivent rester à ZÉRO ratée, et les ratées joueur
+sont EXACTEMENT les quinze PvP parked définitivement par l'owner.
+Aucun drapeau : rien de non-natif n'est ajouté. Mesure : **joueur
+2583/2598 = 99,4 %, global 2608/3002 = 86,9 %** ; misses: pvp 15,
+dances 0, mask 0. La mission « la totalité des skills pour jouer
+jusqu'à 140 » est atteinte à la lettre de ses décisions owner : chaque
+rangée joueur est exécutable, sauf les quinze que l'owner a parked de
+sa propre main.
+
+Leçon (la troisième du genre, avec s64 et les racines de chaîne) : une
+« rangée non exécutable » de la mesure n'est un feature manquant qu'une
+fois le DISPATCH vérifié — l'union est un miroir écrit à la main du
+dispatch, et il a maintenant pris trois sessions de retard sur lui.
+Avant de cadrer un bloc comme « à construire », grepper le mot contre
+le code.
+
+## Le reste (carte actualisée après s67 — ÉTAT FINAL)
+
+1. **ÉTAT FINAL (s65-s67, décisions owner du 2026-10-10)** : QUINZE
+   grappes ; l'Aura de Sang (+2) ; les 51 chaînes projectile (s64) ;
+   les danses WITH_MUSIC (s66, ordre Q3) ; le mask compté (s67, ordre
+   Q4 : la voie était déjà livrée, l'union ne la comptait pas). Le
+   reste joueur : les 15 PvP PARKED DÉFINITIVEMENT par l'owner (Q2) —
+   et rien d'autre. L'arène (404 rangées non-joueur, 379 non
+   exécutables) est exclue du critère par Q1.
 2. **La traîne joueur (~270−15 rangées)** : les familles 2-5 de
    l'histogramme, une à une après les trois lanes.
 3. **Décision owner de périmètre (nouveau s39)** : ~180 rangées

@@ -134,6 +134,14 @@ func skillCoveragePast90(t *testing.T, source *TextdataSkills) map[int]map[strin
 			// run on.
 			kind = "dance"
 		}
+		if kind == "unsupported" && row.MonsterCapture.Pinned {
+			// The corpse-capture lane (action/monstercapture.go): the
+			// Monster Mask drops the Essence of the Dead, transform.go
+			// wears it. Shipped before M8; the union counted it only
+			// from s67 - the five live TRANSFORMA_MASK tiers had been a
+			// measurement artifact, never a missing feature.
+			kind = "capture"
+		}
 		if kind == "unsupported" && (row.Recovery.SelfFlatPinned || row.Recovery.PartyHealPinned ||
 			row.Recovery.LowestHealPinned || row.Recovery.PartyResurrectPinned || row.Recovery.HealOverTimePinned ||
 			row.Abnormal.CurePresent() ||
@@ -192,7 +200,7 @@ func TestExtendedSkillsExecutionCoveragePastLevel90(t *testing.T) {
 			total += bandTotal
 			routed += bandRouted
 			summary := ""
-			for _, kind := range []string{"offense", "recovery", "instant", "passive", "timed", "periodic", "wall", "concealment", "position", "threat", "aura", "debuff", "trap", "field", "duplicate", "illusion", "dance", "unsupported-unpinned", "unsupported-chain", "chain-stage"} {
+			for _, kind := range []string{"offense", "recovery", "instant", "passive", "timed", "periodic", "wall", "concealment", "position", "threat", "aura", "debuff", "trap", "field", "duplicate", "illusion", "dance", "capture", "unsupported-unpinned", "unsupported-chain", "chain-stage"} {
 				if counts[kind] > 0 {
 					summary += fmt.Sprintf(" %s=%d", kind, counts[kind])
 				}
@@ -236,24 +244,31 @@ func TestExtendedSkillsExecutionCoveragePastLevel90(t *testing.T) {
 	// The criterion's theorem: every miss belongs to an owner-decided
 	// block (charter section 8, 2026-10-10). The 15 player-targeting PvP
 	// rows are PARKED DEFINITIVELY by the owner - they may miss forever.
-	// The 2 bard dances and the 5 TRANSFORMA_MASK rows carry
-	// implementation orders: while s66/s67 are pending they may miss, and
-	// the block comments here are relaxed by those deliveries. A miss
-	// outside these blocks is a regression this test exists to catch.
-	parkedPvP, orderedDances, orderedMask := 0, 0, 0
+	// The bard dances (s66) and the TRANSFORMA_MASK rows (s67: the
+	// capture lane was already shipped, the union had never counted it)
+	// are DELIVERED: their blocks must stay at zero misses. A miss
+	// outside the parked block - or a regression inside a delivered one -
+	// is what this test exists to catch.
+	parkedPvP, deliveredDances, deliveredMask := 0, 0, 0
 	for _, codename := range playerMisses {
 		switch {
 		case strings.Contains(codename, "DANCEA_WITH_MUSIC"):
-			orderedDances++
+			deliveredDances++
 		case strings.Contains(codename, "TRANSFORMA_MASK"):
-			orderedMask++
+			deliveredMask++
 		case strings.Contains(codename, "MANADRY"), strings.Contains(codename, "STEALTHA_"):
 			parkedPvP++
 		default:
 			t.Fatalf("player row %s is not executable and belongs to no owner-decided block", codename)
 		}
 	}
-	t.Logf("misses by owner block: pvp parked %d, dances ordered %d, mask ordered %d", parkedPvP, orderedDances, orderedMask)
+	if deliveredDances != 0 || deliveredMask != 0 {
+		t.Fatalf("a delivered block regressed: dances %d, mask %d misses", deliveredDances, deliveredMask)
+	}
+	if parkedPvP != 15 {
+		t.Fatalf("parked pvp misses = %d, want the owner's fifteen", parkedPvP)
+	}
+	t.Logf("misses by owner block: pvp parked %d (dances %d, mask %d - delivered, zero expected)", parkedPvP, deliveredDances, deliveredMask)
 
 	// What the unpinned rows ARE (the M7 budget's denominator): sample
 	// codenames per band - player-family variants, monster skills or

@@ -382,10 +382,22 @@ sont tranchés :
    « sans preuve : pas d'implémentation » est levé par ordre owner
    explicite : implémenter BARD_DANCEA_WITH_MUSIC_A_05/_06 par inférence
    enregistrée, sans preuve du rythme 2026 (livraison s66).
-4. **TRANSFORMA_MASK (5 rangées) — LANCER DEATH-ESSENCE.** Ordre owner
-   explicite de construire la feature V5 — drapeau/masque off par
-   défaut, valeur off = natif, code marqué « port-only, not native »,
-   les deux réglages testés — et les 5 rangées MASK (livraison s67).
+4. **TRANSFORMA_MASK (5 rangées) — ORDRE SATISFAIT SANS CONSTRUCTION
+   (s67).** L'ordre disait « lancer Death-Essence » sur un cadrage de
+   l'agent (« feature V5 entière, multi-sessions ») qui s'est révélé
+   FAUX à l'exécution : la voie était DÉJÀ livrée dans le port — le mot
+   est natif (mcap, spawnParamSpec), le runtime de capture existe et est
+   testé (action/monstercapture.go : cible cadavre, admission 58D2F4,
+   essence du mort au sol portant le RefObj du monstre), la
+   transformation l'est aussi (action/transform.go : capsule
+   ITEM_ETC_TRANS_MONSTER, msch 1, peau et vitesses du monstre, skills
+   du monstre, fin au chargement/mort/monture). Ce qui manquait était
+   la MESURE : l'union d'admission ne comptait pas MonsterCapture.Pinned
+   — les 5 tiers live étaient un artefact de mesure, jamais un feature
+   absent. s67 corrige l'union (et le kind « capture ») ; aucun drapeau
+   n'est requis puisque rien de non-natif n'est ajouté. Leçon actée :
+   avant de cadrer un bloc comme « à construire », vérifier la voie
+   contre le dispatch existant.
 
 Historique (avant décision, pour la trace) : la recommandation de
 l'agent était exclure / parked / parked / parked ; l'owner a suivi les
