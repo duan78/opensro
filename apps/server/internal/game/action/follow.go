@@ -64,9 +64,8 @@ func (rt *Runtime) beginFollow(division string, character *enterworld.Character,
 	if snapshot == nil || snapshot.DeletePending || !enterworld.CharacterAlive(snapshot) || teleportBlocks(snapshot.NativeTeleportMode) {
 		return OpResult{DiagnosticRefusal: "follow-character-unavailable"}
 	}
-	if mountedOnCOS(snapshot) {
-		return mountedCommandRefusal()
-	}
+	// A rider may Trace: 4ACD7A refuses only attack (1) and skill (4)
+	// commands while mounted, never this family (3).
 	if stand, seated := rt.standForSeatedCommand(division, character, nowMs); seated {
 		return stand
 	}
@@ -101,7 +100,7 @@ port's explicit world-instance boundary to those native object checks.
 */
 func (rt *Runtime) followActors(actor *enterworld.Character, intent basicAttackIntent, nowMs int64) (*enterworld.Character, simulation.CombatSpacing, bool) {
 	var spacing simulation.CombatSpacing
-	if actor == nil || actor.DeletePending || !enterworld.CharacterAlive(actor) || teleportBlocks(actor.NativeTeleportMode) || mountedOnCOS(actor) {
+	if actor == nil || actor.DeletePending || !enterworld.CharacterAlive(actor) || teleportBlocks(actor.NativeTeleportMode) {
 		return nil, spacing, false
 	}
 	target := rt.characterSnapshot(intent.DivisionID, rt.findCharacterByGid(intent.DivisionID, intent.TargetGid))
@@ -201,4 +200,43 @@ func (rt *Runtime) advanceFollowIntent(character *enterworld.Character, intent b
 	return rt.commitIntentMovement(character, snapshot, intentMovement{
 		intent: intent, from: from, target: to, goal: goal, nowMs: nowMs,
 	})
+}
+
+/*
+================
+commitRiddenIntentMovement
+
+A rider's pursuit step is the vehicle's move. Native 4ACD7A admits Trace
+mounted (it tests the mount only for attack and skill commands), and a
+ridden step belongs to the vehicle's movement owner as the client's own
+0x769E move does: the acknowledgement names the COS GID and the vehicle
+keeps its own speeds and mode, so the rider's run switch is not sent. A
+refused step is transient, as a walker's is, and is retried next tick.
+================
+*/
+func (rt *Runtime) commitRiddenIntentMovement(character, snapshot *enterworld.Character, move intentMovement) OpResult {
+	intent, nowMs := move.intent, move.nowMs
+	ride := snapshot.ActiveCOS
+	if rt.MoveCOS == nil || ride.CurrentHP == 0 || rt.cosMovementBlocked(intent.DivisionID, snapshot) {
+		return OpResult{}
+	}
+	key := simulation.WorldKey(intent.DivisionID, character.Name)
+	rt.bindResidentRegion(key, nowMs)
+	request := simulation.MovementRequest{Mode: simulation.MovementAckDestinationMode,
+		RegionID: move.goal.RegionID, X: move.goal.X, Y: move.goal.Y, Z: move.goal.Z}
+	frames := rt.MoveCOS(intent.DivisionID, character, ride.GID, simulation.EncodeClientMovementRequest(request))
+	acknowledged := false
+	for _, frame := range frames {
+		acknowledged = acknowledged || frame.Opcode == simulation.OpMovementAck
+	}
+	if !acknowledged {
+		return OpResult{}
+	}
+	world := rt.Worlds.Snapshot(key, func() simulation.WorldState { return simulation.SeedWorldState(snapshot) })
+	intent.ApproachTargetSample = move.target
+	intent.ApproachIssuedAtMs = nowMs
+	intent.HasApproach = true
+	intent.ApproachMovementRevision = world.GroundRevision()
+	rt.setCombatIntent(intent)
+	return OpResult{Frames: frames}
 }
