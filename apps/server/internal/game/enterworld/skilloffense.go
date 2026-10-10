@@ -485,16 +485,28 @@ func decodeSkillOffense(fields []string, row *SkillRow) string {
 				}
 			}
 			// Crossbow stages own their cnsm debit (585FB6), including
-			// zero-preparation linked shots. Keep other weapon families on
-			// their reviewed envelope; graph validation remains root-owned.
-			// 589B98 dispatches on the handler, not flight speed. Handler 1
-			// explicitly accepts speed zero at 585DF1 (zero flight time).
+			// zero-preparation linked shots. 589B98 dispatches on the
+			// handler, not flight speed. Handler 1 explicitly accepts
+			// speed zero at 585DF1 (zero flight time).
 			if row.ActionHandler == SkillActionProjectile || seen[0x636e736d] {
 				crossbow := row.RequiredWeaponKinds == ([2]uint8{crossbowWeaponKind, 255})
-				// SkillAction_Projectile (5857B0) links stages for any
-				// launcher: the bow's Arrow Combo C and D chain zero-preparation
-				// shots exactly as the crossbow's lines do.
-				chained := crossbow || row.RequiredWeaponKinds == ([2]uint8{bowWeaponKind, 255})
+				// SkillAction_Projectile (5857B0) links stages for ANY
+				// launcher, and the v1.150 table itself proves it beyond the
+				// bow's Arrow Combo C/D and the crossbow's lines: the sword's
+				// GEOMGI C/C2/D/D2 flying blades are handler-1 chains on
+				// swords {2,3} (measured 2026-10-10, the port's earlier
+				// bow/crossbow-only restriction was a deviation, not a native
+				// rule). The live 91-140 tiers extend the same shape: the
+				// spear throw SPEAR_SHOOT D/E on {4,5} and the GEOMGI E/F and
+				// SPECIAL E sword series. Every concrete non-launcher weapon
+				// chains exactly when the ammunition gate's own free-weapons
+				// arm can pass it (no cnsm, no ammunition); the any-weapon
+				// marker {255,255} stays out - monster rows, which that gate
+				// refuses on its own, and cnsm on a non-launcher stays
+				// refused with it.
+				chained := crossbow ||
+					row.RequiredWeaponKinds == ([2]uint8{bowWeaponKind, 255}) ||
+					ammunitionFreeWeapons(row.RequiredWeaponKinds)
 				// Several mc impacts resolve at release together and spend
 				// cnsm count x impacts arrows (585AF0).
 				if row.ActionHandler != SkillActionProjectile ||

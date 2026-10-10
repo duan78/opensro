@@ -353,20 +353,30 @@ Question d'origine (M5, 2026-10-09, résolue ci-dessus) : les taux de
 drop des mobs/objets 2026 n'existent dans aucune source locale
 (client : non livrés ; vSRO188/SRObro : stats seulement).
 
-### Questions ouvertes M8 (posées le 2026-10-10, sessions 59/60/63 — aucune réponse reçue ; le reste joueur sans décision est ZÉRO)
+### Questions ouvertes M8 (posées le 2026-10-10, sessions 59/60/63/64 — aucune réponse reçue ; le reste joueur sans décision est ZÉRO)
 
-Le périmètre joueur 91-140 est mesuré à **99,0 %** (2122/2146 rangées
-admissibles ; audit M8 s28-s63). Chacune des quatre questions ci-dessous
-porte sur un bloc entier ; la recommandation de l'agent est enregistrée,
-la décision lui appartient :
+Le périmètre joueur 91-140 est mesuré à **99,2 %** (2576/2598 rangées
+admissibles, racines de chaîne incluses comme le dénominateur global ;
+audit M8 s28-s64 — la session 64 a corrigé une déviation native de
+l'enveloppe projectile qui refusait 51 chaînes, et le filtre de la
+mesure joueur). Les 22 ratées joueur, énumérées rangée par rangée :
+BARD_DANCEA_WITH_MUSIC_A_05/_06 (danses, 2) ; ROG_STEALTHA_CHANGE_A_05,
+CHANGE_B_03, STEALTHA_POINT_B_02/B_03/B_04 (PvP, 5) ;
+WIZARD_COLDA_MANADRY_A_09/A_10/A_11, B_03..B_07, C_01/C_02 (PvP, 10) ;
+ROG_TRANSFORMA_MASK_B_04/B_05/B_06, C_01/C_02 (5). Chacune des quatre
+questions ci-dessous porte sur un bloc entier ; la recommandation de
+l'agent est enregistrée, la décision lui appartient :
 
-1. **Arène (dénominateur)** : ~379 rangées monstre/événement past-90
-   restent au dénominateur global (2550/3002 = 85,0 %). Les exclure fait
-   de la mesure le périmètre joueur : 99,0 %. *Recommandation : exclure
-   (ce sont des innates de monstres d'arène, pas des skills joueurs ;
-   l'arène elle-même reste V5).*
-2. **PvP (15 rangées)** : MANADRY (10), STEALTHA_CHANGE (2),
-   STEALTHA_POINT (3) — leurs tooltips disent « not effective on
+1. **Arène (dénominateur)** : 404 rangées non-joueur past-90 restent
+   au dénominateur global (2601/3002 = 86,6 %), dont 379 non
+   exécutables — P2SKILL_INNATE 188, P2SKILL_ASS 72, P2SKILL_PRO 72,
+   P2SKILL_ENC 72 (25 exécutables). Les exclure fait de la mesure le
+   périmètre joueur : 99,2 %. *Recommandation : exclure (ce sont des
+   innates de monstres d'arène, pas des skills joueurs ; l'arène
+   elle-même reste V5).*
+2. **PvP (15 rangées)** : MANADRY (10 : A_09/A_10/A_11, B_03..B_07,
+   C_01/C_02), STEALTHA_CHANGE (2 : A_05, B_03), STEALTHA_POINT (3 :
+   B_02/B_03/B_04) — leurs tooltips disent « not effective on
    monsters » / « cannot be used on monsters » : des skills de ciblage
    JOUEUR. Les implémenter exige un runtime hostile-joueur.
    *Recommandation : parked définitif pour ce cap (hors PvE

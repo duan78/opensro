@@ -199,17 +199,19 @@ func TestExtendedSkillsExecutionCoveragePastLevel90(t *testing.T) {
 
 	// Extended (isro-live-2026, M8): the mission's own perimeter beside the
 	// global denominator - the player rows (SKILL_CH_/SKILL_EU_) measured
-	// the same way. Reported for both scopes; the acceptance criterion
-	// stays the global denominator until the owner rules on the arena
-	// block (charter section 8, question 1 - ~379 monster/arena rows sit
-	// in the global number and none of them is a player skill).
+	// with the SAME filter the global uses (chain roots cast, their ChainSub
+	// stages are counted inside the root's plan; s64 fixed an earlier draft
+	// that dropped the roots). Reported for both scopes; the acceptance
+	// criterion stays the global denominator until the owner rules on the
+	// arena block (charter section 8, question 1 - ~379 monster/arena rows
+	// sit in the global number and none of them is a player skill).
 	playerTotal, playerRouted := 0, 0
 	for _, row := range skills.rows.values() {
 		mastery := row.Masteries[0].Level
 		if row.Masteries[1].Level > mastery {
 			mastery = row.Masteries[1].Level
 		}
-		if mastery < 91 || row.ChainSub || row.ChainNext != 0 {
+		if mastery < 91 || row.ChainSub {
 			continue
 		}
 		if !strings.HasPrefix(row.Codename, "SKILL_CH_") && !strings.HasPrefix(row.Codename, "SKILL_EU_") {

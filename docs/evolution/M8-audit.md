@@ -1664,13 +1664,64 @@ monstre/arène dans le global, aucune n'étant un skill joueur) ; la
 ligne joueur est un rapport, pas une décision. Source PASSED, gate
 serveur forcée PASS.
 
-## Le reste (carte actualisée après s63)
+## Session 64 — LA CORRECTION NATIVE : les chaînes projectile sur toute arme concrète (+51 joueur)
 
-1. **FAIT (s47-s63)** : QUINZE grappes ; l'Aura of Blood LIVRÉE
-   (+2). Le reste joueur SANS décision owner : **ZÉRO** — les 19
-   rangées restantes (TRANSFORMA_MASK 5, PvP 15 — parked — et danses 2)
-   sont TOUTES derrière une décision owner, plus l'arène ~379 au
-   dénominateur.
+La ligne player-scope de s63c ne réconciliait pas avec le global
+(2146+404 = 2550 ≠ 3002). La marche a exposé le bloc invisible : **452
+racines de chaîne, TOUTES joueur**, dont **51 non exécutables** —
+SPEAR_SHOOT D/E (21), SWORD_GEOMGI D/E/F (19), SWORD_SPECIAL E (11) —
+cachées à la carte du reste par le filtre des probes (le skip
+`ChainNext != 0`, hérité du probe d'histogramme de familles) : l'affirmation
+« reste joueur sans décision owner : ZÉRO » ne couvrait que le sous-ensemble
+sans racines.
+
+Cause racine : l'enveloppe projectile de `decodeSkillOffense` ne chaînait
+les rangées handler 1 que pour l'arc {6,255} et l'arbalète {12,255}. Ce
+n'était PAS une règle native mais une déviation du port : **la table
+v1.150 elle-même chaîne les lames volantes d'épée GEOMGI
+C/C2/D/D2 en handler 1** (33 rangées natives handler-1 hors
+arc/arbalète mesurées ; 5857B0 lie les étages pour n'importe quel
+lanceur — le commentaire du port le disait déjà). Correction :
+`chained` inclut toute arme primaire concrète hors lanceur, exactement
+quand le bras « armes libres » du gate munitions peut la passer — le
+marqueur monstre {255,255} et un cnsm hors lanceur restent refusés par
+ce même gate. Les 51 rangées live suivent la règle native rétablie ;
+pas de flag, pas de plancher past-cap : le DÉFAUT NATIF est restauré
+(les GEOMGI C/D natives compilent désormais ; le test durable
+`TestNativeSwordProjectileChainsCompile` épingle ça ET le refus
+monstre). `TestProjectileChainsCompileOnEveryConcreteWeapon` épingle
+les 51 (21+19+11 par préfixe, plan d'offense, frappe compagnon
+incluse).
+
+Le filtre player-scope du test canonique est corrigé pour mesurer avec
+le MÊME filtre que le global (les racines de chaîne se castent ; leurs
+étages ChainSub se comptent dans le plan de la racine). Mesures :
+**global 2601/3002 = 86,6 %** (+51) ; **player-scope 2576/2598 =
+99,2 %** ; les ratées joueur = exactement les 22 rangées
+gelées par décision owner (MANADRY 10, STEALTHA_CHANGE 2,
+STEALTHA_POINT 3, TRANSFORMA_MASK 5, danses 2). Paquets enterworld +
+action OK, source PASSED, gate serveur forcée PASS.
+
+Leçons : (1) une décomposition doit se réconcilier — 2146+404 ≠ 3002
+était le signal du bloc caché ; (2) re-lire le brut UTF-16 laisse le
+
+ du CRLF sur le dernier champ : la queue « tout-zéro » de la marche
+refuse alors TOUT, même les rangées admises — tronquer avant de
+comparer ; (3) la restriction d'une enveloppe écrite sur les seules
+formes v1.150 connues peut être une déviation : mesurer la table native
+avant d'invoquer un plancher past-cap.
+
+## Le reste (carte actualisée après s64)
+
+1. **FAIT (s47-s64)** : QUINZE grappes ; l'Aura of Blood (+2) ; les
+   51 chaînes projectile (s64, correction native). Le reste joueur SANS
+   décision owner : **ZÉRO, vérifié cette fois avec le filtre du
+   global** (racines incluses) — les 22 rangées restantes (danses 2,
+   PvP 15 — MANADRY 10, STEALTHA_CHANGE 2, STEALTHA_POINT 3 — et
+   TRANSFORMA_MASK 5) sont TOUTES derrière une décision owner, plus
+   l'arène : 404 rangées non-joueur au dénominateur dont 379 non
+   exécutables (P2SKILL_INNATE 188, ASS 72, PRO 72, ENC 72 ; 25
+   exécutables).
 2. **La traîne joueur (~270−15 rangées)** : les familles 2-5 de
    l'histogramme, une à une après les trois lanes.
 3. **Décision owner de périmètre (nouveau s39)** : ~180 rangées
