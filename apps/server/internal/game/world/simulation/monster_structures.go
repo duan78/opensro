@@ -291,7 +291,8 @@ RestoreStructure
 
 Puts a stored structure's hit points and state back on the instance that
 stands on its event zone (never above its maximum). Reports whether a
-structure was there.
+structure was there. State and HP are independent: the pulley can set
+state bits without a fatal hit. A genuinely dead record already has zero HP.
 ================
 */
 func (s *MonsterState) RestoreStructure(divisionID string, gid uint32, hp uint32, state uint16) bool {
@@ -304,11 +305,45 @@ func (s *MonsterState) RestoreStructure(divisionID string, gid uint32, hp uint32
 	}
 	row.CurrentHP = min(hp, row.EffectiveMaxHP())
 	row.StructureState = state
-	if row.StructureState&structureStateDestroyed != 0 {
-		row.CurrentHP = 0
-	}
 	population.instances.set(gid, row)
 	return true
+}
+
+/*
+================
+SetGateState
+
+The pulley changes only the gate's state word (4CF860), never its HP.
+Nonzero requests with no shared bit are ORed into the current word;
+zero clears a nonzero word. Other requests leave it unchanged.
+Admission and mutation share the population lock with damage and death.
+INFERENCE: zero HP also refuses while queued death settlement has not yet
+published its destroyed bit; the native object's death transition is synchronous.
+Returns the current gate and whether it changed; a zero instance refuses.
+================
+*/
+func (s *MonsterState) SetGateState(division string, gid uint32, state uint16) (monster.Instance, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	population := s.populationForObject(division, gid)
+	row, ok := population.instances.lookup(gid)
+	if !ok || !row.Ref.Structure || row.Ref.TypeID4 != structureKindGate ||
+		row.CurrentHP == 0 || row.StructureState&structureStateDestroyed != 0 {
+		return monster.Instance{}, false
+	}
+	if state == 0 {
+		if row.StructureState == 0 {
+			return row, false
+		}
+		row.StructureState = 0
+	} else {
+		if row.StructureState&state != 0 {
+			return row, false
+		}
+		row.StructureState |= state
+	}
+	population.instances.set(gid, row)
+	return row, true
 }
 
 /*

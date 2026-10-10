@@ -9,8 +9,13 @@ package action
 
 import (
 	"bytes"
+	"fmt"
+	"os"
+	"path/filepath"
+	"reflect"
 	"testing"
 
+	"opensro.online/server/internal/domain"
 	"opensro.online/server/internal/game/item/wire"
 	"opensro.online/server/internal/game/siege"
 	"opensro.online/server/internal/game/world/fortress"
@@ -262,11 +267,148 @@ the other fortresses' zones are not served in v1.150.
 ================
 */
 func TestGatePulleysLoadFromCharacterData(t *testing.T) {
+	licensed.RequireGameData(t)
 	pulleys, err := loadGatePulleys(licensed.RetailTextdataDir(t))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(pulleys) != 3 || pulleys[19566] != 88 || pulleys[19567] != 89 || pulleys[19568] != 90 {
 		t.Fatalf("pulleys %v", pulleys)
+	}
+}
+
+/*
+================
+TestGatePulleyPreservesHPAndRefusesPendingDeath
+
+A pulley changes the state word, never HP. A fatal hit waiting for death
+settlement already prevents a new gate transition.
+================
+*/
+func TestGatePulleyPreservesHPAndRefusesPendingDeath(t *testing.T) {
+	for _, tc := range []struct {
+		initial, requested, want uint16
+		changed                  bool
+	}{
+		{0, 0, 0, false}, {0, 2, 2, true}, {0, 1, 1, true},
+		{2, 0, 0, true}, {2, 1, 3, true}, {2, 2, 2, false},
+		{2, 3, 2, false}, {2, 4, 6, true}, {2, 0xffff, 2, false},
+	} {
+		t.Run(fmt.Sprintf("%d to %d", tc.initial, tc.requested), func(t *testing.T) {
+			rt, fortressID, gate := gateFixture(t)
+			rt.Monsters.RestoreStructure(testDivision, gate.Gid, gate.CurrentHP, tc.initial)
+			out := rt.fortressGatePulley(testDivision, simulation.NpcDef{RefObjID: 19566},
+				siege.Interaction{Action: siege.ActionGate, Fortress: fortressID, Value16: tc.requested})
+			current, _ := rt.Monsters.Get(testDivision, gate.Gid)
+			if current.CurrentHP != gate.CurrentHP || current.StructureState != tc.want {
+				t.Fatalf("HP %d -> %d, state %d, want %d", gate.CurrentHP, current.CurrentHP, current.StructureState, tc.want)
+			}
+			if !tc.changed {
+				if len(out.Frames) != 0 {
+					t.Fatalf("no-op replied: %+v", out.Frames)
+				}
+				return
+			}
+			want := wire.NewWriter(12).U8(siege.ActionGate).U8(1).U32(fortressID).U32(88).U16(tc.want).Payload()
+			if len(out.Frames) != 1 || !bytes.Equal(out.Frames[0].Payload, want) {
+				t.Fatalf("reply %+v, want % x", out.Frames, want)
+			}
+		})
+	}
+	t.Run("pending death", func(t *testing.T) {
+		rt, fortressID, gate := gateFixture(t)
+		if hit, ok := rt.Monsters.ApplyDamage(testDivision, gate.Gid, gate.CurrentHP); !ok || !hit.Fatal {
+			t.Fatal("fatal hit failed")
+		}
+		out := rt.fortressGatePulley(testDivision, simulation.NpcDef{RefObjID: 19566},
+			siege.Interaction{Action: siege.ActionGate, Fortress: fortressID, Value16: 2})
+		want := []byte{siege.ActionGate, 2, fortressErrGateDestroyed}
+		if !bytes.Equal(out.Frames[0].Payload, want) {
+			t.Fatalf("pending death answered % x, want % x", out.Frames[0].Payload, want)
+		}
+		if row, ok := rt.Monsters.MarkStructureDestroyed(testDivision, gate.Gid); !ok || row.StructureState != 3 {
+			t.Fatalf("death did not settle: %+v", row)
+		}
+	})
+}
+
+/*
+================
+TestGatePulleysLoadFromSyntheticTables
+
+The loader contract runs without retail data: only active pulley rows whose
+zone is served are linked, across every character table.
+================
+*/
+func TestGatePulleysLoadFromSyntheticTables(t *testing.T) {
+	dir := t.TempDir()
+	files := map[string]string{
+		"eventzonedata.txt": "1\t88\tGATE_A\n1\t89\tGATE_B\n0\t90\tDISABLED\n",
+		"characterdata_1.txt": "1\t101\tSTRUCTURE_GATE_PULLEY_A\tignored\tGATE_A\n" +
+			"0\t102\tSTRUCTURE_GATE_PULLEY_DISABLED\tignored\tGATE_A\n" +
+			"1\t103\tNPC_OTHER\tignored\tGATE_A\n" +
+			"1\t104\tSTRUCTURE_GATE_PULLEY_MISSING\tignored\tUNSERVED\n",
+		"characterdata_2.txt": "1\t105\tSTRUCTURE_GATE_PULLEY_B\tignored\tGATE_B\n" +
+			"1\t106\tSTRUCTURE_GATE_PULLEY_DISABLED_ZONE\tignored\tDISABLED\n",
+	}
+	for name, data := range files {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(data), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	pulleys, err := loadGatePulleys(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := map[uint32]uint32{101: 88, 105: 89}; !reflect.DeepEqual(pulleys, want) {
+		t.Fatalf("pulleys %v, want %v", pulleys, want)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "characterdata_3.txt"),
+		[]byte("1\tinvalid\tSTRUCTURE_GATE_PULLEY_BAD\tignored\tGATE_A\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := loadGatePulleys(dir); err == nil {
+		t.Fatal("invalid pulley reference was admitted")
+	}
+}
+
+/*
+================
+TestGatePulleyStateSurvivesSaveAndRestore
+
+Use the fortress save/restore owners around a fresh population. A mask
+operation can set the destroyed bit without changing HP; only a fatal hit
+actually produces the zero-HP pair.
+================
+*/
+func TestGatePulleyStateSurvivesSaveAndRestore(t *testing.T) {
+	for _, dead := range []bool{false, true} {
+		t.Run(fmt.Sprint(dead), func(t *testing.T) {
+			rt, fortressID, gate := gateFixture(t)
+			store := &structureRowStore{rows: map[uint32]domain.FortressStructureRecord{}}
+			rt.FortressStore = store
+			rt.advanceFortressStructures(rt.Now().UnixMilli())
+			if dead {
+				rt.Monsters.ApplyDamage(testDivision, gate.Gid, gate.CurrentHP)
+				rt.Monsters.MarkStructureDestroyed(testDivision, gate.Gid)
+			} else {
+				rt.fortressGatePulley(testDivision, simulation.NpcDef{RefObjID: 19566},
+					siege.Interaction{Action: siege.ActionGate, Fortress: fortressID, Value16: 1})
+			}
+			rt.saveFortressStructures(testDivision)
+			saved := store.rows[88]
+			fresh, _, newGate := gateFixture(t)
+			fresh.FortressStore = store
+			fresh.advanceFortressStructures(fresh.Now().UnixMilli())
+			restored, _ := fresh.Monsters.Get(testDivision, newGate.Gid)
+			wantHP, wantState := gate.CurrentHP, uint16(1)
+			if dead {
+				wantHP, wantState = 0, 3
+			}
+			if saved.HP != wantHP || saved.State != wantState || restored.CurrentHP != wantHP || restored.StructureState != wantState {
+				t.Fatalf("saved %+v, restored HP=%d state=%d; want HP=%d state=%d",
+					saved, restored.CurrentHP, restored.StructureState, wantHP, wantState)
+			}
+		})
 	}
 }
