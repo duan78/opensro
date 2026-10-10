@@ -372,7 +372,8 @@ resolveLiveObject
 resolveLiveObject answers whether a gid names an object the division's
 world contains right now and returns the typed server authority needed
 to encode NPC or monster selection state. Callers hold the division
-operation lock.
+operation lock and character read door. No transitive call may reacquire
+the store lock, including a guild or other authority facet.
 ================
 */
 func (rt *Runtime) resolveLiveObject(
@@ -417,7 +418,9 @@ func (rt *Runtime) resolveLiveObject(
 		if record == nil {
 			continue
 		}
-		for _, pet := range rt.companionPresentations(divisionID, peer.Name) {
+		// The caller holds the read door (HandleObjectSelect).
+		pets, _ := rt.companionPresentationsInDoor(divisionID, peer.Name)
+		for _, pet := range pets {
 			if pet.Row.Gid != gid || pet.LifeState == wire.LifeStateDead {
 				continue
 			}
