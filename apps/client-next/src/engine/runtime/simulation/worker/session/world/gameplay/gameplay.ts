@@ -345,6 +345,8 @@ export function createGameplay(
 	> = {};
 	let partyMatching = emptyPartyMatching();
 	let gmItems = gmItemReferences( {} );
+	// The server's port-only storage auto-stack rule (storageAutoStack).
+	let storageAutoStack = false;
 	let warnings = [ false, false ];
 	let options = initialGameOptions();
 	let eligibility = { gm: false, pcRoomEvent: false };
@@ -995,6 +997,7 @@ resends nothing. Wiping them here made the next 0x3E58 type-6 row throw
 			bindingRepairs.clear();
 			inventory.takeBindingMoves();
 			gmItems = gmItemReferences( value );
+			storageAutoStack = (value as { storageAutoStack?: unknown; } | null)?.storageAutoStack === true;
 			unlimitedItems = unlimitedItemIds( value );
 			const entryEvents = entryEnvironment( value );
 			warnings = [ false, false ];
@@ -3883,6 +3886,7 @@ The published plane when something changed since the last take, else null.
 				paramJobs: paramJobs.state(),
 				countJobs: countJobs.state(),
 				reverseReturnChoice: countJobs.choosing() !== null,
+				...(storageAutoStack ? { storageAutoStack } : {}),
 				storage: presentedStorage(),
 				playerModels: localPlayerModels(),
 				job,

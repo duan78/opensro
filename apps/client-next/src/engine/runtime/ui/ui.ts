@@ -6134,7 +6134,14 @@ export function createUi(
 					event.ctrl && panel === "Storage" && view?.gameplay &&
 					(event.id.startsWith( "slot:" ) || event.id.startsWith( "storage-slot:" ))
 				) {
-					const move = storageQuickMove( event.id, view.gameplay );
+					const move = storageQuickMove(
+						event.id,
+						view.gameplay,
+						{
+							page: storagePanel.page( view.gameplay.storage?.capacity ?? 0 ),
+							autoStack: view.gameplay.storageAutoStack === true
+						}
+					);
 					if ( move ) sendGameplay( { kind: "storage-move", move } );
 					carriedItem = null;
 					inventorySlot = -1;
@@ -6248,7 +6255,14 @@ export function createUi(
 				if (
 					panel === "Storage" && (event.id.startsWith( "slot:" ) || event.id.startsWith( "storage-slot:" ))
 				) {
-					const move = storageQuickMove( event.id, view.gameplay );
+					const move = storageQuickMove(
+						event.id,
+						view.gameplay,
+						{
+							page: storagePanel.page( view.gameplay.storage?.capacity ?? 0 ),
+							autoStack: view.gameplay.storageAutoStack === true
+						}
+					);
 					if ( move ) sendGameplay( { kind: "storage-move", move } );
 					return;
 				}
