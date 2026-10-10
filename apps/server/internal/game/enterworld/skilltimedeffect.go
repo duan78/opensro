@@ -37,6 +37,7 @@ const (
 	tagTimedMPRecovery         = 0x636d6372
 	tagTimedStateChange        = 0x6d736368
 	tagTimedCastKey            = 0x00736b63
+	tagTimedStatusGradeArea    = 0x62677261
 	tagStunStatus              = 0x7374
 	tagTimedRequireNot         = 0x7265716e
 	tagTimedMaxHP              = 0x687069
@@ -819,6 +820,22 @@ func parseSkillTimedEffect(fields []string, row *SkillRow) {
 			// starts this row through the rmut revival path (resurrection.go),
 			// which reads neither; they ride under the mastery floor exactly
 			// as the 2026 one-word riders do (skillprogram.go).
+			if textdataNonNegative(fields[skilldataColReqMasteryLv1]) < extendedPastCapMastery &&
+				textdataNonNegative(fields[skilldataColReqMasteryLv2]) < extendedPastCapMastery {
+				return
+			}
+		case tagTimedStatusGradeArea:
+			// Extended content (isro-live-2026), port-only, not v1.150-native
+			// (M8 s56): bgra {63, N} rides the live FIRE_SHIELD tiers past
+			// the cap beside the real resistance block that IS the shield
+			// ("Decreases the power of abnormal state by infusing the force
+			// into the shield" - the real word's flat 30 and tier grade,
+			// installed by fileEffectResistance at roll time). The word has
+			// no reader in this port and none is invented - the DSCR
+			// precedent (ParameterDanceCutResist): a known key carried so
+			// the row admits, its own scale unexecuted. The v1.150
+			// catalogue authors the same shape on the family's cap-90
+			// tiers, so the rider carries the mastery floor.
 			if textdataNonNegative(fields[skilldataColReqMasteryLv1]) < extendedPastCapMastery &&
 				textdataNonNegative(fields[skilldataColReqMasteryLv2]) < extendedPastCapMastery {
 				return

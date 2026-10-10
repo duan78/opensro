@@ -1414,12 +1414,35 @@ l'épinglage et le mot, l'absence native.
 **Couverture : 84,4 → 84,5 %** (2537/3002, +2 exact) ; joueur
 2109/2146 (98,4 %). Reste livrable : 32 rangées.
 
-## Le reste (carte actualisée après s55)
+## Session 56 — FIRE_SHIELD livré : le bouclier de résistance aux statuts (+3, 84,6 %)
 
-1. **FAIT (s47-s55)** : neuf grappes livrées/comptées/reclassées.
-   Reste livrable : 32 rangées (CONFUSIONA_ILLUSION 5, FIRE_SHIELD 3,
-   MINDP_MAINTAIN 2, SPELLP 2, singles ~10) ; parked : PvP 15, danses
-   2 ; arène ~379 (owner).
+La bissectrice (mot-bgra-retiré) a nommé la vérité : le programme
+`dura + bgra{63,N} + reqi{4,1} + real{25145280, 30, grade}` — le
+« heal à 3 mots » de l'amorce était le **bloc real** (le mot
+résistance des passifs Protection) : masque 25145280 = les bits de
+statuts, flat 30 constant, grade = le tier. **La résistance
+s'installe déjà** : fileEffectResistance (playerroll.go, 59DF20)
+dépose le real d'un effet vivant dans les buckets au moment du roll —
+zéro runtime à écrire. La SEULE porte était le rider bgra.
+
+Livré : le cas `bgra` dans le walk timed sous plancher ≥91 (les tiers
+natifs m=17..88 authorisent la même forme) — le mot n'a AUCUN lecteur
+dans ce port et aucun n'est inventé : **le précédent DSCR**
+(ParameterDanceCutResist — « une clé connue portée pour que la rangée
+admette, sa propre échelle non exécutée »). La sémantique du
+bouclier vient du real block, entièrement délivrée. Tests : plancher
+(les 3 past-90 : masque/flat/grade mesurés 25145280/30/10..12), vide
+natif (la famille ≤90 n'épingle pas).
+
+**Couverture : 84,5 → 84,6 %** (2540/3002, +3 exact) ; joueur
+2112/2146 (98,5 %). Reste livrable : 29 rangées.
+
+## Le reste (carte actualisée après s56)
+
+1. **FAIT (s47-s56)** : dix grappes livrées/comptées/reclassées.
+   Reste livrable : 29 rangées (CONFUSIONA_ILLUSION 5, MINDP_MAINTAIN
+   2, SPELLP 2, singles ~10) ; parked : PvP 15, danses 2 ; arène ~379
+   (owner).
 2. **La traîne joueur (~270−15 rangées)** : les familles 2-5 de
    l'histogramme, une à une après les trois lanes.
 3. **Décision owner de périmètre (nouveau s39)** : ~180 rangées
