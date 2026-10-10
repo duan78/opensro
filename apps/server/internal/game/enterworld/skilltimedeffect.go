@@ -38,6 +38,7 @@ const (
 	tagTimedStateChange        = 0x6d736368
 	tagTimedCastKey            = 0x00736b63
 	tagTimedStatusGradeArea    = 0x62677261
+	tagTimedHwanDuration       = 0x68776475
 	tagStunStatus              = 0x7374
 	tagTimedRequireNot         = 0x7265716e
 	tagTimedMaxHP              = 0x687069
@@ -140,6 +141,9 @@ type SkillTimedEffect struct {
 	// cap (M8 s36): physical attack up, defense down, while a shield is
 	// required (the row's reqi).
 	Stance SkillShieldStance
+	// HwanDurationMs is hwdu, the extended party aura's word (M8 s63):
+	// the seconds the aura extends each party member's berserk mode.
+	HwanDurationMs uint32
 }
 
 /*
@@ -462,6 +466,13 @@ func parseSkillTimedEffect(fields []string, row *SkillRow) {
 			continue // the divide rows' own target words: range, required,
 			// animal and party (the ally column stays refused - only the
 			// native shape authors it)
+		}
+		// Extended (isro-live-2026, M8 s63): the hwdu aura authors Self
+		// (col 26) on its untargeted area shape - the caster joins the
+		// party selection. Only under the mastery floor.
+		if (col == 26 || col == 28) && (textdataNonNegative(fields[skilldataColReqMasteryLv1]) >= extendedPastCapMastery ||
+			textdataNonNegative(fields[skilldataColReqMasteryLv2]) >= extendedPastCapMastery) {
+			continue
 		}
 		if targeted && damageLink && (col == 29 || col == 30) {
 			continue
@@ -840,6 +851,24 @@ func parseSkillTimedEffect(fields []string, row *SkillRow) {
 				textdataNonNegative(fields[skilldataColReqMasteryLv2]) < extendedPastCapMastery {
 				return
 			}
+		case tagTimedHwanDuration:
+			// Extended content (isro-live-2026), port-only, not v1.150-native
+			// (M8 s63): hwdu {seconds} - the live "Aura of Blood" rows'
+			// word on a party-area persistent row. The naming evidence
+			// aligns three ways (the skill's HWAN_UP name, the wire
+			// calling BerserkPoints "the persistent Hwan gauge", the
+			// mall pills acting on pill DURATION); the recorded
+			// inference: while the aura lives, each party member's
+			// berserk mode runs hwdu's seconds longer - the extension
+			// applies once at the install, the row carrying no puls.
+			// The mastery floor keeps every native timed row out.
+			if result.HwanDurationMs != 0 || op.Count != 1 || op.Arguments[0] == 0 ||
+				!result.Area.Present || targeted ||
+				textdataNonNegative(fields[skilldataColReqMasteryLv1]) < extendedPastCapMastery &&
+					textdataNonNegative(fields[skilldataColReqMasteryLv2]) < extendedPastCapMastery {
+				return
+			}
+			result.HwanDurationMs = op.Arguments[0] * 1000
 		case tagTimedOverlap: // ovl2: the replacement descriptor's casting-state word
 		case tagNbuf, tagBbuf: // cancellation policy and secondary board, already projected
 		case tagReqi, tagTimedRequireNot: // 58D480 admits, 59F0E0 re-checks on equipment change
@@ -933,7 +962,7 @@ func parseSkillTimedEffect(fields []string, row *SkillRow) {
 	result.Pinned = duration && (attributes || defense || movement || result.Block.Present || result.Strength.Present ||
 		result.Intellect.Present || result.IncomingReduction || result.HitRate || result.Range || result.Hawk.Present ||
 		result.Link.Present && (result.Link.Threat || result.Link.Mana || result.Link.Redirect || result.Link.Disperse || result.Link.StunGuard.Present) || result.Preemptive.Present ||
-		result.DamageReturn.Present || result.Evasion.Present || result.Stance.Present || result.Recovery.Present ||
+		result.DamageReturn.Present || result.Evasion.Present || result.Stance.Present || result.Recovery.Present || result.HwanDurationMs != 0 ||
 		result.DamageToMP || result.Reat.Mask != 0 || result.Real.Mask != 0)
 	result.Targeted = targeted
 	row.TimedEffect = result
