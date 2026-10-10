@@ -48,6 +48,12 @@ func CompileSkillProgram(fields []string) (SkillProgram, error) {
 		if !known && (n == 0x70736f67 || n == 0x7265706c || n == 0x72706373) {
 			arity, known = 1, true
 		}
+		// Extended content (isro-live-2026), port-only, not v1.150-native
+		// (M8 s63): hwdu - the live "Aura of Blood" rows' word (the
+		// HWAN-duration family; absent from the v1.150 data). Arity one.
+		if !known && n == 0x68776475 {
+			arity, known = 1, true
+		}
 		if !known {
 			return SkillProgram{}, fmt.Errorf("skill program: unknown instruction %x at %d", n, col)
 		}

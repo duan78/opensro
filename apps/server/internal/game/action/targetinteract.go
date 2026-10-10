@@ -329,6 +329,11 @@ func (rt *Runtime) dispatchSkillCommand(divisionID string, character, snapshot *
 			if skill.PositionEffect.Pinned {
 				return rt.acceptPositionSkill(divisionID, character, snapshot, cast, skill)
 			}
+			// Extended (isro-live-2026): the party berserk-duration aura
+			// past 90 (hwan.go).
+			if skill.TimedEffect.Pinned && skill.TimedEffect.HwanDurationMs != 0 {
+				return rt.acceptHwanAura(divisionID, character, snapshot, cast, skill, rt.Now().UnixMilli())
+			}
 			// Extended (isro-live-2026): the planted, ticking poison
 			// field past 90 (poisonfield.go).
 			if skill.PoisonField.Pinned {

@@ -1620,13 +1620,44 @@ queue de nuit de 40 sessions.
 Le reste est inchangé : joueur 98,9 %, la porte du mot hwdu est la
 dernière sans décision owner.
 
-## Le reste (carte actualisée après s62)
+## Session 63 — l'Aura of Blood LIVRÉE : le consommateur hwdu câblé (+2, 84,9 % → 2550/3002, joueur 98,9 % → 99,0 %)
 
-1. **FAIT (s47-s62)** : le mot hwdu décodé (Hwan-duration, triple
-   preuve de nommage) ; le cas s61 bâti sur le mauvais tag est
-   REVERTÉ. La dernière grappe sans décision = câbler le consommateur
-   hwdu (la durée du mode berserk, une session de soin). Les blocs
-   décision : TRANSFORMA_MASK 5 (V5), PvP 15, danses 2, arène ~379.
+Le lane complet, de bout en bout :
+
+1. **Le mot admis au chargeur** : hwdu (0x68776475, arité 1) rejoint
+   les riders live-2026 de CompileSkillProgram — CE QUI RÉPARE AUSSI
+   le pin de REMPLACEMENT (c'est lui qui refusait : sa marche passe
+   par le même compilateur) et le pin de consommation. Trois portes
+   tombées d'un seul aveu.
+2. **Le walk timed** : le cas `tagTimedHwanDuration` (aire obligatoire,
+   non ciblé, plancher ≥91 — le mot est absent du v1.150) stocke
+   HwanDurationMs = secondes × 1000 ; l'épinglage le compte. Deux
+   tolérances de colonnes suivaient (Self col 26 et Party col 28 sur
+   la forme non ciblée, sous plancher) — le hwdu aura authorise les
+   deux mots de sa sélection de groupe.
+3. **Le consommateur** (action/hwan.go) : acceptHwanAura — un cast
+   self non ciblé ; les destinataires = la marche de groupe (rayon
+   300) PLUS le lanceur (sa colonne Self le nomme dans la sélection) ;
+   pour chacun DANS le mode berserk en cours (BerserkUntilMs > now),
+   l'extension s'applique dans SA porte et l'index de tick suit la
+   nouvelle échéance exactement comme l'activation l'a écrite ; un
+   destinataire hors du mode n'est PAS touché (le mot étend un mode
+   qui tourne, il n'en démarre pas — l'inférence enregistrée en
+   commentaire). L'instance d'aura du lanceur vit dura (5 min) sur le
+   plateau, libérée à l'échéance.
+
+Tests : plancher (les 2 tiers : 30 000/35 000 ms, aire 300/8/5), le
+mot absent de tout programme natif (gel du vide), le runtime (le mode
+en cours étendu de 30 s, le destinataire hors mode intact — avec le
+stub RewardParties, leçon s48). **Joueur : 2122/2146 = 99,0 %.**
+
+## Le reste (carte actualisée après s63)
+
+1. **FAIT (s47-s63)** : QUINZE grappes ; l'Aura of Blood LIVRÉE
+   (+2). Le reste joueur SANS décision owner : **ZÉRO** — les 19
+   rangées restantes (TRANSFORMA_MASK 5, PvP 15 — parked — et danses 2)
+   sont TOUTES derrière une décision owner, plus l'arène ~379 au
+   dénominateur.
 2. **La traîne joueur (~270−15 rangées)** : les familles 2-5 de
    l'histogramme, une à une après les trois lanes.
 3. **Décision owner de périmètre (nouveau s39)** : ~180 rangées
