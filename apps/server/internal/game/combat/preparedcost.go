@@ -69,6 +69,7 @@ func ApplyMPDecrease(cost int32, mask enterworld.SkillParameterMask, values ente
 		enterworld.ParameterWizardMPDecrease,
 		enterworld.ParameterBardMPDecrease,
 		enterworld.ParameterHealerMPDecrease,
+		enterworld.ParameterWarlockMPDecrease,
 	}
 	for _, slot := range cuts {
 		if !mask.Has(slot) {

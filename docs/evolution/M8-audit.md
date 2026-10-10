@@ -1388,13 +1388,38 @@ ILLUSION 5, FIRE_SHIELD 3, MINDP_MAINTAIN 2, MINDP_MANA_DECREASE 2,
 SPELLP 2, singles ~10, moins les MINDP_DAMAGE déjà admis) ; parked :
 PvP 15, danses 2 ; hors joueur : arène ~379 (décision owner).
 
-## Le reste (carte actualisée après s54)
+## Session 55 — MINDP_MANA_DECREASE livré : la coupe MP RIMD du Warlock (+2, 84,5 %)
 
-1. **FAIT (s47-s54)** : huit grappes livrées ou comptées ;
-   STEALTHA_POINT reclassé parked PvP (tooltip). Reste livrable :
-   34 rangées (CONFUSIONA_ILLUSION 5, FIRE_SHIELD 3, MINDP_MAINTAIN
-   2, MINDP_MANA_DECREASE 2, SPELLP 2, singles ~10) ; parked : PvP 15
-   (MANADRY, STEALTHA_CHANGE, STEALTHA_POINT), danses 2.
+La clé `0x52494d44` (RIMD — lue DMIR en affichage LE, la MÊME valeur
+que la clé du vide s37 : absente des données v1.150 en entier) est le
+**quatrième mot de coupe de coût préparé**, le frère de WIMD/BDMD/
+HLMD : « the mana cost for skills in the Raze, Dark Mentalist, Abyss
+Soul and Abyss Raze series is reduced ». Livré en trois morceaux :
+
+1. **Le slot** : `ParameterWarlockMPDecrease` en queue de l'énum (le
+   commentaire porte la sémantique et la preuve du vide — la clé
+   n'existe pas en v1.150, donc le slot n'admet que des rangées
+   live) ; `SkillParameterFromKey` mappe la clé.
+2. **La coupe** : ApplyMPDecrease ajoute le quatrième slot — la même
+   arithmetic CutMPCost que les trois natifs (5868F1).
+3. **L'index** : noteParameterIndex accepte le slot pour les getv
+   riders.
+
+Le setv{RIMD} passif épingle par le lane existant — SANS plancher :
+un passif appris n'est pas un cast, et la preuve du vide est
+l'absence de la clé chez le natif (test gelé : aucune rangée native
+ne porte le slot ; les mots mesurés dans la bande 5..15). Tests :
+l'épinglage et le mot, l'absence native.
+
+**Couverture : 84,4 → 84,5 %** (2537/3002, +2 exact) ; joueur
+2109/2146 (98,4 %). Reste livrable : 32 rangées.
+
+## Le reste (carte actualisée après s55)
+
+1. **FAIT (s47-s55)** : neuf grappes livrées/comptées/reclassées.
+   Reste livrable : 32 rangées (CONFUSIONA_ILLUSION 5, FIRE_SHIELD 3,
+   MINDP_MAINTAIN 2, SPELLP 2, singles ~10) ; parked : PvP 15, danses
+   2 ; arène ~379 (owner).
 2. **La traîne joueur (~270−15 rangées)** : les familles 2-5 de
    l'histogramme, une à une après les trois lanes.
 3. **Décision owner de périmètre (nouveau s39)** : ~180 rangées

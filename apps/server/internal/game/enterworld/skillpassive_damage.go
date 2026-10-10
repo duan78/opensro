@@ -96,6 +96,13 @@ const (
 	// 40F5F0, Soul Chaos).
 	ParameterLifeStealPower
 	ParameterFixedDamagePower
+	// Extended content (isro-live-2026), port-only, not v1.150-native
+	// (M8 s55): RIMD (0x52494d44) - the live warlock rows' MP cut for
+	// the Raze / Dark Mentalist / Abyss Soul / Abyss Raze lines, the
+	// same prepared-cost arithmetic WIMD/BDMD/HLMD use (CutMPCost). The
+	// key is absent from the v1.150 data (measured: the s37 DMIR void
+	// proof), so the slot admits only live rows.
+	ParameterWarlockMPDecrease
 	SkillParameterCount
 )
 
@@ -181,6 +188,8 @@ func SkillParameterFromKey(key uint32) (SkillParameter, bool) {
 		return ParameterBardMPDecrease, true
 	case 0x484c4d44:
 		return ParameterHealerMPDecrease, true
+	case 0x52494d44:
+		return ParameterWarlockMPDecrease, true
 	case 0x4d554552:
 		return ParameterMusicRange, true
 	case 0x44534552:
