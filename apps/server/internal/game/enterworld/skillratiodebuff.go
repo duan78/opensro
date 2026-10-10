@@ -106,12 +106,15 @@ func compileSkillRatioDebuff(fields []string, row SkillRow) (SkillRatioDebuff, b
 			}
 			out.DurationMs = op.Arguments[0]
 		case ratioDebuffEvasion:
-			if op.Count != 1 || op.Arguments[0] == 0 || op.Arguments[0] > 100 {
+			// Extended (isro-live-2026, M8 s58): the live CANCEL2_A tier
+			// authors 105 - the rebalance's over-one-hundred cuts. The bound
+			// stays 200: a percent word, never an arbitrary u32.
+			if op.Count != 1 || op.Arguments[0] == 0 || op.Arguments[0] > 200 {
 				return SkillRatioDebuff{}, false
 			}
 			out.EvasionDown = op.Arguments[0]
 		case ratioDebuffHitRate:
-			if op.Count != 1 || op.Arguments[0] == 0 || op.Arguments[0] > 100 {
+			if op.Count != 1 || op.Arguments[0] == 0 || op.Arguments[0] > 200 {
 				return SkillRatioDebuff{}, false
 			}
 			out.HitDown = op.Arguments[0]
