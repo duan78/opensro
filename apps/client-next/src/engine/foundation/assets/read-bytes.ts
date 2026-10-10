@@ -11,6 +11,31 @@ caller owns cancellation and the returned bytes.
 
 /*
 ================
+isResponseByteLimitError
+
+Observed overflow is corruption evidence; backend errors and cancellation are
+not. A discriminant preserves that distinction without matching error prose.
+================
+*/
+export function isResponseByteLimitError( error: unknown ): boolean {
+	return error instanceof Error && "code" in error && error.code === "ASSET_BYTE_LIMIT";
+}
+
+/*
+================
+ReadBytesOptions
+
+The owner may account for asynchronous cancellation without delaying failure.
+================
+*/
+export interface ReadBytesOptions {
+	received?: ( bytes: number ) => void;
+	signal?: AbortSignal;
+	onCancel?: ( completion: Promise<void> ) => void;
+}
+
+/*
+================
 readBytes
 
 Reads a stream into one buffer, failing once it exceeds limit bytes. A
@@ -22,13 +47,19 @@ read must never return the bytes received so far as a whole response.
 export async function readBytes(
 	stream: ReadableStream<Uint8Array>,
 	limit: number,
-	received?: ( bytes: number ) => void,
-	signal?: AbortSignal
+	{ received, signal, onCancel }: ReadBytesOptions = {}
 ): Promise<Uint8Array<ArrayBuffer>> {
 	if ( !Number.isSafeInteger( limit ) || limit < 1 ) throw new Error( "Invalid byte limit" );
 	signal?.throwIfAborted();
 	const reader = stream.getReader(), chunks: Uint8Array[] = [];
-	const abort = () => void reader.cancel( signal?.reason ).catch( () => {} );
+	let cancelling = false;
+	const cancel = () => {
+		if ( cancelling ) return;
+		cancelling = true;
+		const completion = reader.cancel( signal?.reason ).catch( () => {} );
+		onCancel?.( completion );
+	};
+	const abort = () => cancel();
 	signal?.addEventListener( "abort", abort, { once: true } );
 	let size = 0;
 	try {
@@ -37,13 +68,15 @@ export async function readBytes(
 			signal?.throwIfAborted();
 			if ( part.done ) break;
 			size += part.value.byteLength;
-			if ( size > limit ) throw new Error( "Response exceeds byte limit" );
+			if ( size > limit ) {
+				throw Object.assign( new Error( "Response exceeds byte limit" ), { code: "ASSET_BYTE_LIMIT" } );
+			}
 			chunks.push( part.value );
 			received?.( part.value.byteLength );
 		}
 	} catch ( error ) {
 		// Not awaited: a source whose cancel never settles must not hold the read.
-		void reader.cancel().catch( () => {} );
+		cancel();
 		throw error;
 	} finally {
 		signal?.removeEventListener( "abort", abort );
