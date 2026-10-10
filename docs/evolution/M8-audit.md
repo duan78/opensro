@@ -1539,14 +1539,45 @@ rangées joueur restantes (TRANSFORMA_MASK 5, SPELLP 2, MINDP_
 MAINTAIN 2) sont TOUTES bloquées sur une preuve ou une décision, plus
 PvP 15, danses 2, arène ~379.
 
-## Le reste (carte actualisée après s59)
+## Session 60 — MINDP_MAINTAIN livré : le setv était DTDR, connu depuis toujours (+2, 84,9 %)
 
-1. **FAIT (s47-s59)** : douze grappes livrées/comptées/reclassées ;
-   l'Illusion livrée. Le reste joueur SANS décision owner : ZÉRO. Les
-   9 rangées restantes sont toutes bloquées preuve/décision :
-   TRANSFORMA_MASK 5 (V5), SPELLP 2 (mot sans tooltip), MINDP_
-   MAINTAIN 2 (mots indéterminés) ; parked : PvP 15, danses 2 ; arène
-   ~379 (owner).
+L'AGENTS.md tranche (« quand aucun binaire ne montre de règle :
+inférer, enregistrer, livrer ») et l'inférence a été plus simple que
+prévu — **le piège d'endianness pour la CINQUIÈME fois** : la clé du
+setv est **0x44544452 = DTDR = ParameterDotDuration**, connue et
+EXECUTÉE depuis l'origine (le producteur périodique lit la durée des
+DoT par là) — le « DRIR » de l'amorce s57 était un fantôme de
+lecture inversée. Le passif allonge les propres DoT du Warlock (le
+tooltip « enhances the capability to control enemies ») : la moitié
+setv du rang est EXÉCUTÉE par la machinerie native. Le mot **hwir
+{200..300} reste porté non-exécuté** (précédent DSCR, borne
+enregistrée : aucun mappage propre vers la jauge Hwan 0..5, aucun
+inventé) — le case dans le parseur passif, l'inférence en commentaire.
+
+Tests : les tiers live épingle avec le slot durée-DoT rempli et hwir
+porté ; le mot hwir reste la famille's own (ordre-indépendant — la
+suite complète peut résoudre le loader partagé contre l'étendu, leçon
+s59). **Couverture : 84,8 → 84,9 %** (2548/3002, +2) ; joueur
+2120/2146 (98,9 %).
+
+### L'état final après s60
+
+- **Joueur** : 98,9 % admis. SANS décision owner il ne reste que
+  **SPELLP « Aura of Blood » (2)** — le mot heal{30|35} sans tooltip
+  ; l'AGENTS.md autorise l'inférence enregistrée mais DEUX lectures
+  se disputent (heal plat à l'installation vs énergie Hwan — le NOM
+  HWAN_UP pointe la jauge berserk du wire) : une session pour livrer
+  par inférence ou une preuve binaire.
+- **Parked/décision** : TRANSFORMA_MASK 5 (V5), PvP 15, danses 2,
+  arène ~379 (dénominateur).
+
+## Le reste (carte actualisée après s60)
+
+1. **FAIT (s47-s60)** : treize grappes livrées/comptées/reclassées ;
+   MINDP_MAINTAIN livré (DTDR exécuté, hwir porté). Reste SANS
+   décision : SPELLP 2 (inférence à enregistrer — deux lectures). Les
+   blocs décision : TRANSFORMA_MASK 5 (V5), PvP 15, danses 2, arène
+   ~379.
 2. **La traîne joueur (~270−15 rangées)** : les familles 2-5 de
    l'histogramme, une à une après les trois lanes.
 3. **Décision owner de périmètre (nouveau s39)** : ~180 rangées

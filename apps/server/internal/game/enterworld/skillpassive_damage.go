@@ -267,6 +267,10 @@ type SkillPassiveParameters struct {
 	IncomingReduction bool
 	// DamageReturn is dmgr (+0x204, the Warrior's two-hand return passive).
 	DamageReturn SkillDamageReturn
+	// Hwir is the live MINDP_MAINTAIN's berserk-energy word,
+	// carried unexecuted (M8 s60).
+	HwirPresent bool
+	HwirWord    uint32
 }
 
 /*
@@ -344,6 +348,18 @@ func encodedPassiveParameters(fields []string) SkillPassiveParameters {
 			out.Mask |= SkillParameterMask(1) << slot
 			out.Values[slot] = op.Arguments[1]
 			count++
+		case 0x68776972:
+			// Extended content (isro-live-2026), port-only, not v1.150-native
+			// (M8 s60): hwir {275|300} rides the live MINDP_MAINTAIN rows -
+			// "gain berserker energy better with Dark Mentalist skills". The
+			// word has no clean mapping onto the 0..5 Hwan gauge and no reader
+			// is invented (the DSCR precedent): carried so the row admits, its
+			// own scale unexecuted - the recorded boundary.
+			if out.HwirPresent {
+				return SkillPassiveParameters{}
+			}
+			out.HwirPresent = true
+			out.HwirWord = op.Arguments[0]
 		case 0x72656174: // reat
 			if out.Reat.Mask != 0 || op.Arguments[0] == 0 || op.Arguments[0]&^0x3f != 0 {
 				return SkillPassiveParameters{}
