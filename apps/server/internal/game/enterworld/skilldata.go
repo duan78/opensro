@@ -213,6 +213,9 @@ type SkillRow struct {
 	LifeSteal SkillLifeSteal
 	// CombatTrap is a planted hostile trap program (skilltrap.go).
 	CombatTrap SkillCombatTrap
+	// PoisonField is the rogue's planted, ticking poison field
+	// (skillpoisonfield.go), extended past 90.
+	PoisonField SkillPoisonField
 	// RatioDebuff is the timed hostile ratio cut of the Water line
 	// (skillratiodebuff.go), extended past 90.
 	RatioDebuff   SkillRatioDebuff
@@ -841,6 +844,11 @@ func (t *TextdataSkills) parse(shards []string) {
 			// count it executable before that.
 			if debuff, ok := compileSkillRatioDebuff(fields, row); ok {
 				row.RatioDebuff = debuff
+			}
+			// Extended content (isro-live-2026): the planted poison field
+			// past the cap (M8 s51).
+			if field, ok := compilePoisonField(fields, row); ok {
+				row.PoisonField = field
 			}
 			t.rows.set(row.ID, row)
 		}

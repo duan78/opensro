@@ -59,3 +59,25 @@ func TestStunGuardSkipsAttackersAboveTheCeiling(t *testing.T) {
 		t.Fatalf("an attacker above the ceiling was stunned: %+v", live.Abnormal)
 	}
 }
+
+/*
+================
+TestPoisonFieldScanAppliesPoison
+
+Extended content (isro-live-2026), port-only, not v1.150-native (M8
+s51): one scan of a planted field rolls the ps block on the native
+stream and installs the poison record whose 2-second update owns the
+ticks.
+================
+*/
+func TestPoisonFieldScanAppliesPoison(t *testing.T) {
+	rt, member, mob := newStunGuardFixture(t)
+	field := enterworld.SkillPoisonField{Pinned: true, DurationMs: 30000, ScanMs: 3000, Radius: 100,
+		PoisonMs: 108000, Chance: 100, Damage: 120}
+	_, owner, _ := rt, member, mob
+	rt.applyPoisonFieldScan(testDivision, owner, field, []uint32{mob.Gid}, 1_000_000)
+	live, _ := rt.Monsters.Get(testDivision, mob.Gid)
+	if live.Abnormal == nil || !live.Abnormal.Has(abnormal.Poison) {
+		t.Fatalf("the victim was not poisoned: %+v", live.Abnormal)
+	}
+}

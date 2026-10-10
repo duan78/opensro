@@ -81,6 +81,7 @@ type residentSkill struct {
 	LifeSteal               SkillLifeSteal
 	CombatTrap              SkillCombatTrap
 	RatioDebuff             SkillRatioDebuff
+	PoisonField             SkillPoisonField
 	OffensiveArea           unique.Handle[SkillOffensiveArea]
 	ActionArea              unique.Handle[SkillOffensiveArea]
 	AlchemyStoneBonus       uint32
@@ -196,6 +197,7 @@ func compactSkill(row SkillRow) residentSkill {
 		LifeSteal:               row.LifeSteal,
 		CombatTrap:              row.CombatTrap,
 		RatioDebuff:             row.RatioDebuff,
+		PoisonField:             row.PoisonField,
 		OffensiveArea:           unique.Make(row.OffensiveArea),
 		ActionArea:              unique.Make(row.ActionArea),
 		AlchemyStoneBonus:       row.AlchemyStoneBonus,
@@ -314,6 +316,7 @@ func (r residentSkill) value() SkillRow {
 		LifeSteal:               r.LifeSteal,
 		CombatTrap:              r.CombatTrap,
 		RatioDebuff:             r.RatioDebuff,
+		PoisonField:             r.PoisonField,
 		OffensiveArea:           r.OffensiveArea.Value(),
 		ActionArea:              r.ActionArea.Value(),
 		AlchemyStoneBonus:       r.AlchemyStoneBonus,

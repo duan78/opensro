@@ -1268,7 +1268,39 @@ vide (les tiers ≤90 de la famille ne pinent pas).
 **Couverture : 83,9 → 84,0 %** (2522/3002) ; joueur 2096/2146 (97,6 %).
 Reste livrable : 50 rangées.
 
-## Amorce s50 — POISONA_FIELD entièrement mesuré : prêt à écrire
+## Session 51 — POISONA_FIELD livré : le champ qui persiste et tick (+5, 84,2 %)
+
+Écrit selon l'amorce s50, bout par bout :
+
+1. **Parseur** : compilePoisonField (skillpoisonfield.go) — la forme
+   unique mesurée (dura==enveloppe, puls, efr kind-3 {r,5,0,24}, ps
+   {durée, chance ≤100, dégâts}, getv RPDU/RPTU seuls, reqi) sous
+   plancher ≥91 (les cinq tiers natifs m=44..84 authorisent la même
+   forme). Épinglage compté dans les deux unions (bucket « field »).
+2. **Le tick persistant** : Program.Persist + ScanPersist — chaque
+   scan dû rapporte TOUS les monstres correspondants et l'objet ne
+   meurt qu'à sa propre dura (le trap actuel explose une fois). Test
+   dédié : premier scan → 1 touche, scan avant échéance → rien,
+   second scan → l'objet vit, +31 s → mort.
+3. **Le planteur** : acceptPoisonField sur le pattern du trap
+   (beginUntargetedCast + drapeau p.poisonField, coût commis,
+   l'objet posé Persist, l'effet de plateau du poseur) ; le tick
+   driver (skillobjects.go) route les scans Persist vers
+   applyPoisonFieldScan.
+4. **Le poison** : ApplyPoisonField (simulation) — le roll sur le
+   flux natif puis l'installation par la transaction de block
+   ordinaire, dont la mise à jour 2 s possède les ticks de dégâts
+   ensuite (le callback Poison de callbacks.go). **Le mur de la
+   session, nommé par un contrôle same-shape** : le record ps n'a NI
+   level NI grade, et le slot d'un record zéro-level exige un grade
+   non nul (4A4270) — le stun passait (Level 10), le poison
+   refusait silencieusement. Inférence enregistrée : le poison du
+   champ est grade 1.
+
+**Couverture : 84,0 → 84,2 %** (2527/3002, +5 exact) ; joueur
+2099/2146 (97,8 %). Reste livrable : 45 rangées.
+
+## Amorce s50 (résolue par la session 51) — le texte reste pour la traçabilité
 
 Probe complet (effacé) des 15 tiers, deux catalogues :
 
@@ -1295,9 +1327,11 @@ Probe complet (effacé) des 15 tiers, deux catalogues :
 
 ## Le reste (carte actualisée après s49)
 
-1. **FAIT (s47-s49)** : classification, DAMAGE_DIVIDE (+4),
-   HEALSHIELD (+3) ; POISONA_FIELD amorcé s50 (tout décodé, prêt).
-   Reste livrable : 50 rangées — la liste s47 moins HEALSHIELD.
+1. **FAIT (s47-s51)** : classification, DAMAGE_DIVIDE (+4),
+   HEALSHIELD (+3), POISONA_FIELD (+5). Reste livrable : 45 rangées
+   (FRENZYA 5, CONFUSIONA_ILLUSION 5, FIRE_SHIELD 3, STEALTHA_POINT
+   3, TRANSFORMA_DUPLE 3, MINDP 4, SPELLP 2, singles ~10 ; parked :
+   MANADRY 10 PvP, danses 2).
 2. **La traîne joueur (~270−15 rangées)** : les familles 2-5 de
    l'histogramme, une à une après les trois lanes.
 3. **Décision owner de périmètre (nouveau s39)** : ~180 rangées

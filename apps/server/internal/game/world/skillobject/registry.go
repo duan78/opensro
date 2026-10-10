@@ -44,6 +44,11 @@ type Program struct {
 	Hidden        bool
 	OwnerDistance uint32
 	LinkGroup     uint32
+	// Persist marks a ticking field (the extended poison field, M8 s51):
+	// every due scan it reports EVERY matching monster and retires only
+	// on expiry or the owner's absence - never on a match, unlike the
+	// one-shot combat trap.
+	Persist bool
 }
 
 /*
@@ -180,29 +185,55 @@ matching monster even if its owner quest subsequently refuses the event.
 ================
 */
 func (r *Registry) Scan(gid uint32, nowMs int64, ownerPresent bool, targets []Target) (Object, uint32, bool) {
+	object, matched, retired := r.scanShared(gid, nowMs, ownerPresent, targets, false)
+	first := uint32(0)
+	if len(matched) > 0 {
+		first = matched[0]
+	}
+	return object, first, retired
+}
+
+/*
+================
+ScanPersist
+
+The ticking field's scan: every matching monster at once, the object
+kept alive until its own expiry (M8 s51).
+================
+*/
+func (r *Registry) ScanPersist(gid uint32, nowMs int64, ownerPresent bool, targets []Target) ([]uint32, bool) {
+	_, matched, retired := r.scanShared(gid, nowMs, ownerPresent, targets, true)
+	return matched, retired
+}
+
+func (r *Registry) scanShared(gid uint32, nowMs int64, ownerPresent bool, targets []Target, persist bool) (Object, []uint32, bool) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	object, present := r.objects[gid]
 	if !present {
-		return Object{}, 0, false
+		return Object{}, nil, false
 	}
 	if !ownerPresent || nowMs-object.CreatedMs > int64(object.Program.DurationMs) {
 		delete(r.objects, gid)
-		return object, 0, true
+		return object, nil, true
 	}
 	if nowMs < object.NextScanMs {
-		return object, 0, false
+		return object, nil, false
 	}
 	object.NextScanMs = nowMs + int64(object.Program.ScanMs)
 	r.objects[gid] = object
+	var matched []uint32
 	for _, target := range targets {
 		if !Matches(object, target) {
 			continue
 		}
-		delete(r.objects, gid)
-		return object, target.GID, true
+		matched = append(matched, target.GID)
+		if !persist {
+			delete(r.objects, gid)
+			return object, matched, true
+		}
 	}
-	return object, 0, false
+	return object, matched, false
 }
 
 /*

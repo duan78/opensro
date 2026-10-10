@@ -324,6 +324,12 @@ func (rt *Runtime) dispatchSkillCommand(divisionID string, character, snapshot *
 			if skill.PositionEffect.Pinned {
 				return rt.acceptPositionSkill(divisionID, character, snapshot, cast, skill)
 			}
+			// Extended (isro-live-2026): the planted, ticking poison
+			// field past 90 (poisonfield.go).
+			if skill.PoisonField.Pinned {
+				result, _ := rt.acceptPoisonField(divisionID, character, snapshot, cast, skill, rt.Now().UnixMilli(), nil)
+				return result
+			}
 			// Extended (isro-live-2026): the timed hostile ratio cut
 			// of the Water line past 90 (ratiodebuff.go).
 			if skill.RatioDebuff.Pinned {
