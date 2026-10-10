@@ -213,6 +213,9 @@ type SkillRow struct {
 	LifeSteal SkillLifeSteal
 	// CombatTrap is a planted hostile trap program (skilltrap.go).
 	CombatTrap SkillCombatTrap
+	// Illusion is the Warlock's random-player disguise (skillillusion.go),
+	// live-only.
+	Illusion SkillIllusion
 	// PoisonField is the rogue's planted, ticking poison field
 	// (skillpoisonfield.go), extended past 90.
 	PoisonField SkillPoisonField
@@ -850,6 +853,7 @@ func (t *TextdataSkills) parse(shards []string) {
 			if field, ok := compilePoisonField(fields, row); ok {
 				row.PoisonField = field
 			}
+			parseSkillIllusion(fields, &row)
 			t.rows.set(row.ID, row)
 		}
 	}

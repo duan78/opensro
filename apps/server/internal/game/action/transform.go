@@ -44,9 +44,9 @@ func transformRow(row enterworld.SkillRow) bool {
 }
 
 // transformWord is the msch word of a row whose effect fills the block
-// (1 or 2), else 0.
+// (1, 2 or - extended, M8 s59 - the Illusion's 3), else 0.
 func transformWord(row enterworld.SkillRow) uint8 {
-	if row.CastGate.MschPresent && (row.CastGate.MschMode == 1 || row.CastGate.MschMode == 2) {
+	if row.CastGate.MschPresent && (row.CastGate.MschMode == 1 || row.CastGate.MschMode == 2 || row.Illusion.Pinned && row.CastGate.MschMode == 3) {
 		return uint8(row.CastGate.MschMode)
 	}
 	return 0

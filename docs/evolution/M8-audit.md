@@ -1500,14 +1500,52 @@ aucune implémentation sans preuve.
 - **Plus rien d'autre** : tout le reste du périmètre joueur past-90
   est ADMIS (2113/2146 = 98,6 %).
 
-## Le reste (carte actualisée après s58)
+## Session 59 — CONFUSIONA_ILLUSION livré : l'Illusion du Warlock (+5 past-90, 84,8 %)
 
-1. **FAIT (s47-s58)** : onze grappes livrées/comptées/reclassées ;
-   le dernier single livré. Le reste joueur = 14 rangées TOUTES
-   bloquées sur une décision ou une preuve : CONFUSIONA_ILLUSION 5
-   (lourd, constructible), TRANSFORMA_MASK 5 (feature V5, owner),
-   SPELLP 2 (sémantique, owner/binaire), MINDP_MAINTAIN 2 (mots
-   indéterminés, owner/binaire) ; parked : PvP 15, danses 2 ; arène
+Le dernier bloc constructible sans décision owner. La famille est
+**live-only** (mesuré : le catalogue v1.150 ne porte AUCUNE rangée
+msch mode 3 — le probe initial comptait zéro porteur natif ; le test
+de vide ordre-indépendant gèle le fait que seule cette famille
+authorise le mot). Onze tiers live épinglent, SANS plancher — aucune
+rangée native ne peut atteindre le parseur.
+
+- **Parseur** (skillillusion.go) : le miroir du Duplicate — msch{3,
+  niveau} + dura + skc + tant + reqi, non ciblé, handler persistent.
+  SkillIllusion{Pinned, MaxLevel} ; le stockage (3 sites) ; l'union
+  des deux tests (bucket « illusion »).
+- **Exécuteur** (action/illusion.go) : acceptIllusion — un cast self
+  non ciblé ; le TIRAGE parcourt le roster vivant de la division
+  (personnages strictement plus bas niveau que le lanceur — le
+  tooltip — et au plafond du mot), le roll sur le flux de combat
+  choisit ; la COPIE est celle du Duplicate (duplicateLook : modèle,
+  octet de forme, neuf emplacements portés) installée sous msch mode
+  3 (transformWord élargi). SANS candidat le cast REFUSE — un
+  déguisement que le roster ne peut pas construire ne s'invente pas
+  (inférence enregistrée).
+- **La borne v1 enregistrée** : le client vanilla VARIE le modèle PAR
+  SPECTATEUR ; ce port garde UN modèle par cast pour tous — une lane
+  de réplication par connexion n'existe pas dans le wire v1.150 que
+  ce port possède.
+
+Tests : les onze tiers épinglent avec leurs plafonds ; le mot reste
+la famille's own ; le tirage choisit le personnage de plus bas niveau
+(exclu par le plafond du mot) et le refus sans candidat. (Une passe à
+quatre sur le fixture du test de cast complet — la chaîne de cast est
+celle du Duplicate, éprouvée par ses propres tests.)
+
+**Couverture : 84,6 → 84,8 %** (2546/3002, +5) ; joueur 2118/2146
+(98,7 %). Le reste livrable sans décision owner : **ZÉRO** — les 9
+rangées joueur restantes (TRANSFORMA_MASK 5, SPELLP 2, MINDP_
+MAINTAIN 2) sont TOUTES bloquées sur une preuve ou une décision, plus
+PvP 15, danses 2, arène ~379.
+
+## Le reste (carte actualisée après s59)
+
+1. **FAIT (s47-s59)** : douze grappes livrées/comptées/reclassées ;
+   l'Illusion livrée. Le reste joueur SANS décision owner : ZÉRO. Les
+   9 rangées restantes sont toutes bloquées preuve/décision :
+   TRANSFORMA_MASK 5 (V5), SPELLP 2 (mot sans tooltip), MINDP_
+   MAINTAIN 2 (mots indéterminés) ; parked : PvP 15, danses 2 ; arène
    ~379 (owner).
 2. **La traîne joueur (~270−15 rangées)** : les familles 2-5 de
    l'histogramme, une à une après les trois lanes.
