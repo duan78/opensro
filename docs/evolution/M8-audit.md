@@ -1325,13 +1325,35 @@ Probe complet (effacé) des 15 tiers, deux catalogues :
   d'application du status au monstre existe (ApplyStunGuard s43 /
   applyAbnormalLocked). Demi-session honnête.
 
-## Le reste (carte actualisée après s49)
+## Session 52 — FRENZYA livré : la ruée à zone de l'atterrissage (+5, 84,3 %)
 
-1. **FAIT (s47-s51)** : classification, DAMAGE_DIVIDE (+4),
-   HEALSHIELD (+3), POISONA_FIELD (+5). Reste livrable : 45 rangées
-   (FRENZYA 5, CONFUSIONA_ILLUSION 5, FIRE_SHIELD 3, STEALTHA_POINT
-   3, TRANSFORMA_DUPLE 3, MINDP 4, SPELLP 2, singles ~10 ; parked :
-   MANADRY 10 PvP, danses 2).
+La grappe FRENZYA s'est scindée au probe : les tiers A (la ruée
+mono-cible, `att cm tel3 st bk tnt2 reqi`) étaient DÉJÀ admis par le
+contrat natif (DirectOffensePinned) — seuls les cinq tiers B
+refusaient, sur UNE porte : « offense:charge-area » — le contrat
+refuse tel3 ET efr ensemble (une charge ET une zone). Les tiers B
+authorisent exactement cette paire : la ruée atterrit sur une ZONE
+(`efr{1,2,20,3,20,24}` — rayon 20, 3 cibles, réduction 20) autour du
+point d'atterrissage. Le reste du programme est identique aux A.
+
+**Preuve du vide mesurée** (le motif DMIR s37) : la paire tel3+efr
+existe sur **5 rangées étendues, ZÉRO natives** — la combinaison est
+absente des données v1.150 en entier, donc la tolérance (sous
+plancher ≥91) ne peut admettre que des rangées live. Deux tests
+gèlent le fait : les cinq B épinglent avec leur zone, et la paire
+reste absente du natif.
+
+**Couverture : 84,2 → 84,3 %** (2532/3002, +5 exact) ; joueur
+2104/2146 (98,1 %). Reste livrable : 40 rangées.
+
+## Le reste (carte actualisée après s52)
+
+1. **FAIT (s47-s52)** : classification, DAMAGE_DIVIDE (+4),
+   HEALSHIELD (+3), POISONA_FIELD (+5), FRENZYA B (+5). Reste
+   livrable : 40 rangées (CONFUSIONA_ILLUSION 5 [msch-3 = le modèle
+   joueur aléatoire PAR SPECTATEUR — la plus lourde], FIRE_SHIELD 3,
+   STEALTHA_POINT 3, TRANSFORMA_DUPLE 3 [msch-2 ciblé], MINDP 4,
+   SPELLP 2, singles ~10 ; parked : MANADRY 10 PvP, danses 2).
 2. **La traîne joueur (~270−15 rangées)** : les familles 2-5 de
    l'histogramme, une à une après les trois lanes.
 3. **Décision owner de périmètre (nouveau s39)** : ~180 rangées
