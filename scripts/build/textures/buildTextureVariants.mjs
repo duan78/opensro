@@ -303,7 +303,20 @@ the DirectCompute one a driver offers is not reproducible across machines.
 async function bc7LevelBlocks( texconv, scratch, rgba, width, height ) {
 	const input = path.join( scratch, "level.tga" ), output = path.join( scratch, "level.dds" );
 	writeFileSync( input, tga( rgba, width, height ) );
-	await run( texconv, [ "-f", "BC7_UNORM", "-m", "1", "-ft", "dds", "-nogpu", "-nologo", "-y", "-o", scratch, input ] );
+	await run( texconv, [
+		"-f",
+		"BC7_UNORM",
+		"-m",
+		"1",
+		"-ft",
+		"dds",
+		"-nogpu",
+		"-nologo",
+		"-y",
+		"-o",
+		scratch,
+		input
+	] );
 	const file = readFileSync( output );
 	if (
 		file.readUInt32LE( 0 ) !== DDS_MAGIC ||
@@ -315,7 +328,9 @@ async function bc7LevelBlocks( texconv, scratch, rgba, width, height ) {
 	}
 	const blocks = Math.ceil( width / ASTC_BLOCK ) * Math.ceil( height / ASTC_BLOCK ) * BC7_BLOCK_BYTES;
 	const payload = file.subarray( DDS_HEADER_BYTES + DDS_DX10_BYTES );
-	if ( payload.length !== blocks ) throw new Error( `Unexpected BC7 payload ${payload.length} for ${width}x${height}` );
+	if ( payload.length !== blocks ) {
+		throw new Error( `Unexpected BC7 payload ${payload.length} for ${width}x${height}` );
+	}
 	return Buffer.from( payload );
 }
 
@@ -406,7 +421,14 @@ async function variantPass( pass, flags = {} ) {
 	const outputRoot = flags.out ? path.join( flags.out, "client-public" ) : CLIENT_PUBLIC_ROOT;
 	mkdirSync( cacheRoot, { recursive: true } );
 	const textures = nativeTextures( CLIENT_PUBLIC_ROOT, flags.only ).slice( 0, flags.limit );
-	let next = 0, encoded = 0, cached = 0, unaligned = 0, skippedSource = 0, masked = 0, sourceBytes = 0, variantBytes = 0;
+	let next = 0,
+		encoded = 0,
+		cached = 0,
+		unaligned = 0,
+		skippedSource = 0,
+		masked = 0,
+		sourceBytes = 0,
+		variantBytes = 0;
 	const startedAt = performance.now();
 	/*
 	================

@@ -331,8 +331,7 @@ export function createAssets(): AssetOwner {
 	// its features (textureFeatures).
 	let compressedTextures = false, bc7AlphaTextures = false, variantSent = false;
 	try {
-		( { compressedTextures, bc7AlphaTextures } =
-			storedExperimentalOptions( globalThis.localStorage ).options );
+		({ compressedTextures, bc7AlphaTextures } = storedExperimentalOptions( globalThis.localStorage ).options);
 	} catch {}
 	if ( !compressedTextures && !bc7AlphaTextures ) {
 		send( { kind: "texture-variant", variant: null } );

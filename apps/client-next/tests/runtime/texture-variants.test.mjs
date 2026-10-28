@@ -52,11 +52,31 @@ test("only a device without BC, with the switch on, is served a variant, and onl
 });
 
 test("the BC7 row serves the BC7 set only where BC itself is sampled", () => {
-	assert.equal( chooseTextureVariant( new Set( [ BC, ETC2, ASTC ] ), true, true ), "bc7", "a BC device is served the set" );
-	assert.equal( chooseTextureVariant( new Set( [ BC, ETC2, ASTC ] ), false, true ), "bc7", "independent of the phone switch" );
-	assert.equal( chooseTextureVariant( new Set( [ BC, ETC2, ASTC ] ), true, false ), null, "the row off keeps the retail upload" );
-	assert.equal( chooseTextureVariant( new Set( [ ETC2, ASTC ] ), true, true ), "astc", "the phone path is unchanged" );
-	assert.equal( chooseTextureVariant( new Set( [ ETC2, ASTC ] ), false, true ), null, "no BC: the row serves nothing" );
+	assert.equal(
+		chooseTextureVariant( new Set( [ BC, ETC2, ASTC ] ), true, true ),
+		"bc7",
+		"a BC device is served the set"
+	);
+	assert.equal(
+		chooseTextureVariant( new Set( [ BC, ETC2, ASTC ] ), false, true ),
+		"bc7",
+		"independent of the phone switch"
+	);
+	assert.equal(
+		chooseTextureVariant( new Set( [ BC, ETC2, ASTC ] ), true, false ),
+		null,
+		"the row off keeps the retail upload"
+	);
+	assert.equal(
+		chooseTextureVariant( new Set( [ ETC2, ASTC ] ), true, true ),
+		"astc",
+		"the phone path is unchanged"
+	);
+	assert.equal(
+		chooseTextureVariant( new Set( [ ETC2, ASTC ] ), false, true ),
+		null,
+		"no BC: the row serves nothing"
+	);
 });
 
 test("variants mirror native texture paths under one root, and nothing else has one", () => {
