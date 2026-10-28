@@ -81,6 +81,13 @@ export interface ExperimentalOptions {
 	// without BC are affected, where RGBA ends the tab; off is the native
 	// texture content.
 	readonly compressedTextures: boolean;
+	// Port-only, not native: a device that samples BC is served the build's
+	// BC7 re-encoding of the retail BC2 alpha textures (texture-variants.ts),
+	// the same eight bits a texel with BC2's 4-bit alpha gone. Read when the
+	// asset worker starts, so it applies from the next load. Off by default
+	// (the sampled texels differ from the retail upload, so the flip is the
+	// owner's); off is the native texture content.
+	readonly bc7AlphaTextures: boolean;
 	// Port-only, not native: characters and effects share one nearest-first
 	// order under the renderer's CHARACTER_ACTORS (the original keeps every
 	// decoration, 85C020), so a far character gives way to a near effect.
@@ -407,6 +414,7 @@ export function experimentalOptions( value: unknown = null ): ExperimentalOption
 		smoothCamera: record.smoothCamera !== false,
 		enchantSparks: record.enchantSparks !== false,
 		compressedTextures: record.compressedTextures !== false,
+		bc7AlphaTextures: enabled( "bc7AlphaTextures" ),
 		sharedActorRoom: record.sharedActorRoom !== false,
 		mainThreadOwnWalk: record.mainThreadOwnWalk !== false,
 		greyDisabledTabs: record.greyDisabledTabs !== false,

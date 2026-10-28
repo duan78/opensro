@@ -72,9 +72,12 @@ Load mode controls persistent-cache pinning; all groups are read on demand.
 */
 export function imagePackGroup( publicPath ) {
 	const lower = publicPath.toLowerCase();
-	// Port-only re-encodings for devices without BC (textures/buildTextureVariants
-	// .mjs): their own lazy group, so a BC device never fetches them.
+	// Port-only re-encodings (textures/buildTextureVariants.mjs): their own
+	// lazy group, so a device never fetches a set it does not sample - the
+	// ASTC one serves devices without BC, the BC7 one (issue #2060) the BC2
+	// alpha textures where BC itself is sampled.
 	if ( lower.startsWith( "/assets/texture-variants/astc/" ) ) return "texture-variants-astc";
+	if ( lower.startsWith( "/assets/texture-variants/bc7/" ) ) return "texture-variants-bc7";
 	if ( lower.startsWith( "/assets/world/outdoor/" ) ) return "outdoor-world";
 	if ( lower.startsWith( "/assets/world/" ) ) return "world-textures";
 	if ( lower.startsWith( "/assets/images/map_extracted/tile2d/" ) ) return "map-tiles";

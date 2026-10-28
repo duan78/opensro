@@ -100,6 +100,7 @@ const FIXTURE_FILES = [
 	"assets/images/Particles_extracted/textures/spark.png",
 	"assets/world/constantinople/object-textures/wall.texture",
 	"assets/texture-variants/astc/world/constantinople/object-textures/wall.texture",
+	"assets/texture-variants/bc7/world/constantinople/object-textures/wall.texture",
 	"assets/char/vat/crowd.bin",
 	"assets/char/vat/crowd.json",
 	"assets/npc/vat/npc.bin",
@@ -165,6 +166,11 @@ function expectedGroups( { outdoorFiles } ) {
 			name: "texture-variants-astc",
 			load: "lazy",
 			files: [ "/assets/texture-variants/astc/world/constantinople/object-textures/wall.texture" ]
+		},
+		{
+			name: "texture-variants-bc7",
+			load: "lazy",
+			files: [ "/assets/texture-variants/bc7/world/constantinople/object-textures/wall.texture" ]
 		},
 		{
 			name: "game-data",

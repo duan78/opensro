@@ -323,16 +323,18 @@ export function createAssets(): AssetOwner {
 	};
 	worker.onerror = () => fail( "Asset worker failed" );
 	worker.onmessageerror = () => fail( "Asset worker message could not be decoded" );
-	// Port-only: whether a device without BC is served re-encoded textures
-	// (texture-variants.ts). The switch is read here because the worker
+	// Port-only: whether a device without BC is served re-encoded textures,
+	// and whether a device that samples BC is served the BC7 set
+	// (texture-variants.ts). The switches are read here because the worker
 	// starts before the platform; native texture reads wait for the answer,
-	// so with the switch off it is given at once, else when the device knows
+	// so with both off it is given at once, else when the device knows
 	// its features (textureFeatures).
-	let compressedTextures = false, variantSent = false;
+	let compressedTextures = false, bc7AlphaTextures = false, variantSent = false;
 	try {
-		compressedTextures = storedExperimentalOptions( globalThis.localStorage ).options.compressedTextures;
+		( { compressedTextures, bc7AlphaTextures } =
+			storedExperimentalOptions( globalThis.localStorage ).options );
 	} catch {}
-	if ( !compressedTextures ) {
+	if ( !compressedTextures && !bc7AlphaTextures ) {
 		send( { kind: "texture-variant", variant: null } );
 		variantSent = true;
 	}
@@ -347,7 +349,10 @@ export function createAssets(): AssetOwner {
 		textureFeatures( features: readonly string[] ) {
 			if ( disposed || variantSent ) return;
 			variantSent = true;
-			send( { kind: "texture-variant", variant: chooseTextureVariant( new Set( features ), true ) } );
+			send( {
+				kind: "texture-variant",
+				variant: chooseTextureVariant( new Set( features ), compressedTextures, bc7AlphaTextures )
+			} );
 		},
 		/*
 		================

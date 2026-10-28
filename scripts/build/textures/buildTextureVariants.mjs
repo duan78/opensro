@@ -1,33 +1,42 @@
 /*
 ===========================================================================
 
-buildTextureVariants.mjs - ASTC re-encodings of the native textures
+buildTextureVariants.mjs - re-encodings of the native textures
 
-Port-only. Every published native texture (.texture, NTX) is re-encoded as
-ASTC 4x4 for devices without BC (client foundation/assets/texture-variants
-.ts) and written to its variant path beside the original, so each path
-keeps one owning pack group. Every level is decoded with the client's own
-NTX decoder and encoded by the pinned astcenc (encoders.mjs) at the
--medium preset; results are cached by the source's SHA-256.
+Port-only. Every published native texture (.texture, NTX) is re-encoded
+twice beside the original, so each path keeps one owning pack group:
 
-A variant has no CPU decoder, so picking cannot read its alpha back. Each
-one whose source has any alpha below 255 carries that alpha (level 0, one
-byte a texel, decoded bit-exactly from the BC blocks) after its levels,
-so a variant picks exactly as the original; an opaque source carries none
+- ASTC 4x4 for devices without BC (client
+  foundation/assets/texture-variants.ts), every level decoded with the
+  client's own NTX decoder and encoded by the pinned astcenc
+  (encoders.mjs) at the -medium preset.
+- BC7 for the retail BC2 alpha textures, served where BC itself is
+  sampled (issue #2060): BC2 and BC7 are both eight bits a texel, and
+  BC7 replaces BC2's 4-bit explicit alpha. Encoded per authored level by
+  the pinned texconv, its CPU codec forced (-nogpu) because a driver's
+  DirectCompute codec is not reproducible across machines.
+
+Both passes are cached by the source's SHA-256. A variant has no CPU
+decoder, so picking cannot read its alpha back. Each one whose source has
+any alpha below 255 carries that alpha (level 0, one byte a texel,
+decoded bit-exactly from the BC blocks) after its levels, so a variant
+picks exactly as the original; an opaque source carries none
 (native-texture.ts NTX_PICK_ALPHA). The mask is taken from the source at
 every run, outside the encoder cache. WebGPU requires a block-compressed
 level 0 to be whole blocks, so a texture under 4x4 keeps its original.
 
 	node scripts/build/textures/buildTextureVariants.mjs
 		[--jobs N] [--only /assets/prefix] [--limit N]
-		[--out DIR] [--roundtrip DIR]
+		[--out DIR] [--roundtrip DIR] [--bc7]
 
---out writes the variants (and their cache) below DIR instead of the
-published tree: a private build that leaves the shared tree untouched.
+--bc7 builds the BC7 set instead of the ASTC one. --out writes the
+variants (and their cache) below DIR instead of the published tree: a
+private build that leaves the shared tree untouched.
 
---roundtrip writes, for each texture, the ASTC result decoded back to an
+--roundtrip writes, for each texture, the result decoded back to an
 uncompressed BGRA NTX at DIR/<published path>: the texels a GPU sampling
-the variant reads, for side-by-side frames on a machine without ASTC.
+the variant reads, for side-by-side frames on a machine that cannot
+sample the set.
 
 ===========================================================================
 */
@@ -52,11 +61,25 @@ const run = promisify( execFile );
 const NTX_MAGIC = 0x3158544e;
 const NTX_HEADER_BYTES = 20;
 const NTX_ASTC_4X4 = 0x34345341; // "AS44", native-texture.ts
+const NTX_BC7_RGBA = 0x52374342; // "BC7R", native-texture.ts
 const NTX_PICK_ALPHA = 0x38414b50; // "PKA8", native-texture.ts
 const ASTC_BLOCK = 4;
 const D3DFMT_A8R8G8B8 = 21;
 const ASTC_HEADER_BYTES = 16;
 const ASTC_MAGIC = 0x5ca1ab13;
+// texconv's DDS: the magic, a 124-byte header whose pixel format carries
+// the DX10 fourCC, then the 20-byte extension whose first field is the
+// DXGI format. 98 is BC7_UNORM (probed against the pinned tool); 99, the
+// sRGB variant, is never asked for and refused here.
+const DDS_MAGIC = 0x20534444;
+const DDS_HEADER_BYTES = 128;
+const DDS_DX10_BYTES = 20;
+const DDS_HEIGHT_OFFSET = 12;
+const DDS_WIDTH_OFFSET = 16;
+const DDS_FOURCC_OFFSET = 84;
+const DDS_DXGI_FORMAT_OFFSET = 128;
+const DXGI_BC7_UNORM = 98;
+const BC7_BLOCK_BYTES = 16;
 const TGA_HEADER_BYTES = 18;
 // Uncompressed true colour, 32 bits, top-left origin with 8 alpha bits.
 const TGA_TRUE_COLOUR = 2;
@@ -72,7 +95,8 @@ const GL_RG = 0x8227;
 // RG (grey, then alpha).
 const KTX_CHANNELS = { [GL_RED]: 1, [GL_RG]: 2, [GL_RGB]: 3, [GL_RGBA]: 4 };
 const PRESET = "-medium";
-const VARIANT = "astc";
+const VARIANT_ASTC = "astc";
+const VARIANT_BC7 = "bc7";
 
 /*
 ================
@@ -85,7 +109,8 @@ function options( argv ) {
 		only: "/assets/",
 		limit: Infinity,
 		out: null,
-		roundtrip: null
+		roundtrip: null,
+		bc7: false
 	};
 	for ( let i = 0; i < argv.length; i++ ) {
 		const value = argv[i + 1];
@@ -94,6 +119,7 @@ function options( argv ) {
 		else if ( argv[i] === "--limit" ) out.limit = Number( value ), i++;
 		else if ( argv[i] === "--roundtrip" ) out.roundtrip = path.resolve( value ), i++;
 		else if ( argv[i] === "--out" ) out.out = path.resolve( value ), i++;
+		else if ( argv[i] === "--bc7" ) out.bc7 = true;
 		else throw new Error( `Unknown option ${argv[i]}` );
 	}
 	return out;
@@ -118,7 +144,7 @@ function nativeTextures( root, only ) {
 			}
 			if ( !entry.name.endsWith( ".texture" ) ) continue;
 			const publicPath = "/" + path.relative( root, file ).split( path.sep ).join( "/" );
-			if ( publicPath.startsWith( only ) && textureVariantPath( publicPath, VARIANT ) ) {
+			if ( publicPath.startsWith( only ) && textureVariantPath( publicPath, VARIANT_ASTC ) ) {
 				out.push( [ file, publicPath ] );
 			}
 		}
@@ -267,16 +293,100 @@ async function encodeTexture( astcenc, source, scratch, roundtrip ) {
 
 /*
 ================
-buildTextureVariants
+bc7LevelBlocks
 
-The pass, for the resource build (resourceBuild.mjs) and the CLI below.
-Each written variant is claimed in the open publication, so the claim audit
-keeps it and a variant whose texture was retired is left out. Only the
-windows-x64 encoder is pinned: elsewhere the pass is skipped and clients
-read the originals.
+One RGBA level through texconv's CPU BC7 codec: a single-mip DDS whose
+payload is returned without its headers. The CPU codec is forced because
+the DirectCompute one a driver offers is not reproducible across machines.
 ================
 */
-export async function buildTextureVariants( flags = {} ) {
+async function bc7LevelBlocks( texconv, scratch, rgba, width, height ) {
+	const input = path.join( scratch, "level.tga" ), output = path.join( scratch, "level.dds" );
+	writeFileSync( input, tga( rgba, width, height ) );
+	await run( texconv, [ "-f", "BC7_UNORM", "-m", "1", "-ft", "dds", "-nogpu", "-nologo", "-y", "-o", scratch, input ] );
+	const file = readFileSync( output );
+	if (
+		file.readUInt32LE( 0 ) !== DDS_MAGIC ||
+		file.readUInt32LE( DDS_HEIGHT_OFFSET ) !== height || file.readUInt32LE( DDS_WIDTH_OFFSET ) !== width ||
+		file.toString( "latin1", DDS_FOURCC_OFFSET, DDS_FOURCC_OFFSET + 4 ) !== "DX10" ||
+		file.readUInt32LE( DDS_DXGI_FORMAT_OFFSET ) !== DXGI_BC7_UNORM
+	) {
+		throw new Error( "Unexpected texconv output" );
+	}
+	const blocks = Math.ceil( width / ASTC_BLOCK ) * Math.ceil( height / ASTC_BLOCK ) * BC7_BLOCK_BYTES;
+	const payload = file.subarray( DDS_HEADER_BYTES + DDS_DX10_BYTES );
+	if ( payload.length !== blocks ) throw new Error( `Unexpected BC7 payload ${payload.length} for ${width}x${height}` );
+	return Buffer.from( payload );
+}
+
+/*
+================
+bc7LevelRoundtrip
+
+The encoded level decoded back to 32-bit BGRA by texconv: what a GPU
+sampling the BC7 level reads. texconv names its output after the input's
+base name, so the decode reads a copy named back.dds and writes back.tga,
+never over the level.tga the next level's encode reads.
+================
+*/
+async function bc7LevelRoundtrip( texconv, scratch ) {
+	const input = path.join( scratch, "back.dds" ), output = path.join( scratch, "back.tga" );
+	writeFileSync( input, readFileSync( path.join( scratch, "level.dds" ) ) );
+	await run( texconv, [ "-f", "R8G8B8A8_UNORM", "-ft", "tga", "-nologo", "-y", "-o", scratch, input ] );
+	const file = readFileSync( output );
+	const width = file.readUInt16LE( 12 ), height = file.readUInt16LE( 14 );
+	if ( file[2] !== TGA_TRUE_COLOUR || file[16] !== 32 || file[17] !== TGA_DESCRIPTOR ) {
+		throw new Error( "Unexpected texconv roundtrip layout" );
+	}
+	const out = Buffer.alloc( width * height * 4 );
+	for ( let i = 0; i < width * height; i++ ) {
+		const from = TGA_HEADER_BYTES + i * 4;
+		out[i * 4] = file[from + 2];
+		out[i * 4 + 1] = file[from + 1];
+		out[i * 4 + 2] = file[from];
+		out[i * 4 + 3] = file[from + 3];
+	}
+	return out;
+}
+
+/*
+================
+encodeTextureBc7
+
+One BC2 native texture to its BC7 NTX and, when asked, its decoded BGRA
+NTX. The authored level count and dimensions are kept level by level;
+only the block encoding changes (issue #2060).
+================
+*/
+async function encodeTextureBc7( texconv, source, scratch, roundtrip ) {
+	const texture = decodeNativeTexture( new Uint8Array( source ) );
+	if ( texture.format !== "bc2-rgba-unorm" ) throw new Error( `BC7 asks for a BC2 source, not ${texture.format}` );
+	const blocks = [], decoded = [];
+	for ( let level = 0; level < texture.levels.length; level++ ) {
+		const width = Math.max( 1, texture.width >> level ), height = Math.max( 1, texture.height >> level );
+		blocks.push(
+			await bc7LevelBlocks( texconv, scratch, decodeNativeTextureLevel( texture, level ), width, height )
+		);
+		if ( roundtrip ) decoded.push( await bc7LevelRoundtrip( texconv, scratch ) );
+	}
+	return {
+		variant: ntx( texture.width, texture.height, NTX_BC7_RGBA, blocks ),
+		roundtrip: roundtrip ? ntx( texture.width, texture.height, D3DFMT_A8R8G8B8, decoded ) : null
+	};
+}
+
+/*
+================
+variantPass
+
+One variant set over the published native textures, for the resource build
+(resourceBuild.mjs) and the CLI below. Each written variant is claimed in
+the open publication, so the claim audit keeps it and a variant whose
+texture was retired is left out. Only the windows-x64 encoders are pinned:
+elsewhere the pass is skipped and clients read the originals.
+================
+*/
+async function variantPass( pass, flags = {} ) {
 	flags = {
 		jobs: Math.max( 1, cpus().length - 1 ),
 		only: "/assets/",
@@ -286,18 +396,17 @@ export async function buildTextureVariants( flags = {} ) {
 		...flags
 	};
 	if ( process.platform !== "win32" ) {
-		console.log( "texture variants: skipped (the pinned astcenc is windows-x64 only)" );
+		console.log( `texture variants: skipped (the pinned ${pass.encoderName} is windows-x64 only)` );
 		return { skipped: true };
 	}
-	const astcenc = await encoderPath( "astcenc" );
-	const cacheName = `astc-4x4-${ENCODERS.astcenc.version}${PRESET}`;
+	const encoder = await encoderPath( pass.encoderName );
 	const cacheRoot = flags.out ?
-		path.join( flags.out, "intermediate", "texture-variants", cacheName ) :
-		generatedPath( "intermediate", "texture-variants", cacheName );
+		path.join( flags.out, "intermediate", "texture-variants", pass.cacheName ) :
+		generatedPath( "intermediate", "texture-variants", pass.cacheName );
 	const outputRoot = flags.out ? path.join( flags.out, "client-public" ) : CLIENT_PUBLIC_ROOT;
 	mkdirSync( cacheRoot, { recursive: true } );
 	const textures = nativeTextures( CLIENT_PUBLIC_ROOT, flags.only ).slice( 0, flags.limit );
-	let next = 0, encoded = 0, cached = 0, unaligned = 0, masked = 0, sourceBytes = 0, variantBytes = 0;
+	let next = 0, encoded = 0, cached = 0, unaligned = 0, skippedSource = 0, masked = 0, sourceBytes = 0, variantBytes = 0;
 	const startedAt = performance.now();
 	/*
 	================
@@ -311,6 +420,10 @@ export async function buildTextureVariants( flags = {} ) {
 				const [file, publicPath] = textures[next++];
 				const source = readFileSync( file ), digest = createHash( "sha256" ).update( source ).digest( "hex" );
 				const texture = decodeNativeTexture( new Uint8Array( source ) );
+				if ( !pass.sources( texture ) ) {
+					skippedSource++;
+					continue;
+				}
 				if ( texture.width % ASTC_BLOCK || texture.height % ASTC_BLOCK ) {
 					unaligned++;
 					continue;
@@ -323,7 +436,7 @@ export async function buildTextureVariants( flags = {} ) {
 					if ( flags.roundtrip ) back = readFileSync( cachedBack );
 					cached++;
 				} else {
-					const result = await encodeTexture( astcenc, source, scratch, !!flags.roundtrip );
+					const result = await pass.encode( encoder, source, scratch, !!flags.roundtrip );
 					variant = result.variant;
 					back = result.roundtrip;
 					writeFileSync( cachedVariant, variant );
@@ -333,7 +446,7 @@ export async function buildTextureVariants( flags = {} ) {
 				const mask = pickAlphaSection( texture );
 				if ( mask.length ) masked++;
 				variant = Buffer.concat( [ variant, mask ] );
-				const target = path.join( outputRoot, ...textureVariantPath( publicPath, VARIANT ).split( "/" ) );
+				const target = path.join( outputRoot, ...textureVariantPath( publicPath, pass.kind ).split( "/" ) );
 				mkdirSync( path.dirname( target ), { recursive: true } );
 				writeFileSync( target, variant );
 				if ( !flags.out && isPublicationOpen() ) claimPublicFile( target );
@@ -355,14 +468,62 @@ export async function buildTextureVariants( flags = {} ) {
 	await Promise.all( Array.from( { length: flags.jobs }, worker ) );
 	const mb = bytes => (bytes / 1048576).toFixed( 1 );
 	console.log(
-		`texture variants (astc 4x4 ${PRESET}): ${textures.length} textures, ${encoded} encoded, ${cached} cached, ` +
-			`${unaligned} under one block kept their original, ${masked} carry a picking mask, ` +
-			`${mb( sourceBytes )} MB BC -> ${mb( variantBytes )} MB ASTC, ` +
+		`texture variants (${pass.label}): ${textures.length} textures, ${encoded} encoded, ${cached} cached, ` +
+			`${skippedSource} kept their original format, ${unaligned} under one block kept their original, ` +
+			`${masked} carry a picking mask, ${mb( sourceBytes )} MB BC -> ${mb( variantBytes )} MB, ` +
 			`${((performance.now() - startedAt) / 1000).toFixed( 1 )} s`
 	);
-	return { textures: textures.length, encoded, cached, unaligned, masked, sourceBytes, variantBytes };
+	return {
+		textures: textures.length,
+		encoded,
+		cached,
+		unaligned,
+		skippedSource,
+		masked,
+		sourceBytes,
+		variantBytes
+	};
+}
+
+/*
+================
+buildTextureVariants
+
+The ASTC pass: every native texture, for devices without BC.
+================
+*/
+export async function buildTextureVariants( flags = {} ) {
+	return variantPass( {
+		kind: VARIANT_ASTC,
+		encoderName: "astcenc",
+		cacheName: `astc-4x4-${ENCODERS.astcenc.version}${PRESET}`,
+		label: `astc 4x4 ${PRESET}`,
+		sources: () => true,
+		encode: encodeTexture
+	}, flags );
+}
+
+/*
+================
+buildTextureVariantsBc7
+
+The BC7 pass (issue #2060): only the retail BC2 alpha textures, served
+where BC itself is sampled - the same eight bits a texel.
+================
+*/
+export async function buildTextureVariantsBc7( flags = {} ) {
+	return variantPass( {
+		kind: VARIANT_BC7,
+		encoderName: "texconv",
+		cacheName: `bc7-${ENCODERS.texconv.version}`,
+		label: `bc7 ${ENCODERS.texconv.version}`,
+		sources: texture => texture.format === "bc2-rgba-unorm",
+		encode: encodeTextureBc7
+	}, flags );
 }
 
 if ( process.argv[1] && path.resolve( process.argv[1] ) === fileURLToPath( import.meta.url ) ) {
-	await buildTextureVariants( options( process.argv.slice( 2 ) ) );
+	const flags = options( process.argv.slice( 2 ) );
+	if ( flags.bc7 ) await buildTextureVariantsBc7( flags );
+	else await buildTextureVariants( flags );
 }

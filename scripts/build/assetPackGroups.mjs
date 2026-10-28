@@ -162,6 +162,7 @@ export async function collectAssetPackGroups( {
 	const uiIconImages = allGameImages.filter( file => imagePackGroup( file ) === "ui-icons" );
 	const particleTextureImages = allGameImages.filter( file => imagePackGroup( file ) === "particle-textures" );
 	const astcTextureVariants = allGameImages.filter( file => imagePackGroup( file ) === "texture-variants-astc" );
+	const bc7TextureVariants = allGameImages.filter( file => imagePackGroup( file ) === "texture-variants-bc7" );
 
 	const compressedJson = (
 		await listPublicAssetFiles( {
@@ -257,6 +258,9 @@ export async function collectAssetPackGroups( {
 		// Read only by a device served the ASTC variants (client
 		// foundation/assets/texture-variants.ts); never installed or pinned.
 		{ name: "texture-variants-astc", load: "lazy", files: astcTextureVariants },
+		// Read only by a device that samples BC and serves itself the BC7 set
+		// through its Experimental row (issue #2060); never installed or pinned.
+		{ name: "texture-variants-bc7", load: "lazy", files: bc7TextureVariants },
 		{
 			name: "game-data",
 			load: "startup",

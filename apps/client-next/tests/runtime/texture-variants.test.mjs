@@ -31,6 +31,7 @@ const { chooseTextureVariant, textureVariantPath } = await load( "src/engine/fou
 const {
 	decodeNativeTexture,
 	decodeNativeSurface,
+	nativeTextureDecodable,
 	nativeTextureFeature,
 	nativeTextureLevelBytes,
 	validateNativeTexture
@@ -48,6 +49,14 @@ test("only a device without BC, with the switch on, is served a variant, and onl
 	assert.equal( chooseTextureVariant( new Set( [ ETC2 ] ), true ), null, "no ETC2 set is published" );
 	assert.equal( chooseTextureVariant( new Set( [ ASTC ] ), true ), "astc" );
 	assert.equal( chooseTextureVariant( new Set(), true ), null, "no sampled format: the RGBA fallback" );
+});
+
+test("the BC7 row serves the BC7 set only where BC itself is sampled", () => {
+	assert.equal( chooseTextureVariant( new Set( [ BC, ETC2, ASTC ] ), true, true ), "bc7", "a BC device is served the set" );
+	assert.equal( chooseTextureVariant( new Set( [ BC, ETC2, ASTC ] ), false, true ), "bc7", "independent of the phone switch" );
+	assert.equal( chooseTextureVariant( new Set( [ BC, ETC2, ASTC ] ), true, false ), null, "the row off keeps the retail upload" );
+	assert.equal( chooseTextureVariant( new Set( [ ETC2, ASTC ] ), true, true ), "astc", "the phone path is unchanged" );
+	assert.equal( chooseTextureVariant( new Set( [ ETC2, ASTC ] ), false, true ), null, "no BC: the row serves nothing" );
 });
 
 test("variants mirror native texture paths under one root, and nothing else has one", () => {
@@ -90,7 +99,8 @@ test("the NTX container admits the variant formats, with their features and no C
 	const formats = [
 		[ "E2A1", "etc2-rgb8a1unorm", 8, ETC2 ],
 		[ "E2A8", "etc2-rgba8unorm", 16, ETC2 ],
-		[ "AS44", "astc-4x4-unorm", 16, ASTC ]
+		[ "AS44", "astc-4x4-unorm", 16, ASTC ],
+		[ "BC7R", "bc7-rgba-unorm", 16, BC ]
 	];
 	for ( const [code, format, blockBytes, feature] of formats ) {
 		const texture = decodeNativeTexture( ntx( code, blockBytes ) );
@@ -98,6 +108,7 @@ test("the NTX container admits the variant formats, with their features and no C
 		assert.equal( texture.levels.length, 4 );
 		assert.equal( nativeTextureLevelBytes( format, 8, 8 ), 4 * blockBytes );
 		assert.equal( nativeTextureFeature( format ), feature );
+		assert.equal( nativeTextureDecodable( format ), false, "variants have no CPU decoder" );
 		assert.throws(
 			() => decodeNativeSurface( { width: 8, height: 8, format, bytes: texture.levels[0] } ),
 			/No CPU decoder/
@@ -120,6 +131,8 @@ test("a variant carries its source's picking mask after its levels; nothing else
 		/extent/,
 		"BC reads its own alpha"
 	);
+	const bc7 = decodeNativeTexture( Buffer.concat( [ ntx( "BC7R", 16 ), mask ] ) );
+	assert.equal( bc7.pickAlpha.length, 64, "the BC7 variant carries the same mask" );
 	assert.throws(
 		() => decodeNativeTexture( Buffer.concat( [ ntx( "AS44", 16 ), mask.subarray( 0, 40 ) ] ) ),
 		/extent/
@@ -134,10 +147,10 @@ test("a variant carries its source's picking mask after its levels; nothing else
 ================
 owner
 
-An asset owner over a fake worker, with the switch saved as given.
+An asset owner over a fake worker, with the switches saved as given.
 ================
 */
-function owner( t, compressedTextures ) {
+function owner( t, options ) {
 	const saved = Object.getOwnPropertyDescriptor( globalThis, "Worker" ),
 		storage = Object.getOwnPropertyDescriptor( globalThis, "localStorage" );
 	const messages = [];
@@ -153,11 +166,11 @@ function owner( t, compressedTextures ) {
 	Object.defineProperty( globalThis, "localStorage", {
 		configurable: true,
 		value: {
-			getItem: key => key === EXPERIMENTAL_STORAGE_KEY ? JSON.stringify( { compressedTextures } ) : null
+			getItem: key => key === EXPERIMENTAL_STORAGE_KEY ? JSON.stringify( options ) : null
 		}
 	} );
 	t.after( () => {
-		/** @type {[string, PropertyDescriptor | undefined][]} */
+		/** @type {[string, PropertyDescriptor | undefined][] } */
 		const restore = [ [ "Worker", saved ], [ "localStorage", storage ] ];
 		for ( const [name, old] of restore ) {
 			if ( old ) Object.defineProperty( globalThis, name, old );
@@ -170,11 +183,11 @@ function owner( t, compressedTextures ) {
 }
 
 test("with the switch off the worker is told at once; with it on, when the device's features arrive", t => {
-	const off = owner( t, false );
+	const off = owner( t, { compressedTextures: false } );
 	assert.deepEqual( off.variants(), [ { kind: "texture-variant", variant: null } ] );
 	off.assets.textureFeatures( [ ETC2 ] );
 	assert.equal( off.variants().length, 1, "told once" );
-	const on = owner( t, true );
+	const on = owner( t, { compressedTextures: true } );
 	assert.deepEqual( on.variants(), [], "the worker waits for the device" );
 	on.assets.textureFeatures( [ ETC2, ASTC ] );
 	on.assets.textureFeatures( [ ASTC ] );
@@ -182,7 +195,22 @@ test("with the switch off the worker is told at once; with it on, when the devic
 });
 
 test("a device that samples BC is never served a variant, even with the switch on and ASTC present", t => {
-	const pc = owner( t, true );
+	const pc = owner( t, { compressedTextures: true } );
 	pc.assets.textureFeatures( [ BC, ETC2, ASTC ] );
 	assert.deepEqual( pc.variants(), [ { kind: "texture-variant", variant: null } ] );
+});
+
+test("the BC7 row serves a BC device the BC7 set; without it, and elsewhere, nothing changes", t => {
+	const pc = owner( t, { compressedTextures: true, bc7AlphaTextures: true } );
+	pc.assets.textureFeatures( [ BC, ETC2, ASTC ] );
+	assert.deepEqual( pc.variants(), [ { kind: "texture-variant", variant: "bc7" } ] );
+	const rowAlone = owner( t, { compressedTextures: false, bc7AlphaTextures: true } );
+	rowAlone.assets.textureFeatures( [ BC ] );
+	assert.deepEqual( rowAlone.variants(), [ { kind: "texture-variant", variant: "bc7" } ], "independent rows" );
+	const phone = owner( t, { compressedTextures: true, bc7AlphaTextures: true } );
+	assert.deepEqual( phone.variants(), [], "a phone without BC still waits" );
+	phone.assets.textureFeatures( [ ETC2, ASTC ] );
+	assert.deepEqual( phone.variants(), [ { kind: "texture-variant", variant: "astc" } ] );
+	const bothOff = owner( t, { compressedTextures: false, bc7AlphaTextures: false } );
+	assert.deepEqual( bothOff.variants(), [ { kind: "texture-variant", variant: null } ], "told at once" );
 });

@@ -17,7 +17,7 @@ summary it prints from formatResourceBuildSummary.
 */
 
 import { produceAllFamilies } from "./families/looseFamilies.mjs";
-import { buildTextureVariants } from "./textures/buildTextureVariants.mjs";
+import { buildTextureVariants, buildTextureVariantsBc7 } from "./textures/buildTextureVariants.mjs";
 import { buildAudioResources } from "./audio.mjs";
 import { buildCifResources } from "./cif.mjs";
 import { buildConfigResources } from "./config.mjs";
@@ -184,6 +184,7 @@ export const RESOURCE_BUILD_STEPS = Object.freeze( {
 	extractRetailCursors,
 	produceAllFamilies,
 	buildTextureVariants,
+	buildTextureVariantsBc7,
 	packTree: packPublicTree
 } );
 
@@ -543,6 +544,9 @@ export async function buildSroResources( steps = RESOURCE_BUILD_STEPS, options =
 	// devices without BC is encoded now, before the packs are listed
 	// (textures/buildTextureVariants.mjs; cached by source digest).
 	const textureVariants = await timed( "textureVariants", () => steps.buildTextureVariants() );
+	// Port-only: the BC2 alpha textures get their BC7 set, served where BC
+	// itself is sampled (issue #2060), in the same window before packing.
+	const textureVariantsBc7 = await timed( "textureVariantsBc7", () => steps.buildTextureVariantsBc7() );
 	// Refresh the native-interface preload sweep over assets/images/** after
 	// every producer, the families included, has published (their code-selected UI
 	// art belongs in the startup set).
@@ -618,6 +622,7 @@ export async function buildSroResources( steps = RESOURCE_BUILD_STEPS, options =
 		backgroundInstall,
 		families,
 		textureVariants,
+		textureVariantsBc7,
 		packGroups,
 		claimAudit,
 		jsonOptimization,

@@ -111,12 +111,6 @@ export const EXPERIMENTAL_TABS: readonly {
 				description: "Monster portraits and approximate level ranges on M."
 			},
 			{
-				key: "heightFog",
-				id: "experimental-height-fog",
-				label: "Height fog",
-				description: "Distance haze that thins with height."
-			},
-			{
 				key: "dynamicSun",
 				id: "experimental-dynamic-sun",
 				label: "Moving sunlight",
@@ -127,6 +121,12 @@ export const EXPERIMENTAL_TABS: readonly {
 				id: "experimental-compressed-textures",
 				label: "Compressed textures",
 				description: "Phones and tablets: less memory. After reload."
+			},
+			{
+				key: "bc7AlphaTextures",
+				id: "experimental-bc7-alpha-textures",
+				label: "BC7 alpha textures",
+				description: "Smoother foliage and effect edges. After reload."
 			},
 			{
 				key: "sharedActorRoom",
@@ -163,6 +163,12 @@ export const EXPERIMENTAL_TABS: readonly {
 				id: "experimental-per-pixel-lighting",
 				label: "Per-pixel character light",
 				description: "Smooth lighting on characters and objects."
+			},
+			{
+				key: "heightFog",
+				id: "experimental-height-fog",
+				label: "Height fog",
+				description: "Distance haze that thins with height."
 			},
 			{
 				key: "enchantSparks",
