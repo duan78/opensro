@@ -165,6 +165,12 @@ export const EXPERIMENTAL_TABS: readonly {
 				description: "Smooth lighting on characters and objects."
 			},
 			{
+				key: "msaa",
+				id: "experimental-msaa",
+				label: "MSAA 4x",
+				description: "Scene edges smooth through 4x multisampling."
+			},
+			{
 				key: "heightFog",
 				id: "experimental-height-fog",
 				label: "Height fog",
