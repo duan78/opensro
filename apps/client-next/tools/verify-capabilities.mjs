@@ -70,6 +70,8 @@ const finish = runtime + "renderer/device/finish.ts";
 const shadows = runtime + "renderer/device/character-shadows.ts";
 const sunShadow = runtime + "renderer/device/sun-shadow.ts";
 const hdr = runtime + "renderer/device/hdr.ts";
+// Port-only: the experimental 4x multisampled scene buffers (device/msaa.ts).
+const msaa = runtime + "renderer/device/msaa.ts";
 const animation = runtime + "renderer/device/animation.ts";
 const particleQuery = runtime + "renderer/device/particle-query.ts";
 // Port-only: the 3D viewer's still readback (docs/VIEWER.md).
@@ -98,7 +100,8 @@ const deviceInternals = [
 	particles,
 	shadows,
 	sunShadow,
-	hdr
+	hdr,
+	msaa
 ];
 export const rules = {
 	createQuerySet: [ timing ],
@@ -366,6 +369,15 @@ for (
 		"beginRenderPass"
 	]
 ) rules[name].push( hdr );
+for (
+	const name of [
+		"createShaderModule",
+		"createRenderPipeline",
+		"createTexture",
+		"createBindGroup",
+		"beginRenderPass"
+	]
+) rules[name].push( msaa );
 for (
 	const name of [
 		"createShaderModule",
