@@ -209,9 +209,11 @@ test("a failed source-image conversion stops the build before any lane", async (
 });
 
 // Steps that consume the families' output, or run after the tree is complete.
-// The texture variants re-encode every native texture, the families' included.
+// The texture variant passes re-encode every native texture, the families'
+// included: ASTC for devices without BC, then the BC7 set (#2060).
 const AFTER_FAMILIES = [
 	"buildTextureVariants",
+	"buildTextureVariantsBc7",
 	"buildUiImagePreloadManifest",
 	"buildBackgroundInstallAsset",
 	"packTree"
