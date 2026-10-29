@@ -39,15 +39,16 @@ export function createWaterReflection( device: GPUDevice, initialFormat: GPUText
 	const values = new Float32Array( UNIFORM_BYTES / 4 );
 	/*
 	================
-	allocate
+	allocateColour / allocateDepth
 
 	The mirror pair for the current format and sample count: a 4x mirror
 	(the MSAA stage renders the reflected pass through the scene's own
 	pipelines) resolves into its own single-sampled texture, which alone is
-	sampled by the water shader.
+	sampled by the water shader. A format change alone never touches the
+	depth; only a sample-count change does.
 	================
 	*/
-	function allocate() {
+	function allocateColour() {
 		color = device.createTexture( {
 			label: "water-reflection",
 			size: [ WATER_REFLECTION_SIZE, WATER_REFLECTION_SIZE ],
@@ -67,6 +68,9 @@ export function createWaterReflection( device: GPUDevice, initialFormat: GPUText
 			resolve = undefined;
 			resolveView = undefined;
 		}
+		target = color.createView();
+	}
+	function allocateDepth() {
 		depth = device.createTexture( {
 			label: "water-reflection-depth",
 			size: [ WATER_REFLECTION_SIZE, WATER_REFLECTION_SIZE ],
@@ -74,7 +78,6 @@ export function createWaterReflection( device: GPUDevice, initialFormat: GPUText
 			format: "depth24plus",
 			usage: GPUTextureUsage.RENDER_ATTACHMENT
 		} );
-		target = color.createView();
 		depthView = depth.createView();
 	}
 	return {
@@ -90,7 +93,8 @@ export function createWaterReflection( device: GPUDevice, initialFormat: GPUText
 		update( matrix: Float32Array | undefined, height: number, above: boolean, seconds: number ) {
 			const changed = !!matrix !== !!color;
 			if ( matrix && !color ) {
-				allocate();
+				allocateColour();
+				allocateDepth();
 			} else if ( !matrix && color ) {
 				retire( color );
 				resolve && retire( resolve );
@@ -131,14 +135,24 @@ export function createWaterReflection( device: GPUDevice, initialFormat: GPUText
 		*/
 		reformat( next: GPUTextureFormat, nextSamples = 1 ) {
 			if ( format === next && samples === nextSamples ) return false;
+			const depthChanged = samples !== nextSamples;
 			format = next;
 			samples = nextSamples;
 			// A later first capture must use the current scene surface too.
 			if ( !color ) return false;
 			retire( color );
 			resolve && retire( resolve );
-			retire( depth! );
-			allocate();
+			color = undefined;
+			resolve = undefined;
+			target = undefined;
+			resolveView = undefined;
+			if ( depthChanged ) {
+				retire( depth! );
+				depth = undefined;
+				depthView = undefined;
+			}
+			allocateColour();
+			if ( !depth ) allocateDepth();
 			return true;
 		},
 		/*

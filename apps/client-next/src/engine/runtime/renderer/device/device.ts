@@ -247,9 +247,11 @@ export function createDevice( timingEnabled = false, gpuAnimationEnabled = true 
 					current().createRenderBundleEncoder( {
 						label: "retained-scene",
 						// Scene bundles execute into the frame's scene target: the
-						// canvas format, or the HDR stage's float intermediate.
+						// canvas format, or the HDR stage's float intermediate, at
+						// the MSAA stage's sample count when that row is on.
 						colorFormats: [ scene && hdrOn ? "rgba16float" : navigator.gpu.getPreferredCanvasFormat() ],
-						...(depth ? { depthStencilFormat: "depth24plus" as const } : {})
+						...(depth ? { depthStencilFormat: "depth24plus" as const } : {}),
+						...(scene && msaaOn ? { sampleCount: 4 } : {})
 					} ),
 				/*
 				================
