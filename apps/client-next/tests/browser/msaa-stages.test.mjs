@@ -39,12 +39,14 @@ the intermediate (blended) texel count of each pass.
 */
 async function diagonalProbe() {
 	const adapter = await navigator.gpu.requestAdapter();
+	if ( !adapter ) throw Error( "WebGPU adapter unavailable" );
 	const device = await adapter.requestDevice();
 	const width = 96, height = 96;
 	const canvas = document.createElement( "canvas" );
 	canvas.width = width;
 	canvas.height = height;
 	const context = canvas.getContext( "webgpu" );
+	if ( !context ) throw Error( "WebGPU canvas unavailable" );
 	const format = navigator.gpu.getPreferredCanvasFormat();
 	context.configure( { device, format, alphaMode: "opaque" } );
 	const module = device.createShaderModule( {
@@ -60,6 +62,7 @@ async function diagonalProbe() {
 	output.width = width;
 	output.height = height;
 	const capture = output.getContext( "2d", { willReadFrequently: true } );
+	if ( !capture ) throw Error( "No capture context" );
 	const blended = {};
 	for ( const count of [ 1, 4 ] ) {
 		const pipeline = device.createRenderPipeline( {
@@ -70,7 +73,13 @@ async function diagonalProbe() {
 			multisample: { count }
 		} );
 		const target = context.getCurrentTexture().createView();
-		let attachment = { view: target, clearValue: { r: 0, g: 0, b: 0, a: 1 }, loadOp: "clear", storeOp: "store" };
+		const baseAttachment = {
+			view: target,
+			clearValue: { r: 0, g: 0, b: 0, a: 1 },
+			loadOp: "clear",
+			storeOp: "store"
+		};
+		let attachment = /** @type {GPURenderPassColorAttachment} */ (baseAttachment);
 		if ( count === 4 ) {
 			const msaa = device.createTexture( {
 				size: [ width, height ],
@@ -138,27 +147,28 @@ test(
 			);
 			await page.goto( CLIENT_NEXT_BASE_URL );
 			await page.evaluate( () => {
-				window.__gpuErrors = [];
+				const trace = /** @type {any} */ (globalThis);
+				trace.__gpuErrors = [];
 				const origRequest = GPUAdapter.prototype.requestDevice;
 				GPUAdapter.prototype.requestDevice = async function( descriptor ) {
 					const device = await origRequest.call( this, descriptor );
 					device.addEventListener?.(
 						"uncapturederror",
-						event => window.__gpuErrors.push( String( event.error?.message ?? event.error ) )
+						event => trace.__gpuErrors.push( String( event.error?.message ?? event.error ) )
 					);
 					return device;
 				};
-				window.__viewNames = new Map();
-				window.__passes = [];
-				window.__textures = [];
+				trace.__viewNames = new Map();
+				trace.__passes = [];
+				trace.__textures = [];
 				const origTexture = GPUDevice.prototype.createTexture;
 				GPUDevice.prototype.createTexture = function( descriptor ) {
 					const texture = origTexture.call( this, descriptor );
-					if ( descriptor.sampleCount === 4 ) window.__textures.push( descriptor.label ?? "?" );
+					if ( descriptor.sampleCount === 4 ) trace.__textures.push( descriptor.label ?? "?" );
 					const origView = texture.createView.bind( texture );
 					texture.createView = viewDescriptor => {
 						const view = origView( viewDescriptor ?? {} );
-						window.__viewNames.set( view, descriptor.label ?? "texture" );
+						trace.__viewNames.set( view, descriptor.label ?? "texture" );
 						return view;
 					};
 					return texture;
@@ -166,8 +176,8 @@ test(
 				const origPass = GPUCommandEncoder.prototype.beginRenderPass;
 				GPUCommandEncoder.prototype.beginRenderPass = function( descriptor ) {
 					const colour = descriptor.colorAttachments?.[0];
-					const name = view => window.__viewNames.get( view ) ?? "?";
-					window.__passes.push(
+					const name = view => trace.__viewNames.get( view ) ?? "?";
+					trace.__passes.push(
 						(descriptor.label ?? "?") +
 							" c=" + (colour ? name( colour.view ) : "-") +
 							(colour?.resolveTarget ? "+R->" + name( colour.resolveTarget ) : "") +
@@ -178,13 +188,14 @@ test(
 					return origPass.call( this, descriptor );
 				};
 			} );
-			const rows = await page.evaluate(
-				captureLightingStages,
-				{ stages: [ "off", "msaa", "off" ], boxYaw: Math.PI / 7 }
-			);
-			const textures = await page.evaluate( () => window.__textures );
-			const passes = await page.evaluate( () => window.__passes );
-			const gpuErrors = await page.evaluate( () => window.__gpuErrors );
+			const capture = /** @type {any} */ (captureLightingStages);
+			const rows = await page.evaluate( capture, {
+				stages: [ "off", "msaa", "off" ],
+				boxYaw: Math.PI / 7
+			} );
+			const textures = await page.evaluate( () => (/** @type {any} */ (globalThis)).__textures );
+			const passes = await page.evaluate( () => (/** @type {any} */ (globalThis)).__passes );
+			const gpuErrors = await page.evaluate( () => (/** @type {any} */ (globalThis)).__gpuErrors );
 			// The 4x scene buffers exist exactly once, in the row's frames.
 			assert.deepEqual(
 				textures.filter( label => label.startsWith( "msaa-" ) ).sort(),
