@@ -171,6 +171,12 @@ export const EXPERIMENTAL_TABS: readonly {
 				description: "Water bends the ground under it and foams at the shore."
 			},
 			{
+				key: "softParticles",
+				id: "experimental-soft-particles",
+				label: "Soft particles",
+				description: "Weather and effect sprites soften where they meet the ground."
+			},
+			{
 				key: "enchantSparks",
 				id: "experimental-enchant-sparks",
 				label: "Enhanced item glow",

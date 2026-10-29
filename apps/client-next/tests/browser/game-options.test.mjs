@@ -289,6 +289,7 @@ test(
 					sunShadow: false,
 					perPixelLighting: false,
 					waterRefraction: false,
+		softParticles: false,
 					renderScale: 100
 				}
 			);
@@ -331,6 +332,7 @@ test(
 					sunShadow: false,
 					perPixelLighting: false,
 					waterRefraction: false,
+		softParticles: false,
 					renderScale: 100
 				}
 			);

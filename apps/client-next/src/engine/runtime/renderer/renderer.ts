@@ -887,16 +887,26 @@ export function createRenderer(
 					undefined;
 				// Each owner's list is checked under its own name.
 				// Slices keep the scene's terrain/transparent boundaries exact.
-				const waterOn = experimental.waterRefraction,
+				const softOn = experimental.softParticles,
+					weatherLive = preview ? [] : staleDraws.live( "weather", scene.weatherDraws ?? [] ),
+					// Port-only soft particles: the weather sprites leave the main pass
+					// and the split stage redraws them over the copied depth.
+					softDraws = weatherLive,
+					weatherDraws: GeometryDraw[] = [],
+					waterOn = experimental.waterRefraction,
 					waterDraws: GeometryDraw[] = [];
 				// Port-only water refraction: the blended water surfaces leave
 				// the main pass and the refraction stage redraws them (the
 				// opaque water family - the ice - stays where it is).
 				const withoutWater = ( draws: readonly GeometryDraw[] ) =>
-					waterOn ?
+					waterOn || softOn ?
 						draws.filter( draw => {
-							if ( draw.water && draw.blended ) {
+							if ( waterOn && draw.water && draw.blended ) {
 								waterDraws.push( draw );
+								return false;
+							}
+							if ( softOn && draw.softDepth ) {
+								weatherDraws.push( draw );
 								return false;
 							}
 							return true;
@@ -930,7 +940,7 @@ export function createRenderer(
 						[ scene.environment[84]!, scene.environment[85]!, scene.environment[86]! ] :
 						[ 0.70710678, 0.70710678, 0 ];
 				sunShadow.prepare( shadowOn, scene.camera.eye, shadowLight );
-				const refraction = device.waterRefraction( sceneWidth, sceneHeight, waterOn );
+				const refraction = device.waterRefraction( sceneWidth, sceneHeight, waterOn || softOn );
 				device.geometry()!.refractionViews( refraction?.colourView ?? null, refraction?.depthView ?? null );
 				const pending = frame!.draw(
 					scaled ? targetSurface.frameView() : color,
@@ -947,7 +957,7 @@ export function createRenderer(
 						...transparentDraws,
 						...staleDraws.live( "decals", scene.decalDraws ?? [] ),
 						...(preview ? [] : liveCharacters.filter( draw => draw.blended )),
-						...(preview ? [] : staleDraws.live( "weather", scene.weatherDraws ?? [] ))
+						...softDraws
 					],
 					device.ui( projectedUi, viewport.width ),
 					preview ? device.geometry()!.hdrPreview( liveCharacters ) : [],
@@ -979,6 +989,15 @@ export function createRenderer(
 						hdr: device.hdr( sceneWidth, sceneHeight, experimental.hdrToneMap ),
 						water: refraction && waterDraws.length ?
 							{ draws: waterDraws, stage: refraction } :
+							undefined,
+						softParticles: refraction && weatherDraws.length ?
+							{
+								draws: weatherDraws,
+								overlay: ( encoder, target, targetDepth, draws ) =>
+									// Without the water's own encode in the frame, the soft
+									// overlay copies the frame itself first.
+									refraction!.encode( encoder, target, targetDepth, target, targetDepth, draws )
+							} :
 							undefined,
 						sceneScale: scaled ?
 							{

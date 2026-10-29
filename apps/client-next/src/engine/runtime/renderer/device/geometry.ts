@@ -291,6 +291,7 @@ export function createGeometryResources(
 	};
 	const metadata = new Map<GeometryDraw, {
 		water: boolean;
+		softDepth: boolean;
 		state: GeometryPipelineState;
 		uniform: Binding;
 		material: Binding;
@@ -1133,7 +1134,13 @@ export function createGeometryResources(
 						mat?.objectLightmap ? 1 : 0,
 						0,
 						// D3DRS_TEXTUREFACTOR, read by a stage's TFACTOR argument.
-						...(mat?.textureFactor ?? [ 1, 1, 1, 1 ])
+						...(mat?.textureFactor ?? [ 1, 1, 1, 1 ]),
+						// Port-only soft particles (device/water-refraction.ts's split):
+						// x gates the fragment's depth fade.
+						mat?.softDepth ? 1 : 0,
+						0,
+						0,
+						0
 					] ),
 					material = slice( materialSlabs.allocate( materialData.byteLength ), materialData );
 				const selected = pipelines( geometryPipelineState( mat ), floatScene ),
@@ -1153,6 +1160,7 @@ export function createGeometryResources(
 					{
 						deferredParticle: mat?.deferredParticle,
 						water: !!mat?.water,
+						softDepth: !!mat?.softDepth,
 						blended: data.material?.sky ? false : data.material?.blend ?? false,
 						pipeline: selected,
 						vertices,
@@ -1179,6 +1187,7 @@ export function createGeometryResources(
 				geometryBuffers.set( draw, buffers );
 				metadata.set( draw, {
 					water: !!mat?.water,
+					softDepth: !!mat?.softDepth,
 					state: geometryPipelineState( mat ),
 					uniform,
 					material: material.binding,

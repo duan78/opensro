@@ -277,7 +277,7 @@ const nativeCharacterLighting:bool=${NATIVE_CHARACTER_LIGHTING};
 @group(0) @binding(0) var<uniform> transform:mat4x4f;
 struct Instance {matrix:mat4x4f,opacity:vec4f,color:vec4f,window:vec4f,pointPosition:vec4f,pointAmbient:vec4f,pointDiffuse:vec4f}
 @group(0) @binding(1) var<storage,read> instances:array<Instance>;
-struct Material {color:vec4f,options:vec4f,skin:vec4f,window:vec4f,lighting:vec4f,policy:vec4f,localFog:vec4f,localFogSettings:vec4f,ambient:vec4f,uvU:vec4f,uvV:vec4f,reflection:vec4f,equipmentColor:vec4f,equipmentUV:vec4f,stage:vec4f,stagePolicy:vec4f,textureFactor:vec4f}
+struct Material {color:vec4f,options:vec4f,skin:vec4f,window:vec4f,lighting:vec4f,policy:vec4f,localFog:vec4f,localFogSettings:vec4f,ambient:vec4f,uvU:vec4f,uvV:vec4f,reflection:vec4f,equipmentColor:vec4f,equipmentUV:vec4f,stage:vec4f,stagePolicy:vec4f,textureFactor:vec4f,softDepth:vec4f}
 @group(0) @binding(2) var<uniform> material:Material;
 // texture-stage.ts: D3D9 stage 0, every op it defines. CURRENT is the
 // diffuse colour at stage 0; TEMP starts at zero; SPECULAR is the vertex
@@ -592,7 +592,15 @@ let mask=mix(mix(input.color.x,input.color.y,input.maskUV.x),mix(input.color.z,i
  // (X8R8G8B8) keeps no alpha. Its texture alpha (an alpha test's, or a gloss
  // mask's) must not reach a transparent target such as the viewer's doll,
  // where it showed the page through alpha-tested armour.
- let surfaceAlpha=select(select(color.a,clamp(input.color.a,0,1),animated),select(select(1.0,color.a,material.ambient.w>0.5),fadeAlpha,fading),material.lighting.z>0.5);
+ var surfaceAlpha=select(select(color.a,clamp(input.color.a,0,1),animated),select(select(1.0,color.a,material.ambient.w>0.5),fadeAlpha,fading),material.lighting.z>0.5);
+ // Port-only soft particles (stages.z, device/water-refraction.ts's split):
+ // the sprite drew after a readable copy of the frame's depth, so its
+ // fragment fades where the depth behind it reaches its own - the hard
+ // edge the native sprite cuts at the ground softens to nothing.
+ if(env.stages.z>0.5&&material.softDepth.x>0.5){
+  let depthBehind=textureLoad(sceneBehindDepth,vec2i(input.position.xy),0);
+  surfaceAlpha=select(surfaceAlpha*clamp((depthBehind-input.position.z)/0.05,0.0,1.0),1.0,material.stagePolicy.y>0.5);
+ }
  return vec4f(mix(lit*select(vec3f(1),waterShading,animated),select(fogColor,terrainFogColor,material.options.z>0.5),fog),select(surfaceAlpha,1.0,material.stagePolicy.y>0.5));
 }
 @fragment fn fs(input:Out)->@location(0) vec4f {return shadeGeometry(input);}

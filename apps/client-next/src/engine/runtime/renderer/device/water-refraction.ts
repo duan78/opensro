@@ -100,6 +100,37 @@ struct V {@builtin(position) position:vec4f,@location(0) uv:vec2f}
 			primitive: { topology: "triangle-list" }
 		} );
 	}
+	function drawOverlay(
+		encoder: GPUCommandEncoder,
+		target: GPUTextureView,
+		targetDepth: GPUTextureView,
+		draws: readonly GeometryDraw[]
+	) {
+		const water = encoder.beginRenderPass( {
+			label: "water-refraction-overlay",
+			colorAttachments: [ { view: target, loadOp: "load", storeOp: "store" } ],
+			depthStencilAttachment: {
+				view: targetDepth,
+				depthLoadOp: "load",
+				depthStoreOp: "store"
+			}
+		} );
+		for ( const draw of draws ) {
+			if ( !draw.indexCount || !draw.instanceCount ) continue;
+			water.setPipeline( draw.pipeline );
+			water.setBindGroup( 0, draw.binding );
+			water.setVertexBuffer( 0, draw.vertices );
+			water.setIndexBuffer( draw.indices, "uint32" );
+			water.drawIndexed(
+				draw.indexCount,
+				draw.instanceCount,
+				draw.firstIndex ?? 0,
+				draw.baseVertex ?? 0,
+				0
+			);
+		}
+		water.end();
+	}
 	return {
 		/*
 		================
@@ -153,6 +184,15 @@ struct V {@builtin(position) position:vec4f,@location(0) uv:vec2f}
 				source's first change and is then kept.
 				================
 				*/
+				overlay(
+					encoder: GPUCommandEncoder,
+					target: GPUTextureView,
+					targetDepth: GPUTextureView,
+					draws: readonly GeometryDraw[]
+				) {
+					if ( disposed || !colour || !depth ) throw Error( "Stale water refraction targets" );
+					drawOverlay( encoder, target, targetDepth, draws );
+				},
 				encode(
 					encoder: GPUCommandEncoder,
 					frameColour: GPUTextureView,
@@ -197,30 +237,7 @@ struct V {@builtin(position) position:vec4f,@location(0) uv:vec2f}
 					depthPass.setBindGroup( 0, depthBinding! );
 					depthPass.draw( 3 );
 					depthPass.end();
-					const water = encoder.beginRenderPass( {
-						label: "water-refraction-overlay",
-						colorAttachments: [ { view: target, loadOp: "load", storeOp: "store" } ],
-						depthStencilAttachment: {
-							view: targetDepth,
-							depthLoadOp: "load",
-							depthStoreOp: "store"
-						}
-					} );
-					for ( const draw of draws ) {
-						if ( !draw.indexCount || !draw.instanceCount ) continue;
-						water.setPipeline( draw.pipeline );
-						water.setBindGroup( 0, draw.binding );
-						water.setVertexBuffer( 0, draw.vertices );
-						water.setIndexBuffer( draw.indices, "uint32" );
-						water.drawIndexed(
-							draw.indexCount,
-							draw.instanceCount,
-							draw.firstIndex ?? 0,
-							draw.baseVertex ?? 0,
-							0
-						);
-					}
-					water.end();
+					drawOverlay( encoder, target, targetDepth, draws );
 				}
 			};
 		},

@@ -118,6 +118,13 @@ encodes it right after the scene pass, before anything reads the frame.
 export interface WaterRefractionDraw {
 	readonly colourView: GPUTextureView;
 	readonly depthView: GPUTextureView;
+	/** The overlay alone, for a second split family (the soft particles). */
+	overlay(
+		encoder: GPUCommandEncoder,
+		target: GPUTextureView,
+		targetDepth: GPUTextureView,
+		draws: readonly GeometryDraw[]
+	): void;
 	encode(
 		encoder: GPUCommandEncoder,
 		frameColour: GPUTextureView,
@@ -163,6 +170,10 @@ export interface ExperimentalFrame {
 	readonly water?: {
 		readonly draws: readonly GeometryDraw[];
 		readonly stage: WaterRefractionDraw;
+	};
+	readonly softParticles?: {
+		readonly draws: readonly GeometryDraw[];
+		readonly overlay: WaterRefractionDraw["overlay"];
 	};
 }
 /*
@@ -322,6 +333,9 @@ export interface GeometryDraw {
 	// The draw shades a water surface: the refraction stage draws these
 	// apart from the main pass (device/water-refraction.ts).
 	readonly water?: boolean;
+	// Port-only soft particles: the draw fades where it meets the scene
+	// depth, drawn apart from the main pass by the same stage.
+	readonly softDepth?: boolean;
 	readonly pipeline: GPURenderPipeline;
 	readonly binding: GPUBindGroup;
 	readonly vertices: GPUBuffer;

@@ -103,6 +103,7 @@ export function createFrame( commands: FrameCommands ): FrameOwner {
 		) {
 			const sceneScale = experimental?.sceneScale;
 			const water = experimental?.water;
+			const softParticles = experimental?.softParticles;
 			const sceneView = bloom?.view ?? experimental?.hdr?.view ?? sceneScale?.view ?? view;
 			const uiDepth = sceneScale?.frameDepth ?? depth;
 			// The HDR stage resolves the world before UI. Its float target can
@@ -307,6 +308,11 @@ export function createFrame( commands: FrameCommands ): FrameOwner {
 			if ( water && depth ) {
 				water.stage.encode( encoder, sceneView, depth, sceneView, depth, water.draws );
 			}
+			// Port-only soft particles: the same copied depth carries their
+			// fade; their overlay follows the water's.
+			if ( softParticles && depth ) {
+				softParticles.overlay( encoder, sceneView, depth, softParticles.draws );
+			}
 			/*
 			================
 			previewPass
@@ -459,7 +465,7 @@ export function createFrame( commands: FrameCommands ): FrameOwner {
 					labels.executeBundles( [ worldUiBundle ] );
 					labels.end();
 				}
-				if ( flares || thunder || bloom || hdrScene || sceneScale || water ) {
+				if ( flares || thunder || bloom || hdrScene || sceneScale || water || softParticles ) {
 					const hud = encoder.beginRenderPass( {
 						timestampWrites: timing?.pass( "hud-after-flares" ),
 						label: "hud-after-flares",

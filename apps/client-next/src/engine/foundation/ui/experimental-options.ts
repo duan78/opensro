@@ -66,6 +66,10 @@ export interface ExperimentalOptions {
 	// from the main pass. Off by default; off is the native blended
 	// reflection, byte for byte.
 	readonly waterRefraction: boolean;
+	// Port-only, not native: particle-family draws fade where they meet
+	// the scene depth (device/water-refraction.ts's split). Off by
+	// default; off is the native hard edge, byte for byte.
+	readonly softParticles: boolean;
 	// Gameplay: a skill press's run-up walks before the server's answer.
 	readonly predictedRunUp: boolean;
 	// Camera: ease the follow target's height and the collision release
@@ -409,6 +413,7 @@ export function experimentalOptions( value: unknown = null ): ExperimentalOption
 		sunShadow: enabled( "sunShadow" ),
 		perPixelLighting: enabled( "perPixelLighting" ),
 		waterRefraction: enabled( "waterRefraction" ),
+		softParticles: enabled( "softParticles" ),
 		predictedRunUp: record.predictedRunUp !== false,
 		smoothCamera: record.smoothCamera !== false,
 		enchantSparks: record.enchantSparks !== false,
@@ -512,6 +517,7 @@ export interface ExperimentalVideo {
 	readonly sunShadow: boolean;
 	readonly perPixelLighting: boolean;
 	readonly waterRefraction: boolean;
+	readonly softParticles: boolean;
 	readonly smoothCamera: boolean;
 	readonly enchantSparks: boolean;
 	readonly sharedActorRoom: boolean;
@@ -537,6 +543,7 @@ export function experimentalVideo( options: ExperimentalOptions ): ExperimentalV
 		sunShadow: options.sunShadow,
 		perPixelLighting: options.perPixelLighting,
 		waterRefraction: options.waterRefraction,
+		softParticles: options.softParticles,
 		smoothCamera: options.smoothCamera,
 		enchantSparks: options.enchantSparks,
 		sharedActorRoom: options.sharedActorRoom,
