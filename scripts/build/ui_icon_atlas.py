@@ -131,13 +131,18 @@ def build( public_root: Path, out_root: Path ) -> dict:
 	atlas_root = out_root / ATLAS_ROOT
 	atlas_root.mkdir( parents=True, exist_ok=True )
 	sheet_paths = []
+	sheet_sizes = []
 	for index, sheet in enumerate( sheets ):
 		name = f"sheet-{index}.png"
 		sheet.save( atlas_root / name, optimize=True )
 		sheet_paths.append( f"/{ATLAS_ROOT}/{name}" )
+		sheet_sizes.append( [ sheet.width, sheet.height ] )
 	manifest = {
 		"version": MANIFEST_VERSION,
 		"sheets": sheet_paths,
+		# The uv rect of an icon divides its pixel rect by its sheet's size,
+		# so the manifest carries each sheet's dimensions beside its path.
+		"sheetSize": sheet_sizes,
 		"icons": placed
 	}
 	( atlas_root / "manifest.json" ).write_text( json.dumps( manifest, sort_keys=True ), encoding="utf-8" )
