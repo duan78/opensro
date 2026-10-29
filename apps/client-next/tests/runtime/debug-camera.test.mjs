@@ -296,6 +296,7 @@ function cameraWorldFixture( t ) {
 		setUi: unexpectedCameraWork,
 		setDamageText: unexpectedCameraWork,
 		setUiTexture: unexpectedCameraWork,
+		ambientOcclusion: unexpectedCameraWork,
 		retainCharacterModels: unexpectedCameraWork,
 		setCharacterAssembly: unexpectedCameraWork,
 		characterStats: unexpectedCameraWork,
