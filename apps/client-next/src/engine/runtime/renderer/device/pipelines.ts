@@ -598,7 +598,7 @@ let mask=mix(mix(input.color.x,input.color.y,input.maskUV.x),mix(input.color.z,i
  // fragment fades where the depth behind it reaches its own - the hard
  // edge the native sprite cuts at the ground softens to nothing.
  if(env.stages.z>0.5&&material.softDepth.x>0.5){
-  let depthBehind=textureLoad(sceneBehindDepth,vec2i(input.position.xy),0);
+  let depthBehind=textureLoad(sceneBehindDepth,vec2i(input.position.xy),0).r;
   surfaceAlpha=select(surfaceAlpha*clamp((depthBehind-input.position.z)/0.05,0.0,1.0),1.0,material.stagePolicy.y>0.5);
  }
  return vec4f(mix(lit*select(vec3f(1),waterShading,animated),select(fogColor,terrainFogColor,material.options.z>0.5),fog),select(surfaceAlpha,1.0,material.stagePolicy.y>0.5));

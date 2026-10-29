@@ -35,14 +35,17 @@ test(
 			);
 			await page.goto( CLIENT_NEXT_BASE_URL );
 			await page.evaluate( () => {
-				window.__passes = [];
+				/** The page's instrumentation slots (typed for the test checker). */
+				const trace = /** @type {any} */ (globalThis);
+				trace.__passes = [];
 				const origPass = GPUCommandEncoder.prototype.beginRenderPass;
 				GPUCommandEncoder.prototype.beginRenderPass = function( d ) {
-					window.__passes.push( d.label ?? "?" );
+					trace.__passes.push( d.label ?? "?" );
 					return origPass.call( this, d );
 				};
 			} );
 			const result = await page.evaluate( async () => {
+				const trace = /** @type {any} */ (globalThis);
 				const { createRenderer } = await import( "/src/engine/runtime/renderer/renderer.ts" );
 				const { createPresentationRandom } = await import( "/src/engine/runtime/random/random.ts" );
 				const width = 192, height = 120;
@@ -51,6 +54,7 @@ test(
 				output.width = width;
 				output.height = height;
 				const context = output.getContext( "2d", { willReadFrequently: true } );
+				if ( !context ) throw Error( "No capture context" );
 				const renderer = createRenderer( canvas, createPresentationRandom( 1 ) );
 				const identity = Float32Array.of( 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 );
 				const options = {
@@ -146,7 +150,7 @@ test(
 						...options,
 						...(mode === "softParticles" ? { softParticles: true } : {})
 					} );
-					window.__passes.length = 0;
+					trace.__passes.length = 0;
 					for ( let frame = 0; frame < 10; frame++ ) await renderer.frame( { width, height }, .16 );
 					if ( renderer.error() ) throw Error( `${mode}: ${renderer.error()}` );
 					// One compositor frame after the submits (the capture rule).
@@ -157,7 +161,7 @@ test(
 					shots.push( {
 						mode,
 						rgba: [ ...context.getImageData( 0, 0, width, height ).data ],
-						passes: window.__passes.slice( -14 )
+						passes: trace.__passes.slice( -14 )
 					} );
 				}
 				renderer.dispose();
