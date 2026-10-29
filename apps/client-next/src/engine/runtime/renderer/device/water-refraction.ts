@@ -33,6 +33,8 @@ createWaterRefraction
 export function createWaterRefraction( device: GPUDevice, retire: Retire = destroyNow ) {
 	let colour: GPUTexture | null = null,
 		depth: GPUTexture | null = null,
+		colourView: GPUTextureView | null = null,
+		depthView: GPUTextureView | null = null,
 		blit: GPURenderPipeline | null = null,
 		convert: GPURenderPipeline | null = null,
 		sampler: GPUSampler | null = null,
@@ -49,6 +51,8 @@ export function createWaterRefraction( device: GPUDevice, retire: Retire = destr
 		if ( depth ) retire( depth );
 		colour = null;
 		depth = null;
+		colourView = null;
+		depthView = null;
 		blit = convert = null;
 		boundColour = boundDepth = null;
 		colourBinding = depthBinding = null;
@@ -129,11 +133,15 @@ struct V {@builtin(position) position:vec4f,@location(0) uv:vec2f}
 					format: "r32float",
 					usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING
 				} );
+				// Cached once per texture: the geometry owner's identity check
+				// then rebinds only on resize or format change, not per frame.
+				colourView = colour.createView();
+				depthView = depth.createView();
 			}
 			ensurePipelines();
 			return {
-				colourView: colour!.createView(),
-				depthView: depth!.createView(),
+				colourView: colourView!,
+				depthView: depthView!,
 				/*
 				================
 				encode
@@ -175,7 +183,7 @@ struct V {@builtin(position) position:vec4f,@location(0) uv:vec2f}
 					}
 					const copyPass = encoder.beginRenderPass( {
 						label: "water-refraction-copies",
-						colorAttachments: [ { view: colour.createView(), loadOp: "clear", storeOp: "store" } ]
+						colorAttachments: [ { view: colourView!, loadOp: "clear", storeOp: "store" } ]
 					} );
 					copyPass.setPipeline( blit );
 					copyPass.setBindGroup( 0, colourBinding! );
@@ -183,7 +191,7 @@ struct V {@builtin(position) position:vec4f,@location(0) uv:vec2f}
 					copyPass.end();
 					const depthPass = encoder.beginRenderPass( {
 						label: "water-refraction-depth",
-						colorAttachments: [ { view: depth.createView(), loadOp: "clear", storeOp: "store" } ]
+						colorAttachments: [ { view: depthView!, loadOp: "clear", storeOp: "store" } ]
 					} );
 					depthPass.setPipeline( convert );
 					depthPass.setBindGroup( 0, depthBinding! );

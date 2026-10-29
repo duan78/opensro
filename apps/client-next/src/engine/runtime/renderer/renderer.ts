@@ -663,7 +663,13 @@ export function createRenderer(
 					scene.environment.set( viewerLight.direction, ENVIRONMENT_SUN_DIRECTION );
 				}
 				const shadowOn = experimental.sunShadow && !preview;
-				device.worldView( scene.matrix, scene.environment, shadowOn, viewerLight !== null );
+				device.worldView(
+					scene.matrix,
+					scene.environment,
+					shadowOn,
+					viewerLight !== null,
+					[ scene.camera.near, scene.camera.far ]
+				);
 				presentationCamera = {
 					regionId: scene.originRegion,
 					x: scene.camera.eye[0],
