@@ -1083,6 +1083,7 @@ export function createUi(
 			| "elixirFailure"
 			| "elixirDestroy"
 			| GachaCue
+			| "hyanReady"
 	) => void = () => {},
 	loadingVariant: () => number = () => 1,
 	chooseTip: ( count: number ) => number = () => 0,
@@ -9386,7 +9387,13 @@ export function createUi(
 			const displayedBerserk = next.session?.phase === "world" ? next.berserkGauge?.displayed ?? 0 : 0;
 			if ( displayedBerserk !== berserkDisplayed ) {
 				berserkDisplayed = displayedBerserk;
-				if ( displayedBerserk === 5 ) sendGameplay( { kind: "guide-event", event: 9 } );
+				if ( displayedBerserk === 5 ) {
+					sendGameplay( { kind: "guide-event", event: 9 } );
+					// 0x866680's hyanget cue rides the same moment: the fifth
+					// orb lands and the hwan is had - a recorded inference,
+					// the surface pins the call (0x866a0b), not its branch.
+					sound( "hyanReady" );
+				}
 			}
 			const berserkGid = next.session?.phase === "world" ?
 				next.entities.find( e => e.gid === next.gameplay?.localGid && e.appearanceState?.[2] === 1 )?.gid ?? 0 :

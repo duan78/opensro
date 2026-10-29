@@ -300,7 +300,9 @@ stepAmbient
 		gachaMove: [ "gacha_move.wav" ],
 		gachaTurn: [ "gacha_turn.wav" ],
 		gachaWin: [ "gacha_win.wav" ],
-		gachaEnd: [ "gacha_end.wav" ]
+		gachaEnd: [ "gacha_end.wav" ],
+		// The hwan-ready row: the fifth orb lands and the gauge is full.
+		hyanReady: [ "hyanget.wav" ]
 	} as const;
 	const buffEndPath = "/assets/audio/sfx/prim/snd/ui/buf_disappear.wav";
 	const uiPaths: readonly string[] = [
@@ -352,7 +354,8 @@ uiSound
 				gachaMove: "SND_GACHA_MOVE",
 				gachaTurn: "SND_GACHA_TURN",
 				gachaWin: "SND_GACHA_WIN",
-				gachaEnd: "SND_GACHA_END"
+				gachaEnd: "SND_GACHA_END",
+				hyanReady: "SND_HYAN"
 			} as const)[kind]
 		);
 	}
