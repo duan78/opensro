@@ -40,6 +40,7 @@ test(
 				output.width = width;
 				output.height = height;
 				const context = output.getContext( "2d", { willReadFrequently: true } );
+				if ( !context ) throw Error( "No capture context" );
 				const renderer = createRenderer( canvas, createPresentationRandom( 1 ) );
 				const identity = Float32Array.of( 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 );
 				const options = {

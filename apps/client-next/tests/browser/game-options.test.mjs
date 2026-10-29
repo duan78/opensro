@@ -288,7 +288,7 @@ test(
 					hdrToneMap: false,
 					sunShadow: false,
 					perPixelLighting: false,
-		skyDetail: false,
+					skyDetail: false,
 					renderScale: 100
 				}
 			);
@@ -330,7 +330,7 @@ test(
 					hdrToneMap: false,
 					sunShadow: false,
 					perPixelLighting: false,
-		skyDetail: false,
+					skyDetail: false,
 					renderScale: 100
 				}
 			);
