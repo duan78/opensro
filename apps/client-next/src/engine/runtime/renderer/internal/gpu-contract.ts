@@ -407,7 +407,14 @@ export interface GeometryCommands {
 	// original draws because their UI consumer retains native alpha blending.
 	hdrPreview( draws: readonly GeometryDraw[] ): readonly GeometryDraw[];
 	waterReflection(
-		input: { matrix?: Float32Array; height: number; above: boolean; seconds: number; },
+		input: {
+			matrix?: Float32Array;
+			height: number;
+			above: boolean;
+			seconds: number;
+			// Port-only: the Water reflections row rides the same uniform.
+			reflections: boolean;
+		},
 		draws: readonly GeometryDraw[]
 	): { encode( encoder: GPUCommandEncoder ): void; } | undefined;
 	// The release record of a draw no owner may draw any more; undefined

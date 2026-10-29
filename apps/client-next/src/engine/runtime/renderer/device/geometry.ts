@@ -447,11 +447,17 @@ export function createGeometryResources(
         ================
         */
 		waterReflection(
-			input: { matrix?: Float32Array; height: number; above: boolean; seconds: number; },
+			input: {
+				matrix?: Float32Array;
+				height: number;
+				above: boolean;
+				seconds: number;
+				reflections: boolean;
+			},
 			draws: readonly GeometryDraw[]
 		) {
-			const { matrix, height, above, seconds } = input;
-			if ( waterReflection.update( matrix, height, above, seconds ) ) {
+			const { matrix, height, above, seconds, reflections } = input;
+			if ( waterReflection.update( matrix, height, above, seconds, reflections ) ) {
 				for ( const [draw, meta] of metadata ) {
 					DeviceDraw.rebind(
 						meta.selection,

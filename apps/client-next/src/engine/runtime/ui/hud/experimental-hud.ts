@@ -171,6 +171,12 @@ export const EXPERIMENTAL_TABS: readonly {
 				description: "Water bends the ground under it and foams at the shore."
 			},
 			{
+				key: "waterReflections",
+				id: "experimental-water-reflections",
+				label: "Water reflections (screen-space)",
+				description: "Water reflects what the frame already drew above it."
+			},
+			{
 				key: "enchantSparks",
 				id: "experimental-enchant-sparks",
 				label: "Enhanced item glow",

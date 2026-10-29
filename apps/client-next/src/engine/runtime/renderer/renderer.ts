@@ -840,13 +840,18 @@ export function createRenderer(
 					targetSurface = surface;
 				// Port-only, not native. Experimental owns the opt-in; 100 keeps
 				// the native surface and pass order. UI keeps its full resolution.
+				// The reflections row needs the retained frame like the
+				// refraction row does: the stage copies the scene's colour and
+				// depth, and the swap buffer is not readable.
+				const ssrOn = experimental.waterReflections && !preview;
 				const renderScale = sceneRenderScale( experimental, viewport, phone ),
 					scaled = renderScale < 100,
 					sceneWidth = Math.max( 1, Math.round( viewport.width * renderScale / 100 ) ),
 					sceneHeight = Math.max( 1, Math.round( viewport.height * renderScale / 100 ) ),
 					color = surface.acquire(
 						viewport,
-						experimental.postProcessing || !!deferredPlan?.query || experimental.waterRefraction,
+						experimental.postProcessing || !!deferredPlan?.query || experimental.waterRefraction ||
+							ssrOn,
 						renderScale
 					);
 				const finishDeferred = ( results?: readonly boolean[] ) => {
@@ -887,7 +892,9 @@ export function createRenderer(
 					undefined;
 				// Each owner's list is checked under its own name.
 				// Slices keep the scene's terrain/transparent boundaries exact.
-				const waterOn = experimental.waterRefraction,
+				// The reflections march the frame's own depth, so the water
+				// leaves the main pass for the stage under either row.
+				const waterOn = experimental.waterRefraction || ssrOn,
 					waterDraws: GeometryDraw[] = [];
 				// Port-only water refraction: the blended water surfaces leave
 				// the main pass and the refraction stage redraws them (the
@@ -973,7 +980,8 @@ export function createRenderer(
 						matrix: scene.reflectionMatrix,
 						height: scene.waterHeight ?? 0,
 						above: scene.camera.eye[1] >= (scene.waterHeight ?? 0),
-						seconds: timeSeconds
+						seconds: timeSeconds,
+						reflections: ssrOn
 					}, [ ...scene.draws, ...(preview ? [] : liveCharacters) ] ),
 					{
 						hdr: device.hdr( sceneWidth, sceneHeight, experimental.hdrToneMap ),
