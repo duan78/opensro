@@ -14,6 +14,7 @@ import {
 import { createBloom } from "./bloom";
 import { createFinish } from "./finish";
 import { createHdr } from "./hdr";
+import { createWaterRefraction } from "./water-refraction";
 import { createParticleQuery } from "./particle-query";
 import { createGpuAnimationResources } from "./animation";
 import { createParticlePresentation } from "./particles";
@@ -97,6 +98,7 @@ export function createDevice( timingEnabled = false, gpuAnimationEnabled = true 
 	let flares: ReturnType<typeof createFlares> | null = null;
 	let bloom: ReturnType<typeof createBloom> | null = null;
 	let hdr: ReturnType<typeof createHdr> | null = null;
+	let waterStage: ReturnType<typeof createWaterRefraction> | null = null;
 	let finish: ReturnType<typeof createFinish> | null = null;
 	let particleQuery: ReturnType<typeof createParticleQuery> | null = null;
 	const degradedPipelines = new Set<string>();
@@ -451,6 +453,8 @@ export function createDevice( timingEnabled = false, gpuAnimationEnabled = true 
 
 			hdr = createHdr( created, navigator.gpu.getPreferredCanvasFormat(), retirement.retire );
 
+			waterStage = createWaterRefraction( created, retirement.retire );
+
 			finish = createFinish( created, navigator.gpu.getPreferredCanvasFormat() );
 
 			particleQuery = createParticleQuery( created, navigator.gpu.getPreferredCanvasFormat() );
@@ -545,6 +549,24 @@ export function createDevice( timingEnabled = false, gpuAnimationEnabled = true 
 		},
 		/*
 		================
+		waterRefraction
+
+		Prepare the refracted water stage's copy targets (port-only,
+		device/water-refraction.ts); the renderer installs their views into
+		the geometry bindings each frame it draws them.
+		================
+		*/
+		waterRefraction( width, height, enabled ) {
+			if ( phase !== "running" || !waterStage ) throw Error( "Water refraction device is not ready" );
+			return waterStage.prepare(
+				width,
+				height,
+				hdrOn ? "rgba16float" : navigator.gpu.getPreferredCanvasFormat(),
+				enabled
+			);
+		},
+		/*
+		================
 		sunShadow
 
 		The experimental cascade owner, created by the geometry resources on
@@ -615,7 +637,7 @@ export function createDevice( timingEnabled = false, gpuAnimationEnabled = true 
 				value.hdrToneMap ? 1 : 0,
 				value.sunShadow ? 1 : 0,
 				value.perPixelLighting ? 1 : 0,
-				0
+				value.waterRefraction ? 1 : 0
 			] );
 			// The HDR stage flips every scene target's format: geometry
 			// re-pipelines, the mirror reformats, the portraits retire.
@@ -855,6 +877,8 @@ export function createDevice( timingEnabled = false, gpuAnimationEnabled = true 
 			bloom = null;
 			hdr?.dispose();
 			hdr = null;
+			waterStage?.dispose();
+			waterStage = null;
 			finish?.dispose();
 			finish = null;
 			particleQuery?.dispose();
