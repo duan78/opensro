@@ -323,6 +323,7 @@ import {
 	ALCHEMY_DESTROYED,
 	alchemyEffectCell,
 	alchemyEffectTexture,
+	alchemyOutcomeSound,
 	alchemyResultLines
 } from "@/engine/foundation/ui/alchemy-result";
 import { createUnionHud } from "./hud/union-hud";
@@ -1071,7 +1072,9 @@ export function createUi(
 	base: string,
 	apiBase: string,
 	clickSound: () => void = () => {},
-	sound: ( kind: "open" | "close" | "message" | "quest" ) => void = () => {},
+	sound: (
+		kind: "open" | "close" | "message" | "quest" | "elixirSuccess" | "elixirFailure" | "elixirDestroy"
+	) => void = () => {},
 	loadingVariant: () => number = () => 1,
 	chooseTip: ( count: number ) => number = () => 0,
 	saveOptions: ( value: GameOptions ) => void = () => {},
@@ -8989,6 +8992,10 @@ export function createUi(
 				if ( next.gameplay?.alchemy?.visible ) {
 					for ( const line of alchemyResultLines( outcome, hudCopy ) ) hudMessages.append( line );
 					alchemyEffect = { flags: outcome.flags, startedAt: now };
+					// The outcome's own sound row (62B0B0's result arm; the
+					// table's elixir cues - alchemyOutcomeSound's banner).
+					const cue = alchemyOutcomeSound( outcome.flags );
+					if ( cue ) sound( cue );
 				}
 				// A destroyed target leaves the window holding its slot, and
 				// every later click reads as a reagent onto that ghost target

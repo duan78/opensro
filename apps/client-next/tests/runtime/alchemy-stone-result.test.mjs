@@ -13,7 +13,9 @@ line (62B0B0, UIIT_MSG_REINFORCERR_SUCCESS).
 import "../helpers/native-source-loader.mjs";
 import { test } from "node:test";
 import assert from "node:assert/strict";
-const { alchemyResultLines } = await import( "../../src/engine/foundation/ui/alchemy-result.ts" );
+const { alchemyResultLines, alchemyOutcomeSound } = await import(
+	"../../src/engine/foundation/ui/alchemy-result.ts"
+);
 
 const copy = key => (key === "UIIT_MSG_REINFORCERR_SUCCESS" ? "level [%d]" : key);
 
@@ -127,6 +129,17 @@ test("an attribute stone names the white stat it raised, old value to new", () =
 
 test("an elixir keeps the native enhancement-level line", () => {
 	assert.deepEqual( alchemyResultLines( success(), copy ), [ "level [2]" ] );
+	// The outcome's own sound row (the table's elixir cues ride 62B0B0's
+	// result arm with the effect): success, destruction, failure - and the
+	// stone roll's plain failure - each name their row; unnamed flags stay
+	// silent rather than borrowing one.
+	assert.equal( alchemyOutcomeSound( 0x10 ), "elixirSuccess" );
+	assert.equal( alchemyOutcomeSound( 0x40 ), "elixirDestroy" );
+	assert.equal( alchemyOutcomeSound( 0x20 ), "elixirFailure" );
+	assert.equal( alchemyOutcomeSound( 0x80 ), "elixirFailure" );
+	assert.equal( alchemyOutcomeSound( 0x20 | 0x01 ), "elixirFailure" );
+	assert.equal( alchemyOutcomeSound( 0 ), null );
+	assert.equal( alchemyOutcomeSound( 0x01 ), null );
 	// A stone that changed nothing visible falls back to the native line.
 	assert.deepEqual(
 		alchemyResultLines( success( { before: weapon( 5 ), after: weapon( 5 ) } ), copy ),

@@ -47,6 +47,26 @@ The atlas 62B0B0 loads: success for 0x10, the failure atlas otherwise.
 export function alchemyEffectTexture( flags: number ): string {
 	return flags & ALCHEMY_SUCCESS ? "interface/alchemy/alcm_effect_success" : "interface/alchemy/alcm_effect_fail_1";
 }
+/*
+================
+alchemyOutcomeSound
+
+The native sound table carries three elixir outcome rows (UI:SND_ELIXIR_
+SUCCESS / _FAILURE / _DESTROY, native-audio-surface.json) and 62B0B0
+plays its effect at the result arm, so each sound rides the same moment
+as the effect - a recorded inference: the table names no other elixir
+cue. The destroyed item's own row outranks failure, success outranks the
+stone roll's plain failure line, and flags no row names stay silent.
+================
+*/
+export function alchemyOutcomeSound(
+	flags: number
+): "elixirSuccess" | "elixirFailure" | "elixirDestroy" | null {
+	if ( flags & ALCHEMY_SUCCESS ) return "elixirSuccess";
+	if ( flags & ALCHEMY_DESTROYED ) return "elixirDestroy";
+	if ( flags & (ALCHEMY_FAILURE | ALCHEMY_STONE_FAILED) ) return "elixirFailure";
+	return null;
+}
 
 /*
 ================

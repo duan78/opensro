@@ -289,7 +289,12 @@ stepAmbient
 		open: [ "uiwinopen.wav" ],
 		close: [ "uiwinclose.wav" ],
 		message: [ "error.wav" ],
-		quest: [ "questopen.wav" ]
+		quest: [ "questopen.wav" ],
+		// The alchemy outcome rows (sound-catalog.ts, already prewarmed
+		// through the catalogue paths below).
+		elixirSuccess: [ "elixir_suc.wav" ],
+		elixirFailure: [ "elixir_fail.wav" ],
+		elixirDestroy: [ "elixir_des.wav" ]
 	} as const;
 	const buffEndPath = "/assets/audio/sfx/prim/snd/ui/buf_disappear.wav";
 	const uiPaths: readonly string[] = [
@@ -334,7 +339,10 @@ uiSound
 				open: "SND_WINDOW_OPEN",
 				close: "SND_WINDOW_CLOSE",
 				message: "SND_ERROR",
-				quest: "SND_QUEST"
+				quest: "SND_QUEST",
+				elixirSuccess: "SND_ELIXIR_SUCCESS",
+				elixirFailure: "SND_ELIXIR_FAILURE",
+				elixirDestroy: "SND_ELIXIR_DESTROY"
 			} as const)[kind]
 		);
 	}
