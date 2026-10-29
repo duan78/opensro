@@ -294,7 +294,13 @@ stepAmbient
 		// through the catalogue paths below).
 		elixirSuccess: [ "elixir_suc.wav" ],
 		elixirFailure: [ "elixir_fail.wav" ],
-		elixirDestroy: [ "elixir_des.wav" ]
+		elixirDestroy: [ "elixir_des.wav" ],
+		// The Magic Pang rows (gacha-window.ts's gachaSoundCues; the
+		// table's change row carries no native call and stays unplayed).
+		gachaMove: [ "gacha_move.wav" ],
+		gachaTurn: [ "gacha_turn.wav" ],
+		gachaWin: [ "gacha_win.wav" ],
+		gachaEnd: [ "gacha_end.wav" ]
 	} as const;
 	const buffEndPath = "/assets/audio/sfx/prim/snd/ui/buf_disappear.wav";
 	const uiPaths: readonly string[] = [
@@ -342,7 +348,11 @@ uiSound
 				quest: "SND_QUEST",
 				elixirSuccess: "SND_ELIXIR_SUCCESS",
 				elixirFailure: "SND_ELIXIR_FAILURE",
-				elixirDestroy: "SND_ELIXIR_DESTROY"
+				elixirDestroy: "SND_ELIXIR_DESTROY",
+				gachaMove: "SND_GACHA_MOVE",
+				gachaTurn: "SND_GACHA_TURN",
+				gachaWin: "SND_GACHA_WIN",
+				gachaEnd: "SND_GACHA_END"
 			} as const)[kind]
 		);
 	}

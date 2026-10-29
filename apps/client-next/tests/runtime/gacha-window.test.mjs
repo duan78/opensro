@@ -67,6 +67,16 @@ function readyHud( items = new Map( [ [ 20, TICKET ] ] ) ) {
 	return { hud, at, items };
 }
 
+test("the window cues its four sound rows and never the unreferenced change row", () => {
+	// The native callsites the chooser's banner carries: 642170 plays the
+	// move (0x64221c) then the turn (0x642247) on Play; 643DF0's result arm
+	// plays the win row (0x643fad) or the end row (0x643ff6). The table's
+	// change row has no code reference in the surface, so no event names it.
+	assert.deepEqual( window.gachaSoundCues( { kind: "play" } ), [ "gachaMove", "gachaTurn" ] );
+	assert.deepEqual( window.gachaSoundCues( { kind: "result", result: "win" } ), [ "gachaWin" ] );
+	assert.deepEqual( window.gachaSoundCues( { kind: "result", result: "lose" } ), [ "gachaEnd" ] );
+});
+
 test("the instruction state follows the prize and the card, and only state 2 enables Play", () => {
 	assert.equal( window.gachaUiState( false, false ), 0 );
 	assert.equal( window.gachaUiState( false, true ), 0 );

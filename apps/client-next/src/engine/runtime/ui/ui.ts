@@ -326,6 +326,7 @@ import {
 	alchemyOutcomeSound,
 	alchemyResultLines
 } from "@/engine/foundation/ui/alchemy-result";
+import { gachaSoundCues, type GachaCue } from "@/engine/foundation/ui/gacha-window";
 import { createUnionHud } from "./hud/union-hud";
 import { createGuildWarHud } from "./hud/guild-war-hud";
 import { guildWarRequest, warScoreLimits, WAR_UNLIMITED } from "@/engine/foundation/gameplay/guild-war";
@@ -1073,7 +1074,15 @@ export function createUi(
 	apiBase: string,
 	clickSound: () => void = () => {},
 	sound: (
-		kind: "open" | "close" | "message" | "quest" | "elixirSuccess" | "elixirFailure" | "elixirDestroy"
+		kind:
+			| "open"
+			| "close"
+			| "message"
+			| "quest"
+			| "elixirSuccess"
+			| "elixirFailure"
+			| "elixirDestroy"
+			| GachaCue
 	) => void = () => {},
 	loadingVariant: () => number = () => 1,
 	chooseTip: ( count: number ) => number = () => 0,
@@ -1409,6 +1418,9 @@ export function createUi(
 	const guildWarHud = createGuildWarHud();
 	const exchangeHud = createExchangeHud();
 	const gachaHud = createGachaHud();
+	// The last gacha result this side has cued; null while the window shows
+	// an instruction line, so each result plays exactly once.
+	let gachaResultCued: "win" | "lose" | null = null;
 	const stallHud = createStallHud();
 	const grantPowerHud = createGrantPowerHud();
 	const compositeItemHud = createCompositeItemHud();
@@ -1882,6 +1894,14 @@ export function createUi(
 	clock it stamped `started` with, and bag lookups.
 	================
 	*/
+	function gachaPlay() {
+		const roll = gachaHud.play( gachaInput() );
+		if ( !roll ) return;
+		sendGameplay( { kind: "gacha-roll", ...roll } );
+		// 642170 cues the mechanism before it sends: the move at 0x64221c,
+		// then the turn at 0x642247 (gachaSoundCues carries the rows).
+		for ( const cue of gachaSoundCues( { kind: "play" } ) ) sound( cue );
+	}
 	function gachaInput() {
 		const gameplay = view?.gameplay;
 		return {
@@ -3982,8 +4002,7 @@ export function createUi(
 							"FullScreen Mode(Please Game Restart)"
 					);
 				} else if ( localCommand?.type === "gachastart" ) {
-					const roll = gachaHud.play( gachaInput() );
-					if ( roll ) sendGameplay( { kind: "gacha-roll", ...roll } );
+					gachaPlay();
 				} else sendGameplay( { kind: "gm-command", line } );
 				consoleText = "";
 				selection = [ 0, 0 ];
@@ -4331,8 +4350,7 @@ export function createUi(
 			gachaHud.select( Number( id.slice( 12 ) ), gachaHud.frame( gachaInput() ).busy );
 		} else if ( id.startsWith( "gacha-bag-page:" ) ) gachaHud.setBag( Number( id.slice( 15 ) ) );
 		else if ( id === "gacha-play" ) {
-			const roll = gachaHud.play( gachaInput() );
-			if ( roll ) sendGameplay( { kind: "gacha-roll", ...roll } );
+			gachaPlay();
 		} else if ( id === "process-next" ) processPage++;
 		else if ( id === "process-prev" ) processPage = Math.max( 0, processPage - 1 );
 		else if ( id === "invite-accept" || id === "invite-refuse" || id === "invite-close" ) {
@@ -18437,6 +18455,18 @@ export function createUi(
 						prizes = game.gacha?.prizes ?? [],
 						art = ( name: string ) => ROOT + "interface/game/" + name + ".png",
 						digits = ( n: number, width: number ) => String( n ).padStart( width, "0" );
+					// 643DF0's result arm cues the outcome beside the win flag it sets:
+					// the win row at 0x643fad, the end row at 0x643ff6 (the chooser's
+					// banner). The window draws while the roll resolves, so the
+					// transition is watched here - once per result.
+					if ( frame.result !== gachaResultCued ) {
+						gachaResultCued = frame.result;
+						if ( frame.result ) {
+							for ( const cue of gachaSoundCues( { kind: "result", result: frame.result } ) ) {
+								sound( cue );
+							}
+						}
+					}
 					// 645180 is the window's own drop handler (vtable 27), not the card slot's: a bag item
 					// released anywhere over the window registers. This region sits under every other control.
 					controls.splice( firstControl, 0, {

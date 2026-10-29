@@ -50,6 +50,30 @@ export const GACHA_EFFECT_LAST_TICK = 40;
 
 // DECO sprite sheets: alcm_effect_prepare is 64x64 x 16; ga_effect_sucess is 64x81 x 15.
 export type GachaSheetKind = "prepare" | "success";
+// The sound-table rows the window cues (native-audio-surface strings):
+// the play handler 642170 calls the manager for the move at 0x64221c and
+// the turn at 0x642247, and the result arm 643DF0 calls the win row at
+// 0x643fad and the end row at 0x643ff6. The table's fifth row (change)
+// carries no code reference anywhere in the surface, so no event here
+// names it.
+export type GachaCue = "gachaMove" | "gachaTurn" | "gachaWin" | "gachaEnd";
+export type GachaSoundEvent =
+	| { readonly kind: "play"; }
+	| { readonly kind: "result"; readonly result: "win" | "lose"; };
+/*
+================
+gachaSoundCues
+
+The window's sound cues for one native event, in call order. The result
+arms read as the outcome's two sides - the win row on the win, the end
+row otherwise (a recorded inference: the two calls sit in the same
+handler, their branch structure is not in the surface).
+================
+*/
+export function gachaSoundCues( event: GachaSoundEvent ): readonly GachaCue[] {
+	if ( event.kind === "play" ) return [ "gachaMove", "gachaTurn" ];
+	return event.result === "win" ? [ "gachaWin" ] : [ "gachaEnd" ];
+}
 export interface GachaSheet {
 	readonly frameWidth: number;
 	readonly frameHeight: number;
