@@ -490,6 +490,7 @@ export function verifyCapabilities( base = root ) {
 					shadows,
 					sunShadow,
 					waterReflection,
+					msaa,
 					finish,
 					device,
 					runtime + "renderer/surface/surface.ts"

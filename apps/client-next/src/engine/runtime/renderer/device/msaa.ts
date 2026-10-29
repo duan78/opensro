@@ -111,6 +111,10 @@ struct V {@builtin(position) position:vec4f,@location(0) uv:vec2f}
 				clear();
 				return;
 			}
+			// Compilation and validation failures use the device's existing
+			// terminal error path; a device that never enables this stage
+			// never compiles the depth resolve.
+			ensurePipeline();
 			if ( width !== w || height !== h || format !== sceneFormat ) {
 				clear();
 				width = w;
