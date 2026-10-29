@@ -163,6 +163,7 @@ export async function collectAssetPackGroups( {
 	const particleTextureImages = allGameImages.filter( file => imagePackGroup( file ) === "particle-textures" );
 	const astcTextureVariants = allGameImages.filter( file => imagePackGroup( file ) === "texture-variants-astc" );
 	const bc7TextureVariants = allGameImages.filter( file => imagePackGroup( file ) === "texture-variants-bc7" );
+	const uiAtlasImages = allGameImages.filter( file => imagePackGroup( file ) === "ui-atlas" );
 
 	const compressedJson = (
 		await listPublicAssetFiles( {
@@ -261,6 +262,9 @@ export async function collectAssetPackGroups( {
 		// Read only by a device that samples BC and serves itself the BC7 set
 		// through its Experimental row (issue #2060); never installed or pinned.
 		{ name: "texture-variants-bc7", load: "lazy", files: bc7TextureVariants },
+		// Read only once the interface demands its first icon (the manifest
+		// routes them there); never installed or pinned.
+		{ name: "ui-atlas", load: "lazy", files: uiAtlasImages },
 		{
 			name: "game-data",
 			load: "startup",

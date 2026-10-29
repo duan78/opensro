@@ -214,6 +214,7 @@ test("a failed source-image conversion stops the build before any lane", async (
 const AFTER_FAMILIES = [
 	"buildTextureVariants",
 	"buildTextureVariantsBc7",
+	"buildUiIconAtlas",
 	"buildUiImagePreloadManifest",
 	"buildBackgroundInstallAsset",
 	"packTree"

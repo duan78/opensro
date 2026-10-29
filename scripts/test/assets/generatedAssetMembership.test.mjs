@@ -469,6 +469,7 @@ function expectedPackGroup( publicPath, uiPreloadImages ) {
 	if ( REQUIRED_RUNTIME_TEXT_ASSETS.includes( lowerPath ) ) return "game-data";
 	if ( lowerPath.startsWith( "/assets/texture-variants/astc/" ) ) return "texture-variants-astc";
 	if ( lowerPath.startsWith( "/assets/texture-variants/bc7/" ) ) return "texture-variants-bc7";
+	if ( lowerPath.startsWith( "/assets/ui-atlas/" ) ) return "ui-atlas";
 
 	if ( uiPreloadImages.has( lowerPath ) ) {
 		return "native-ui";

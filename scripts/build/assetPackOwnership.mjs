@@ -78,6 +78,9 @@ export function imagePackGroup( publicPath ) {
 	// alpha textures where BC itself is sampled.
 	if ( lower.startsWith( "/assets/texture-variants/astc/" ) ) return "texture-variants-astc";
 	if ( lower.startsWith( "/assets/texture-variants/bc7/" ) ) return "texture-variants-bc7";
+	// Port-only: the UI icon atlas sheet and manifest (uiIconAtlas.mjs),
+	// read on the first icon the interface demands.
+	if ( lower.startsWith( "/assets/ui-atlas/" ) ) return "ui-atlas";
 	if ( lower.startsWith( "/assets/world/outdoor/" ) ) return "outdoor-world";
 	if ( lower.startsWith( "/assets/world/" ) ) return "world-textures";
 	if ( lower.startsWith( "/assets/images/map_extracted/tile2d/" ) ) return "map-tiles";

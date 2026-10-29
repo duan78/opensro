@@ -20,7 +20,10 @@ History:
      Older clients never ask for those paths; newer ones read the original
      when a variant is absent. The lazy texture-variants-bc7 group is the
      same kind of addition (BC7 re-encodings of the BC2 alpha textures at
-     /assets/texture-variants/bc7/, NTX code "BC7R", issue #2060).
+     /assets/texture-variants/bc7/, NTX code "BC7R", issue #2060). The
+     lazy ui-atlas group is the same kind of addition again (the icon
+     family's sheet and manifest at /assets/ui-atlas/): older clients
+     keep reading the per-icon files beside it.
 
 ===========================================================================
 */

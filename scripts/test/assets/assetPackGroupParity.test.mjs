@@ -101,6 +101,7 @@ const FIXTURE_FILES = [
 	"assets/world/constantinople/object-textures/wall.texture",
 	"assets/texture-variants/astc/world/constantinople/object-textures/wall.texture",
 	"assets/texture-variants/bc7/world/constantinople/object-textures/wall.texture",
+	"assets/ui-atlas/sheet-0.png",
 	"assets/char/vat/crowd.bin",
 	"assets/char/vat/crowd.json",
 	"assets/npc/vat/npc.bin",
@@ -171,6 +172,11 @@ function expectedGroups( { outdoorFiles } ) {
 			name: "texture-variants-bc7",
 			load: "lazy",
 			files: [ "/assets/texture-variants/bc7/world/constantinople/object-textures/wall.texture" ]
+		},
+		{
+			name: "ui-atlas",
+			load: "lazy",
+			files: [ "/assets/ui-atlas/sheet-0.png" ]
 		},
 		{
 			name: "game-data",
