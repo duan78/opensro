@@ -570,9 +570,9 @@ let mask=mix(mix(input.color.x,input.color.y,input.maskUV.x),mix(input.color.z,i
    let bumpOffset=select(vec2f(0),vec2f(dot(waterPass.bump.xy,dudv),dot(waterPass.bump.zw,dudv)),material.reflection.w>0.5);
    let behind=textureSampleLevel(sceneBehind,textureSampler,clamp(screenUv+bumpOffset*0.03,vec2f(0),vec2f(1)),0).rgb;
    let depthBehind=textureLoad(sceneBehindDepth,vec2i(input.position.xy),0);
-   let shore=clamp(1.0-abs(depthBehind-input.position.z)/0.02,0.0,1.0);
+   let shore=clamp(1.0-abs(depthBehind-input.position.z)/0.05,0.0,1.0);
    let reflected=select(vec3f(0),waterColor,waterPass.plane.z>0.5);
-   lit=mix(behind*0.85,reflected,0.45)+vec3f(shore*0.4);
+   lit=vec3f(1,0,0);
   }
  }
  // An unblended draw's surviving pixel is opaque: the retail back buffer
