@@ -263,7 +263,9 @@ export function createGeometryResources(
 				{ binding: 13, resource: cascade },
 				{ binding: 14, resource: shadowCompare },
 				{ binding: 15, resource: refractionColour ?? white.createView() },
-				{ binding: 16, resource: refractionDepth ?? shadowDummyView },
+				// A float texture (the stage's r32float copy), so the dummy is the
+				// white view, not the depth dummy.
+				{ binding: 16, resource: refractionDepth ?? white.createView() },
 				{ binding: 0, resource: uniform },
 				{ binding: 1, resource: storage },
 				{ binding: 2, resource: material },

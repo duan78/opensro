@@ -25,7 +25,12 @@ import { createUiResources } from "./ui";
 import { createPipelines } from "./pipelines";
 import { createImages } from "./images";
 import { createGeometryResources } from "./geometry";
-import { ENVIRONMENT_STAGES2_OFFSET, ENVIRONMENT_STAGES_OFFSET, ENVIRONMENT_UNIFORM_BYTES } from "./environment-block";
+import {
+	ENVIRONMENT_CAMERA_OFFSET,
+	ENVIRONMENT_STAGES2_OFFSET,
+	ENVIRONMENT_STAGES_OFFSET,
+	ENVIRONMENT_UNIFORM_BYTES
+} from "./environment-block";
 import type { DeviceOwner, FrameCommands, SurfaceCommands } from "@/engine/runtime/renderer/internal/gpu-contract";
 import { createRetirement } from "./retirement";
 import type { RuntimePhase } from "@/engine/contracts/runtime";
@@ -80,6 +85,8 @@ export function createDevice( timingEnabled = false, gpuAnimationEnabled = true 
 	// the plain copy to the swapchain, retail samplers, env.stages zero and
 	// env.stages2 zero.
 	let finishEnabled = false, anisotropic = false, bloomFloat = false, hdrOn = false, sunShadowOn = false;
+	// The camera vec4 written per frame (near, far, 0, 0).
+	const cameraValues = new Float32Array( 4 );
 	const stages = new Float32Array( 8 );
 	let timing: ReturnType<typeof createGpuTiming> | null = null;
 	let phase: RuntimePhase = "starting", failure: string | null = null, device: GPUDevice | null = null;
@@ -737,7 +744,7 @@ export function createDevice( timingEnabled = false, gpuAnimationEnabled = true 
 		Publish the frame transform and environment uniforms together.
 		================
 		*/
-		worldView( transform, environment, shadowEnabled = true, directional = false ) {
+		worldView( transform, environment, shadowEnabled = true, directional = false, camera?: readonly number[] ) {
 			if ( phase === "running" ) {
 				// Preview scenes have no cascade; keep the saved preference for world re-entry.
 				stages[5] = sunShadowOn && shadowEnabled ? 1 : 0;
@@ -749,6 +756,12 @@ export function createDevice( timingEnabled = false, gpuAnimationEnabled = true 
 					environment.byteOffset,
 					environment.byteLength
 				);
+				// The camera's near and far for the shaders' depth linearisation.
+				if ( camera ) {
+					cameraValues[0] = camera[0] ?? 1;
+					cameraValues[1] = camera[1] ?? cameraValues[0] + 499;
+					device!.queue.writeBuffer( environmentBuffer!, ENVIRONMENT_CAMERA_OFFSET, cameraValues );
+				}
 				// The viewer's studio light uses the sun-direction stage's switch for
 				// its own frames only; the saved Experimental choice is kept.
 				const dynamicSun = stages[1]!;

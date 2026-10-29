@@ -209,7 +209,9 @@ export interface DeviceOwner extends Disposable {
 		transform: Float32Array,
 		environment: Float32Array,
 		shadowEnabled?: boolean,
-		directional?: boolean
+		directional?: boolean,
+		// The camera's near and far, for the shaders' depth linearisation.
+		camera?: readonly number[]
 	): void;
 	sky(): ImageDraw | null;
 	thunder( color: readonly number[] ): ImageDraw;

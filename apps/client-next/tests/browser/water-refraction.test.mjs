@@ -37,6 +37,17 @@ test(
 			);
 			await page.goto( CLIENT_NEXT_BASE_URL );
 			await page.evaluate( () => {
+				window.__gpuErrors = [];
+				const origRequest = GPUAdapter.prototype.requestDevice;
+				GPUAdapter.prototype.requestDevice = async function( descriptor ) {
+					const device = await origRequest.call( this, descriptor );
+					device.addEventListener?.(
+						"uncapturederror",
+						event =>
+							window.__gpuErrors.push( String( event.error?.message ?? event.error ).slice( 0, 200 ) )
+					);
+					return device;
+				};
 				window.__tex = [];
 				window.__passes = [];
 				const origTex = GPUDevice.prototype.createTexture;
@@ -178,8 +189,21 @@ test(
 						passes: window.__passes.slice( -12 )
 					} );
 				}
+				// Without a mirror (video slot 4 off) the row-off water keeps its
+				// own lit texture - the native path this change must not alter.
+				const mirrorless = [];
+				for ( let round = 0; round < 2; round++ ) {
+					renderer.videoOptions( changeVideo( defaultVideoOptions(), 4, 0 ) );
+					renderer.experimentalVideo( options );
+					for ( let frame = 0; frame < 4; frame++ ) await renderer.frame( { width, height }, .16 );
+					await new Promise( requestAnimationFrame );
+					const image = await createImageBitmap( canvas );
+					context.drawImage( image, 0, 0 );
+					image.close();
+					mirrorless.push( [ ...context.getImageData( 0, 0, width, height ).data ] );
+				}
 				renderer.dispose();
-				return { shots, tex: window.__tex };
+				return { shots, tex: window.__tex, mirrorless, gpuErrors: window.__gpuErrors };
 			} );
 			const [before, during, after] = result.shots;
 			// A-B-A: the row off restores the native bytes exactly.
@@ -219,6 +243,29 @@ test(
 				if ( now !== was ) changed++;
 			}
 			assert.ok( changed > 400, `The on frame differs (${changed} pixels)` );
+			// The refracted water keeps the seabed's hue: a solid red frame
+			// (the branch's discarded composite) fails this.
+			{
+				const mid = (78 * 192 + 96) * 4;
+				const water = during.rgba.slice( mid, mid + 4 );
+				assert.ok(
+					water[1] > water[2],
+					`The water pixel leans to the seabed's yellow, not red (${water.join( "," )})`
+				);
+			}
+			// Without a mirror the row-off water stays lit and deterministic.
+			assert.deepEqual(
+				result.mirrorless[1],
+				result.mirrorless[0],
+				"The mirrorless off captures are byte-equal"
+			);
+			{
+				const mid = (78 * 192 + 96) * 4;
+				const water = result.mirrorless[0].slice( mid, mid + 4 );
+				const sum = water[0] + water[1] + water[2];
+				assert.ok( sum > 60, `The mirrorless off water stays lit (${water.join( "," )})` );
+			}
+			assert.deepEqual( result.gpuErrors, [], "No uncaptured GPU errors in any mode" );
 			assert.deepEqual( errors, [] );
 		} finally {
 			await browser.close();
