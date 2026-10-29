@@ -37,31 +37,32 @@ test(
 			);
 			await page.goto( CLIENT_NEXT_BASE_URL );
 			await page.evaluate( () => {
-				window.__gpuErrors = [];
+				const trace = /** @type {any} */ (globalThis);
+				trace.__gpuErrors = [];
 				const origRequest = GPUAdapter.prototype.requestDevice;
 				GPUAdapter.prototype.requestDevice = async function( descriptor ) {
 					const device = await origRequest.call( this, descriptor );
 					device.addEventListener?.(
 						"uncapturederror",
-						event =>
-							window.__gpuErrors.push( String( event.error?.message ?? event.error ).slice( 0, 200 ) )
+						event => trace.__gpuErrors.push( String( event.error?.message ?? event.error ).slice( 0, 200 ) )
 					);
 					return device;
 				};
-				window.__tex = [];
-				window.__passes = [];
+				trace.__tex = [];
+				trace.__passes = [];
 				const origTex = GPUDevice.prototype.createTexture;
 				GPUDevice.prototype.createTexture = function( d ) {
-					window.__tex.push( (d.label ?? "?") + ":" + (d.format ?? "?") );
+					trace.__tex.push( (d.label ?? "?") + ":" + (d.format ?? "?") );
 					return origTex.call( this, d );
 				};
 				const origPass = GPUCommandEncoder.prototype.beginRenderPass;
 				GPUCommandEncoder.prototype.beginRenderPass = function( d ) {
-					window.__passes.push( d.label ?? "?" );
+					trace.__passes.push( d.label ?? "?" );
 					return origPass.call( this, d );
 				};
 			} );
 			const result = await page.evaluate( async () => {
+				const trace = /** @type {any} */ (globalThis);
 				const { createRenderer } = await import( "/src/engine/runtime/renderer/renderer.ts" );
 				const { createPresentationRandom } = await import( "/src/engine/runtime/random/random.ts" );
 				const { defaultVideoOptions, changeVideo } = await import(
@@ -73,6 +74,7 @@ test(
 				output.width = width;
 				output.height = height;
 				const context = output.getContext( "2d", { willReadFrequently: true } );
+				if ( !context ) throw Error( "No capture context" );
 				const renderer = createRenderer( canvas, createPresentationRandom( 1 ) );
 				const identity = Float32Array.of( 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 );
 				const options = {
@@ -173,7 +175,7 @@ test(
 						...options,
 						...(mode === "waterRefraction" ? { waterRefraction: true } : {})
 					} );
-					window.__passes.length = 0;
+					trace.__passes.length = 0;
 					for ( let frame = 0; frame < 6; frame++ ) await renderer.frame( { width, height }, .16 );
 					if ( renderer.error() ) throw Error( `${mode}: ${renderer.error()}` );
 					// Let the compositor present the last frame before the
@@ -186,7 +188,7 @@ test(
 					shots.push( {
 						mode,
 						rgba: [ ...context.getImageData( 0, 0, width, height ).data ],
-						passes: window.__passes.slice( -12 )
+						passes: trace.__passes.slice( -12 )
 					} );
 				}
 				// Without a mirror (video slot 4 off) the row-off water keeps its
@@ -203,7 +205,7 @@ test(
 					mirrorless.push( [ ...context.getImageData( 0, 0, width, height ).data ] );
 				}
 				renderer.dispose();
-				return { shots, tex: window.__tex, mirrorless, gpuErrors: window.__gpuErrors };
+				return { shots, tex: trace.__tex, mirrorless, gpuErrors: trace.__gpuErrors };
 			} );
 			const [before, during, after] = result.shots;
 			// A-B-A: the row off restores the native bytes exactly.
