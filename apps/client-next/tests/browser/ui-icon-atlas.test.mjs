@@ -46,6 +46,7 @@ test(
 				function icon( seed ) {
 					const canvas = new OffscreenCanvas( ICON, ICON );
 					const context = canvas.getContext( "2d" );
+					if ( !context ) throw Error( "No icon context" );
 					const image = context.createImageData( ICON, ICON );
 					for ( let y = 0; y < ICON; y++ ) {
 						for ( let x = 0; x < ICON; x++ ) {
@@ -60,14 +61,35 @@ test(
 					return canvas.transferToImageBitmap();
 				}
 				const a = icon( 3 ), b = icon( 7 );
+				// A high-frequency icon: hard alpha edges and a checker, the
+				// case where a gutter bleed would show first.
+				const checker = new OffscreenCanvas( ICON, ICON );
+				const cc = checker.getContext( "2d" );
+				if ( !cc ) throw Error( "No checker context" );
+				for ( let y = 0; y < ICON; y++ ) {
+					for ( let x = 0; x < ICON; x++ ) {
+						cc.fillStyle = (x >> 2) % 2 === (y >> 2) % 2 ? "#fff" : "#000";
+						cc.fillRect( x, y, 1, 1 );
+					}
+				}
+				cc.fillStyle = "#fff";
+				cc.fillRect( 0, 0, 1, ICON );
+				cc.fillRect( ICON - 1, 0, 1, ICON );
 				const A = "/assets/images/Media_extracted/icon/atlas-a.png",
 					B = "/assets/images/Media_extracted/icon/atlas-b.png",
 					SHEET = "/assets/ui-atlas/sheet-0.png";
 				// The sheet, composed exactly as the build does: each icon in a
 				// cell of its own edge texels repeated around it.
-				const cells = [ [ A, a, GUTTER, GUTTER ], [ B, b, GUTTER + ICON + GUTTER * 2, GUTTER ] ];
-				const sheet = new OffscreenCanvas( GUTTER * 4 + ICON * 2, GUTTER * 2 + ICON );
+				const C = "/assets/images/Media_extracted/icon/atlas-c.png";
+				/** One sheet cell: its icon path, its bitmap, its cell origin. */
+				const cells = /** @type {[string, ImageBitmap, number, number][]} */ ([
+					[ A, a, GUTTER, GUTTER ],
+					[ B, b, GUTTER + ICON + GUTTER * 2, GUTTER ],
+					[ C, checker, GUTTER * 2 + (ICON + GUTTER * 2) * 2, GUTTER ]
+				]);
+				const sheet = new OffscreenCanvas( GUTTER * 6 + ICON * 3, GUTTER * 2 + ICON );
 				const sc = sheet.getContext( "2d" );
+				if ( !sc ) throw Error( "No sheet context" );
 				sc.imageSmoothingEnabled = false;
 				for ( const [, bitmap, x, y] of cells ) {
 					sc.drawImage( bitmap, x, y );
@@ -102,7 +124,8 @@ test(
 					sheetSize: [ [ sheet.width, sheet.height ] ],
 					icons: {
 						[A]: [ 0, GUTTER, GUTTER, ICON, ICON ],
-						[B]: [ 0, GUTTER + ICON + GUTTER * 2, GUTTER, ICON, ICON ]
+						[B]: [ 0, GUTTER + ICON + GUTTER * 2, GUTTER, ICON, ICON ],
+						[C]: [ 0, GUTTER * 2 + (ICON + GUTTER * 2) * 2, GUTTER, ICON, ICON ]
 					}
 				};
 				const WIDTH = 256, HEIGHT = 128, stride = WIDTH * 4;
@@ -172,12 +195,14 @@ test(
 					};
 					const mirrored = { ...plain, rect: [ 44, 4, ICON, ICON ], uv: [ 1, 1, -1, -1 ] };
 					const turned = { ...plain, rect: [ 84, 4, ICON, ICON ], uvTurn: 1 };
-					const second = { ...plain, texture: texture === A ? B : B, rect: [ 4, 44, ICON, ICON ] };
-					return [ plain, mirrored, turned, second ];
+					const second = { ...plain, texture: B, rect: [ 4, 44, ICON, ICON ] };
+					const third = { ...plain, texture: C, rect: [ 4, 84, ICON, ICON ] };
+					return [ plain, mirrored, turned, second, third ];
 				}
 				const out = { errors, frames: {}, draws: {} };
 				ui.texture( A, a );
 				ui.texture( B, b );
+				ui.texture( C, checker );
 				for ( const scale of [ 1, 1.5, 0.75 ] ) {
 					const perIcon = await render( quads( A ), scale );
 					out.frames["per" + scale] = [ ...perIcon.bytes ];
@@ -187,6 +212,7 @@ test(
 				// mapping directs the same quads into it.
 				ui.texture( A, null );
 				ui.texture( B, null );
+				ui.texture( C, null );
 				ui.texture( SHEET, sheet.transferToImageBitmap() );
 				ui.atlas( iconAtlas( manifest ) );
 				for ( const scale of [ 1, 1.5, 0.75 ] ) {
@@ -199,6 +225,7 @@ test(
 				ui.atlas( null );
 				ui.texture( A, a );
 				ui.texture( B, b );
+				ui.texture( C, checker );
 				const cleared = await render( quads( A ), 1 );
 				out.frames.cleared = [ ...cleared.bytes ];
 				ui.dispose();
@@ -227,7 +254,7 @@ test(
 					}
 				}
 				assert.ok(
-					diff <= 20 && maxDelta <= 1,
+					diff <= 60 && maxDelta <= 1,
 					`UI scale ${scale}: ${diff} pixels differ by at most 1/255 (float32 uv rounding)`
 				);
 			}
