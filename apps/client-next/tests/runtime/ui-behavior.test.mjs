@@ -400,6 +400,43 @@ without the blocking retry. Any other absent image settles blank, and a
 transient fault on an icon still retries.
 ================
 */
+test("an absent icon's fallback fetches the default itself, not its atlas sheet", () => {
+	// The review's trace: with the atlas installed and icon_default mapped
+	// (it is a published icon), the fallback's request used target() - which
+	// names the whole sheet for a mapped icon - so the sheet was published
+	// under the absent icon's path and drew 2048 px squashed into its quad.
+	// The fallback must fetch the default's own file.
+	const f = assetFixture();
+	const icon = "/assets/images/Media_extracted/icon/item/etc/absent_recipe.png";
+	const fallback = "/assets/images/Media_extracted/icon/icon_default.png";
+	const sheet = "/assets/ui-atlas/sheet-0.png";
+	f.resources.step( [ icon ], 0 );
+	assert.equal( f.requests[0], "https://fixture.invalid/assets/ui-atlas/manifest.json" );
+	const manifest = {
+		version: 1,
+		sheets: [ sheet ],
+		sheetSize: [ [ 2048, 2047 ] ],
+		icons: { [fallback]: [ 0, 2, 2, 32, 32 ] }
+	};
+	f.results.set( 1, { kind: "bytes", buffer: new TextEncoder().encode( JSON.stringify( manifest ) ).buffer } );
+	// The icon has no manifest entry, so its own path is still the request;
+	// it arrives absent and joins the fallback set.
+	f.results.set( 2, { kind: "error", error: "Asset absent from published manifest", absent: true } );
+	f.resources.step( [ icon ], 1 );
+	assert.equal(
+		f.requests.at( -1 ),
+		"https://fixture.invalid" + fallback,
+		"the fallback fetches the default's own file, never the sheet"
+	);
+	assert.equal( f.requests.some( r => r === "https://fixture.invalid" + sheet ), false );
+	const image = { width: 32, height: 32 };
+	f.results.set( 3, { kind: "image", image } );
+	f.resources.step( [ icon ], 2 );
+	assert.deepEqual( f.published, [ [ icon, image ] ], "the default publishes under the icon's own path" );
+	assert.deepEqual( f.resources.size( icon ), [ 32, 32 ], "the default's own size, never the sheet's" );
+	f.resources.dispose();
+});
+
 test("an absent slot icon draws icon_default and an absent image settles blank", () => {
 	const f = assetFixture();
 	const icon = "/assets/images/Media_extracted/icon/item/etc/archemy_reinforce_recipe_a.png";

@@ -304,11 +304,17 @@ export function createUiAssets(
 				) continue;
 				if ( assets.available() === 0 ) break;
 				const request = fallback.has( path ) ? DEFAULT_ICON : path;
+				// A fallback fetches the default icon itself, never its atlas
+				// target: the default is a published icon, so target() names
+				// the whole sheet there, and the sheet published under an
+				// absent icon's path would draw 2048 px squashed into that
+				// icon's quad (the review's trace on this branch).
+				const url = request === DEFAULT_ICON ? request : target( request );
 				try {
 					pending.set(
 						path,
 						assets.request(
-							new URL( target( request ), base ).href,
+							new URL( url, base ).href,
 							crest( request ) ? 256 : 4 * 1024 * 1024,
 							// A native texture arrives as its container bytes.
 							crest( request ) ? "crest" : isNativeTexture( request ) ? undefined : "png"
