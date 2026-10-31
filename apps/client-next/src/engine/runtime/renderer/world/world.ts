@@ -2117,6 +2117,10 @@ export function createWorldRenderer(
 							cache.candidates = group.ranges.filter( range => {
 								const dx = range.cell[0] - eyeCellX, dz = range.cell[1] - eyeCellZ;
 								if ( range.lod !== selectTerrainLod( dx * dx + dz * dz ) ) return false;
+								// The "full" detail never re-chooses on a view change
+								// (the recompute condition above), so its kept set must
+								// stay view-independent: every range at LOD 0 stays.
+								if ( current?.terrainDetail === "full" ) return true;
 								return visibleFrustumSphere(
 									frustum,
 									range.center[0],
