@@ -437,6 +437,31 @@ test("an absent icon's fallback fetches the default itself, not its atlas sheet"
 	f.resources.dispose();
 });
 
+test("a direct demand for the default icon still takes its atlas sheet", () => {
+	const f = assetFixture();
+	const defaultIcon = "/assets/images/Media_extracted/icon/icon_default.png";
+	const sheet = "/assets/ui-atlas/sheet-0.png";
+	const manifest = {
+		version: 1,
+		sheets: [ sheet ],
+		sheetSize: [ [ 2048, 2047 ] ],
+		icons: { [defaultIcon]: [ 0, 2, 2, 32, 32 ] }
+	};
+	f.resources.step( [ defaultIcon ], 0 );
+	f.results.set( 1, { kind: "bytes", buffer: new TextEncoder().encode( JSON.stringify( manifest ) ).buffer } );
+	f.resources.step( [ defaultIcon ], 1 );
+	assert.equal(
+		f.requests.at( -1 ),
+		"https://fixture.invalid" + sheet,
+		"the default icon itself is served from the sheet when demanded directly"
+	);
+	const image = { width: 2048, height: 2047 };
+	f.results.set( 3, { kind: "image", image } );
+	f.resources.step( [ defaultIcon ], 2 );
+	assert.deepEqual( f.published, [ [ sheet, image ] ] );
+	f.resources.dispose();
+});
+
 test("an absent slot icon draws icon_default and an absent image settles blank", () => {
 	const f = assetFixture();
 	const icon = "/assets/images/Media_extracted/icon/item/etc/archemy_reinforce_recipe_a.png";

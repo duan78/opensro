@@ -309,7 +309,7 @@ export function createUiAssets(
 				// the whole sheet there, and the sheet published under an
 				// absent icon's path would draw 2048 px squashed into that
 				// icon's quad (the review's trace on this branch).
-				const url = request === DEFAULT_ICON ? request : target( request );
+				const url = fallback.has( path ) ? DEFAULT_ICON : target( path );
 				try {
 					pending.set(
 						path,
